@@ -27,4 +27,4 @@ test-results
 *.log
 .idea
 .vscode
-!/.cursor
+.cursor
