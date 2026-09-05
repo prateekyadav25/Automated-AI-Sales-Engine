@@ -1,0 +1,23 @@
+---
+description: Next.js App Router, UI, and page-state conventions
+globs: apps/web/**/*.{ts,tsx},packages/ui/**/*.{ts,tsx}
+alwaysApply: false
+---
+
+# Frontend Next.js
+
+- Use the App Router, server components where they help, and client components for interactive data views.
+- Fetch through the typed SDK / TanStack Query. Do not scatter raw `fetch` calls in pages.
+- Every data page must handle loading, empty, error, success, 403, no-results, pagination, search, filter, and sort.
+- Use permission gates from the session payload. Hide actions the user cannot perform; still enforce 403 from the API.
+- Prefer shared primitives from `packages/ui` and existing feature components. Do not create one giant page component.
+- Forms use React Hook Form + Zod. Tables use TanStack Table.
+- No fake KPI numbers. If the API returns zero, show an empty state.
+
+```tsx
+// BAD
+<p>{data?.totalLeads ?? 1284}</p>
+
+// GOOD
+<KpiCard label="Leads" value={data.totalLeads} isLoading={isLoading} />
+```

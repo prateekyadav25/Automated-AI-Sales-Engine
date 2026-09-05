@@ -1,0 +1,106 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  color-scheme: light;
+  --bg: #e8eef8;
+  --bg-2: rgba(255, 255, 255, 0.72);
+  --card: rgba(255, 255, 255, 0.55);
+  --line: rgba(148, 163, 184, 0.35);
+  --line-strong: rgba(37, 99, 235, 0.28);
+  --text: #0f172a;
+  --muted: #64748b;
+  --brand: #0f766e;
+  --brand-hover: #0d9488;
+  --brand-soft: #f0fdfa;
+  --navy: #1e3a5f;
+  --blue: #2563eb;
+  --blue-soft: #dbeafe;
+  --gold: #0f766e;
+  --gold-2: #14b8a6;
+  --mint: #0f766e;
+  --rose: #be123c;
+  --ok: #15803d;
+  --warn: #b45309;
+}
+
+html,
+body {
+  min-height: 100%;
+}
+
+body {
+  background: var(--bg);
+  color: var(--text);
+}
+
+body::before {
+  content: "";
+  pointer-events: none;
+  position: fixed;
+  inset: 0;
+  z-index: 0;
+  background:
+    radial-gradient(880px 520px at 8% -8%, rgba(37, 99, 235, 0.34), transparent 58%),
+    radial-gradient(760px 480px at 96% 8%, rgba(15, 118, 110, 0.22), transparent 52%),
+    radial-gradient(640px 420px at 70% 110%, rgba(29, 78, 216, 0.16), transparent 55%);
+}
+
+body > * {
+  position: relative;
+  z-index: 1;
+}
+
+*::-webkit-scrollbar {
+  width: 10px;
+  height: 10px;
+}
+
+*::-webkit-scrollbar-thumb {
+  background: rgba(37, 99, 235, 0.22);
+  border-radius: 999px;
+}
+
+.panel {
+  @apply rounded-2xl border backdrop-blur-xl;
+  background: var(--card);
+  border-color: rgba(255, 255, 255, 0.72);
+  box-shadow:
+    0 1px 0 rgba(255, 255, 255, 0.7) inset,
+    0 18px 40px rgba(30, 58, 95, 0.08);
+}
+
+.glass-strong {
+  @apply border backdrop-blur-2xl;
+  background: rgba(255, 255, 255, 0.72);
+  border-color: rgba(255, 255, 255, 0.8);
+  box-shadow:
+    0 1px 0 rgba(255, 255, 255, 0.85) inset,
+    0 16px 40px rgba(30, 58, 95, 0.1);
+}
+
+.kpi-sheen {
+  position: relative;
+  overflow: hidden;
+}
+
+.kpi-sheen::after {
+  content: "";
+  pointer-events: none;
+  position: absolute;
+  inset: 0 auto auto 0;
+  height: 3px;
+  width: 100%;
+  background: linear-gradient(90deg, #2563eb, #0f766e);
+}
+
+.hairline {
+  background: linear-gradient(90deg, transparent, rgba(37, 99, 235, 0.35), transparent);
+  height: 1px;
+}
+
+::selection {
+  background: rgba(37, 99, 235, 0.2);
+  color: var(--text);
+}

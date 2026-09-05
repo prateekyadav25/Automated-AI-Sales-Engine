@@ -1,0 +1,19 @@
+---
+description: Agent contracts, tools, action levels, and RAG rules
+globs: ai/**/*.{py,md},apps/api/**/ai/**/*.py
+alwaysApply: false
+---
+
+# AI Agents
+
+- Do not build one giant agent. Use specialized agents with explicit contracts.
+- Every agent defines purpose, input/output schema, allowed tools, allowed/forbidden data, allowed actions, approval policy, timeout, retry, cost limit, logging, and failure strategy.
+- Tools call application services. Tools never open a SQL session for unconstrained queries.
+- Action levels: 0 read auto, 1 internal write by policy, 2 external comms need communication policy, 3 commercial needs approval, 4 legal/financial needs explicit human authority.
+- Prompts live in the prompt registry, not as random strings across the codebase.
+- RAG answers must cite sources or abstain. Filter chunks by tenant and permission.
+- Mock LLM/embedding providers must be clearly identified. When a real provider is configured, use it.
+
+```text
+LLM → Tool → Application service → Authorization → Repository → Database
+```

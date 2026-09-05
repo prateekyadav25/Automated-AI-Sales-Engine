@@ -1,0 +1,24 @@
+---
+description: FastAPI, SQLAlchemy, and tenant-safe backend conventions
+globs: apps/api/**/*.py,apps/worker/**/*.py,ai/**/*.py
+alwaysApply: false
+---
+
+# Backend Python
+
+- FastAPI routers stay thin. Business logic lives in services.
+- SQLAlchemy 2.x models inherit shared columns: `id`, `tenant_id` (when tenant-owned), timestamps, actor fields.
+- Repositories accept `tenant_id` and never query without it for tenant data.
+- Use Pydantic v2 schemas for request/response. Keep API envelope `{ data, meta, error }`.
+- Alembic migrations are required for schema changes. Do not rely on create_all in production.
+- Prefer explicit permission checks in dependencies, for example `require_permission("accounts.read")`.
+- Structured JSON logs with `correlation_id`. Do not log secrets or raw tokens.
+- Type Python. Keep modules small; do not create one giant `main.py` or service file.
+
+```python
+# BAD
+accounts = session.execute(select(Account)).scalars().all()
+
+# GOOD
+accounts = account_repo.list_for_tenant(session, tenant_id=ctx.tenant_id)
+```

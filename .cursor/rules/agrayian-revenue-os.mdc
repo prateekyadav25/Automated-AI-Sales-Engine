@@ -1,0 +1,37 @@
+---
+description: Core architecture and engineering rules for AGRAYIAN Autonomous Revenue OS
+alwaysApply: true
+---
+
+# AGRAYIAN Autonomous Revenue OS
+
+Internal name: AGRAYIAN Autonomous Revenue OS.
+Lifecycle: Intelligence → Acquire → Sell → Close → Succeed → Retain → Expand → Advocate → Learn.
+
+This is a multi-tenant autonomous revenue operating system, not a CRM-only product.
+
+## Architecture
+
+- Keep domain boundaries: identity, CRM, commercial, success, AI, integrations.
+- Never give an LLM direct database access. Path: LLM → approved tool → application service → authorization → repository → database.
+- Use provider interfaces for LLM, embeddings, email, calendar, ads, CRM, support, finance, usage, company/contact/intent data.
+- Mock adapters are allowed only when labeled mock and used for unavailable external services.
+- Do not hardcode secrets, tenant IDs, model names, or API keys.
+- Do not build fake dashboards or fake integrations and call them complete.
+- Persist long-running workflows. Never depend on process memory for sequences, approvals, or agent runs.
+- Use deterministic logic for pricing, discounts, taxes, scores, dates, and revenue math. LLMs explain; they do not invent numbers.
+
+## Multi-tenancy and security
+
+- Every tenant-owned row includes `tenant_id`.
+- Repositories must always filter by tenant.
+- Authorize with permission strings, never brittle role-name checks in domain services.
+- Audit mutations: actor, tenant, action, entity, before/after, human vs AI, correlation ID.
+- Respect consent, opt-out, and do-not-contact before any external communication.
+
+## Quality
+
+- Follow: domain → migration → repository → service → authz → audit → API → frontend → tests → docs.
+- Every page needs loading, empty, error, success, and permission-denied states.
+- Do not break existing tenant isolation, RBAC, or audit behavior.
+- Read PROJECT_STATUS.md, CURRENT_PHASE.md, IMPLEMENTATION_LOG.md, BACKLOG.md, and DECISIONS.md before continuing work.
