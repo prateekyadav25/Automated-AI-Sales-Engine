@@ -3,11 +3,11 @@ from __future__ import annotations
 from pathlib import Path
 from uuid import UUID
 
+from alembic.config import Config
+from alembic.script import ScriptDirectory
 from sqlalchemy import select, text
 from sqlalchemy.orm import Session
 
-from alembic.config import Config
-from alembic.script import ScriptDirectory
 from app.core.config import get_settings
 from app.models.identity import FeatureFlag, Permission, RolePermission, Tenant, User, UserRole
 from app.models.integrations import ProviderAccount

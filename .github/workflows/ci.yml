@@ -204,6 +204,9 @@ jobs:
         env:
           DATABASE_URL: sqlite:///./playwright.db
           SECRET_KEY: playwright-secret
+          ENVIRONMENT: test
+          AUTH_LOGIN_LIMIT: "1000"
+          AUTH_REFRESH_LIMIT: "1000"
           LLM_PROVIDER: mock
           SEED_DEMO: "true"
           CORS_ORIGINS: http://127.0.0.1:3000
@@ -268,6 +271,9 @@ jobs:
           DATABASE_URL: postgresql+psycopg://agrayian:agrayian@localhost:5432/agrayian_e2e
           DATABASE_ADMIN_URL: postgresql+psycopg://agrayian:agrayian@localhost:5432/agrayian_e2e
           SECRET_KEY: playwright-secret
+          ENVIRONMENT: test
+          AUTH_LOGIN_LIMIT: "1000"
+          AUTH_REFRESH_LIMIT: "1000"
           LLM_PROVIDER: mock
           SEED_DEMO: "true"
           CORS_ORIGINS: http://127.0.0.1:3000

@@ -5,9 +5,11 @@ from decimal import Decimal
 from uuid import UUID, uuid4
 
 import pytest
+from alembic.config import Config
 from sqlalchemy import create_engine, func, select
 from sqlalchemy.orm import Session, sessionmaker
 
+from alembic import command
 from app.models.ai import AIApproval
 from app.models.crm import Account, Customer, Lead, Opportunity, Renewal
 from app.models.identity import Tenant, User
@@ -33,8 +35,6 @@ def pg() -> sessionmaker:
     url = _url()
     if not url:
         pytest.skip("POSTGRES_RLS_ADMIN_URL is not set")
-    from alembic import command
-    from alembic.config import Config
 
     os.environ.setdefault("DATABASE_URL", url)
     os.environ.setdefault("DATABASE_ADMIN_URL", url)

@@ -2,9 +2,11 @@ import os
 from uuid import uuid4
 
 import pytest
+from alembic.config import Config
 from sqlalchemy import create_engine, select, text
 from sqlalchemy.orm import Session, sessionmaker
 
+from alembic import command
 from app.db.tenant_context import set_tenant_context
 from app.models.crm import Account
 from app.models.identity import Tenant
@@ -28,9 +30,6 @@ def rls_session() -> Session:
     admin_url, app_url = urls
     os.environ.setdefault("DATABASE_ADMIN_URL", admin_url)
     os.environ.setdefault("DATABASE_URL", admin_url)
-    from alembic import command
-    from alembic.config import Config
-
     cfg = Config("alembic.ini")
     command.upgrade(cfg, "head")
     engine = create_engine(app_url)

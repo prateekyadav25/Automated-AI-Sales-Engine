@@ -48,15 +48,17 @@ def main() -> int:
         if not OPENAPI_PATH.exists() or not TS_PATH.exists():
             print("generated OpenAPI artifacts are missing; run scripts/generate_openapi.py")
             return 1
-        if OPENAPI_PATH.read_text(encoding="utf-8") != openapi_text or TS_PATH.read_text(encoding="utf-8") != ts_text:
+        existing_openapi = OPENAPI_PATH.read_text(encoding="utf-8").replace("\r\n", "\n")
+        existing_ts = TS_PATH.read_text(encoding="utf-8").replace("\r\n", "\n")
+        if existing_openapi != openapi_text or existing_ts != ts_text:
             print("OpenAPI drift detected; run python scripts/generate_openapi.py")
             return 1
         print("OpenAPI artifacts are current")
         return 0
     OPENAPI_PATH.parent.mkdir(parents=True, exist_ok=True)
     TS_PATH.parent.mkdir(parents=True, exist_ok=True)
-    OPENAPI_PATH.write_text(openapi_text, encoding="utf-8")
-    TS_PATH.write_text(ts_text, encoding="utf-8")
+    OPENAPI_PATH.write_text(openapi_text, encoding="utf-8", newline="\n")
+    TS_PATH.write_text(ts_text, encoding="utf-8", newline="\n")
     print(f"wrote {OPENAPI_PATH} and {TS_PATH} ({len(spec.get('paths') or {})} paths)")
     return 0
 
