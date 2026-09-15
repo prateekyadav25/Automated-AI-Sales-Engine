@@ -1,3 +1,6 @@
+export type { GeneratedPaths } from "./generated";
+export { generatedPathCount, generatedSchemaNames } from "./generated";
+
 export type Envelope<T> = {
   data: T | null;
   meta: { page: number; page_size: number; total: number } | null;

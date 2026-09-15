@@ -1,18 +1,26 @@
 "use client";
 
-import { Badge } from "@/components/ui";
+import { Badge, Button } from "@/components/ui";
 import { labelize } from "@/lib/format";
 import type { EntityAutomation } from "@/lib/types";
 import { api } from "@agrayian/sdk";
 import { useQuery } from "@tanstack/react-query";
 import Link from "next/link";
+import { useState } from "react";
 
 export function AutomationTrace({ entityType, entityId }: { entityType: string; entityId: string }) {
+  const [open, setOpen] = useState(false);
   const query = useQuery({
     queryKey: ["automation-trace", entityType, entityId],
     queryFn: async () =>
       (await api<EntityAutomation>(`/api/v1/autonomy/entities/${entityType}/${entityId}`)).data,
     refetchInterval: 5000,
+  });
+  const full = useQuery({
+    queryKey: ["automation-full-trace", entityType, entityId],
+    queryFn: async () =>
+      (await api<Record<string, unknown>>(`/api/v1/autonomy/entities/${entityType}/${entityId}/trace`)).data,
+    enabled: open,
   });
   const row = query.data;
   if (!row || row.state === "NONE") {
@@ -20,6 +28,14 @@ export function AutomationTrace({ entityType, entityId }: { entityType: string; 
       <div className="panel p-5">
         <p className="text-[11px] uppercase tracking-[0.18em] text-[var(--muted)]">Automation</p>
         <p className="mt-3 text-sm text-[var(--muted)]">No Autopilot state yet. Enable Autopilot or wait for the next event.</p>
+        <Button variant="line" className="mt-4 w-full" data-testid="view-full-trace" onClick={() => setOpen((value) => !value)}>
+          {open ? "Hide full trace" : "View Full Trace"}
+        </Button>
+        {open ? (
+          <pre className="mt-3 overflow-auto text-xs" data-testid="full-trace">
+            {full.isLoading ? "Loading trace…" : JSON.stringify(full.data ?? {}, null, 2)}
+          </pre>
+        ) : null}
       </div>
     );
   }
@@ -43,6 +59,14 @@ export function AutomationTrace({ entityType, entityId }: { entityType: string; 
         <Link href="/automation/runs" className="mt-4 inline-block text-sm text-brand">
           Open Autopilot
         </Link>
+      ) : null}
+      <Button variant="line" className="mt-4 w-full" data-testid="view-full-trace" onClick={() => setOpen((value) => !value)}>
+        {open ? "Hide full trace" : "View Full Trace"}
+      </Button>
+      {open ? (
+        <pre className="mt-3 overflow-auto text-xs" data-testid="full-trace">
+          {full.isLoading ? "Loading trace…" : JSON.stringify(full.data ?? {}, null, 2)}
+        </pre>
       ) : null}
     </div>
   );

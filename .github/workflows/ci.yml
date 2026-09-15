@@ -1,5 +1,13 @@
 name: ci
 on: [push, pull_request]
+env:
+  DISCOVERY_PROVIDER: mock
+  EMAIL_PROVIDER: mock
+  CALENDAR_PROVIDER: mock
+  LINKEDIN_ADS_MODE: mock
+  META_ADS_MODE: mock
+  VOICE_PROVIDER: mock
+  LLM_PROVIDER: mock
 jobs:
   api:
     runs-on: ubuntu-latest
@@ -13,7 +21,97 @@ jobs:
           python-version: "3.12"
       - run: pip install -e ".[dev]"
       - run: ruff check app tests
+      - run: python -c "from alembic.config import Config; from alembic.script import ScriptDirectory; assert ScriptDirectory.from_config(Config('alembic.ini')).get_current_head()=='013'"
       - run: pytest
+        env:
+          DISCOVERY_PROVIDER: mock
+          EMAIL_PROVIDER: mock
+          CALENDAR_PROVIDER: mock
+          LINKEDIN_ADS_MODE: mock
+          META_ADS_MODE: mock
+          VOICE_PROVIDER: mock
+          LLM_PROVIDER: mock
+      - run: bandit -q -r app -x app/seed.py
+        continue-on-error: true
+      - run: pip-audit
+        continue-on-error: true
+  rls:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: apps/api
+    services:
+      postgres:
+        image: pgvector/pgvector:pg16
+        env:
+          POSTGRES_USER: agrayian
+          POSTGRES_PASSWORD: agrayian
+          POSTGRES_DB: agrayian_rls
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U agrayian"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - run: pip install -e ".[dev]"
+      - name: Alembic fresh-db and previous-to-head
+        env:
+          DATABASE_URL: postgresql+psycopg://agrayian:agrayian@localhost:5432/agrayian_rls
+          DATABASE_ADMIN_URL: postgresql+psycopg://agrayian:agrayian@localhost:5432/agrayian_rls
+          SECRET_KEY: rls-test-secret
+          LLM_PROVIDER: mock
+        run: |
+          alembic upgrade 009
+          alembic upgrade head
+      - name: Migrate, seed, and run RLS tests
+        env:
+          DATABASE_URL: postgresql+psycopg://agrayian:agrayian@localhost:5432/agrayian_rls
+          DATABASE_ADMIN_URL: postgresql+psycopg://agrayian:agrayian@localhost:5432/agrayian_rls
+          POSTGRES_RLS_ADMIN_URL: postgresql+psycopg://agrayian:agrayian@localhost:5432/agrayian_rls
+          POSTGRES_RLS_URL: postgresql+psycopg://agrayian_app:agrayian@localhost:5432/agrayian_rls
+          SECRET_KEY: rls-test-secret
+          SEED_DEMO: "true"
+          LLM_PROVIDER: mock
+          DISCOVERY_PROVIDER: mock
+          EMAIL_PROVIDER: mock
+          CALENDAR_PROVIDER: mock
+          LINKEDIN_ADS_MODE: mock
+          META_ADS_MODE: mock
+          VOICE_PROVIDER: mock
+        run: |
+          alembic upgrade head
+          python -c "from app.seed import seed; seed()"
+          python ../../scripts/assert_pytest_executed.py tests/test_rls_postgres.py -m postgres
+  openapi:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - run: pip install -e ".[dev]"
+        working-directory: apps/api
+      - run: python scripts/generate_openapi.py --check
+        env:
+          DATABASE_URL: sqlite://
+          ENVIRONMENT: test
+          SECRET_KEY: ci-secret
+          LLM_PROVIDER: mock
+  gitleaks:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: gitleaks/gitleaks-action@v2
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
   web:
     runs-on: ubuntu-latest
     steps:
@@ -26,9 +124,73 @@ jobs:
           node-version: "22"
           cache: pnpm
       - run: pnpm install
+      - run: pnpm audit --audit-level=high
+        continue-on-error: true
       - run: pnpm lint && pnpm typecheck && pnpm test && pnpm build
         working-directory: apps/web
-  e2e:
+  images:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - run: docker compose config
+      - run: docker build -t agrayian-api:ci apps/api
+      - run: docker build -t agrayian-web:ci -f apps/web/Dockerfile .
+  concurrency:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: apps/api
+    services:
+      postgres:
+        image: pgvector/pgvector:pg16
+        env:
+          POSTGRES_USER: agrayian
+          POSTGRES_PASSWORD: agrayian
+          POSTGRES_DB: agrayian_pilot
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U agrayian"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+      redis:
+        image: redis:7
+        ports:
+          - 6379:6379
+        options: >-
+          --health-cmd "redis-cli ping"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - run: pip install -e ".[dev]"
+      - name: Migrate, seed, concurrency, and backup verify
+        env:
+          DATABASE_URL: postgresql+psycopg://agrayian:agrayian@localhost:5432/agrayian_pilot
+          DATABASE_ADMIN_URL: postgresql+psycopg://agrayian:agrayian@localhost:5432/agrayian_pilot
+          POSTGRES_RLS_ADMIN_URL: postgresql+psycopg://agrayian:agrayian@localhost:5432/agrayian_pilot
+          POSTGRES_CONCURRENCY_URL: postgresql+psycopg://agrayian:agrayian@localhost:5432/agrayian_pilot
+          REDIS_URL: redis://localhost:6379/0
+          SECRET_KEY: concurrency-secret
+          SEED_DEMO: "true"
+          LLM_PROVIDER: mock
+          DISCOVERY_PROVIDER: mock
+          EMAIL_PROVIDER: mock
+          CALENDAR_PROVIDER: mock
+          LINKEDIN_ADS_MODE: mock
+          META_ADS_MODE: mock
+          VOICE_PROVIDER: mock
+        run: |
+          alembic upgrade head
+          python -c "from app.seed import seed; seed()"
+          python ../../scripts/assert_pytest_executed.py tests/test_pilot_concurrency.py tests/test_pilot_chaos.py -m postgres
+          python -c "from sqlalchemy import create_engine, text; e=create_engine('postgresql+psycopg://agrayian:agrayian@localhost:5432/agrayian_pilot'); n=e.connect().execute(text('select count(*) from tenants')).scalar(); assert n>=1; print('tenants', n)"
+  e2e-lite:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -45,10 +207,16 @@ jobs:
           LLM_PROVIDER: mock
           SEED_DEMO: "true"
           CORS_ORIGINS: http://127.0.0.1:3000
+          DISCOVERY_PROVIDER: mock
+          EMAIL_PROVIDER: mock
+          CALENDAR_PROVIDER: mock
+          LINKEDIN_ADS_MODE: mock
+          META_ADS_MODE: mock
+          VOICE_PROVIDER: mock
         run: |
           python -c "from app.seed import seed; seed()"
           nohup uvicorn app.main:app --host 127.0.0.1 --port 8000 > /tmp/api.log 2>&1 &
-          for i in $(seq 1 30); do curl -sf http://127.0.0.1:8000/health && break; sleep 1; done
+          for i in $(seq 1 30); do curl -sf http://127.0.0.1:8000/health/ready && break; sleep 1; done
       - uses: pnpm/action-setup@v4
         with:
           version: 9
@@ -68,7 +236,76 @@ jobs:
         env:
           NEXT_PUBLIC_API_URL: http://127.0.0.1:8000
           PLAYWRIGHT_BASE_URL: http://127.0.0.1:3000
+          SECRET_KEY: playwright-secret
         run: |
           pnpm start &
           for i in $(seq 1 30); do curl -sf http://127.0.0.1:3000 && break; sleep 1; done
           pnpm test:e2e
+  e2e-postgres:
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: pgvector/pgvector:pg16
+        env:
+          POSTGRES_USER: agrayian
+          POSTGRES_PASSWORD: agrayian
+          POSTGRES_DB: agrayian_e2e
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U agrayian"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - run: pip install -e ".[dev]"
+        working-directory: apps/api
+      - name: Migrate, seed, and start API
+        working-directory: apps/api
+        env:
+          DATABASE_URL: postgresql+psycopg://agrayian:agrayian@localhost:5432/agrayian_e2e
+          DATABASE_ADMIN_URL: postgresql+psycopg://agrayian:agrayian@localhost:5432/agrayian_e2e
+          SECRET_KEY: playwright-secret
+          LLM_PROVIDER: mock
+          SEED_DEMO: "true"
+          CORS_ORIGINS: http://127.0.0.1:3000
+          DISCOVERY_PROVIDER: mock
+          EMAIL_PROVIDER: mock
+          CALENDAR_PROVIDER: mock
+          LINKEDIN_ADS_MODE: mock
+          META_ADS_MODE: mock
+          VOICE_PROVIDER: mock
+        run: |
+          alembic upgrade head
+          python -c "from app.seed import seed; seed()"
+          nohup uvicorn app.main:app --host 127.0.0.1 --port 8000 > /tmp/api.log 2>&1 &
+          for i in $(seq 1 30); do curl -sf http://127.0.0.1:8000/health/ready && break; sleep 1; done
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 9
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: pnpm
+      - run: pnpm install
+      - run: pnpm exec playwright install --with-deps chromium
+        working-directory: apps/web
+      - run: pnpm build
+        working-directory: apps/web
+        env:
+          NEXT_PUBLIC_API_URL: http://127.0.0.1:8000
+      - name: Start web and run Playwright
+        working-directory: apps/web
+        env:
+          NEXT_PUBLIC_API_URL: http://127.0.0.1:8000
+          PLAYWRIGHT_BASE_URL: http://127.0.0.1:3000
+          SECRET_KEY: playwright-secret
+        run: |
+          pnpm start &
+          for i in $(seq 1 30); do curl -sf http://127.0.0.1:3000 && break; sleep 1; done
+          pnpm test:e2e
+

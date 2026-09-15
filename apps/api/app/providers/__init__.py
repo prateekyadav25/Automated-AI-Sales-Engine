@@ -1,5 +1,15 @@
 from app.providers.ads import AdsProvider, MockAdsProvider, get_ads_provider
+from app.providers.calendar import CalendarProvider, MockCalendarProvider, get_calendar_provider
 from app.providers.email import EmailProvider, MockEmailProvider, get_email_provider
+from app.providers.finance import (
+    FinanceProvider,
+    GenericERPProvider,
+    GenericFinanceWebhookProvider,
+    StripeFinanceProvider,
+    UnavailableFinanceProvider,
+    get_erp_provider,
+    get_finance_provider,
+)
 from app.providers.intelligence import (
     CompanyProfile,
     ContactHint,
@@ -27,6 +37,21 @@ from app.providers.lead_discovery import (
     get_lead_discovery_provider,
     map_dataset_items,
 )
+from app.providers.support import (
+    FreshdeskSupportProvider,
+    GenericSupportWebhookProvider,
+    ServiceNowSupportProvider,
+    SupportProvider,
+    UnavailableSupportProvider,
+    ZendeskSupportProvider,
+    get_support_provider,
+)
+from app.providers.usage import (
+    GenericUsageWebhookProvider,
+    MockProductUsageProvider,
+    ProductUsageProvider,
+    get_usage_provider,
+)
 from app.providers.voice import MockVoiceProvider, VoiceProvider, get_voice_provider
 
 __all__ = [
@@ -37,10 +62,12 @@ __all__ = [
     "DiscoveredLead",
     "DiscoveryQuery",
     "DiscoveryResult",
+    "CalendarProvider",
     "EmailProvider",
     "IntentTopic",
     "LeadDiscoveryProvider",
     "MockAdsProvider",
+    "MockCalendarProvider",
     "MockEmailProvider",
     "MockCompanyDataProvider",
     "MockContactDataProvider",
@@ -53,6 +80,7 @@ __all__ = [
     "TechnologyFootprint",
     "VoiceProvider",
     "get_ads_provider",
+    "get_calendar_provider",
     "get_email_provider",
     "get_company_provider",
     "get_contact_provider",
@@ -61,5 +89,23 @@ __all__ = [
     "get_news_provider",
     "get_technology_provider",
     "get_voice_provider",
+    "get_usage_provider",
+    "get_support_provider",
+    "get_finance_provider",
+    "get_erp_provider",
+    "MockProductUsageProvider",
+    "GenericUsageWebhookProvider",
+    "ProductUsageProvider",
+    "UnavailableSupportProvider",
+    "GenericSupportWebhookProvider",
+    "ZendeskSupportProvider",
+    "FreshdeskSupportProvider",
+    "ServiceNowSupportProvider",
+    "SupportProvider",
+    "UnavailableFinanceProvider",
+    "GenericFinanceWebhookProvider",
+    "StripeFinanceProvider",
+    "GenericERPProvider",
+    "FinanceProvider",
     "map_dataset_items",
 ]

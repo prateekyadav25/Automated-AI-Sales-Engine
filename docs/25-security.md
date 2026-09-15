@@ -4,10 +4,10 @@
 - Argon2 password hashing
 - JWT access + rotating refresh cookies
 - RBAC via permission strings
-- Shared-schema multi-tenancy with mandatory `tenant_id` filters; RLS is a later hardening step
-- Rate limiting on auth and AI routes
+- Shared-schema multi-tenancy with mandatory `tenant_id` filters plus Postgres RLS (`set_config` tenant context; `agrayian_app` has no BYPASSRLS)
+- Rate limiting on auth (Redis when available, in-process fallback). Broader AI/upload limits stay conservative.
 - Secrets from environment only
-- Encrypted integration credentials at rest (Phase 9+)
+- Encrypted integration credentials at rest (Fernet; set `TOKEN_ENCRYPTION_KEY` in production)
 - Audit log on mutations and auth events
 - Input validation (Pydantic / Zod), file type and size checks
 - Least privilege for AI tools

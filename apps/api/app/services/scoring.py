@@ -111,4 +111,15 @@ def score_lead(db: Session, lead: Lead, *, emit: bool = True, correlation_id: st
             payload={"total": total, "version": "rules-v1"},
             correlation_id=correlation_id,
         )
+    from app.services.ml.prediction import score_and_snapshot
+
+    score_and_snapshot(
+        db,
+        tenant_id=lead.tenant_id,
+        actor_id=lead.updated_by,
+        task_key="LEAD_CONVERSION",
+        entity_type="lead",
+        entity_id=str(lead.id),
+        ruleset_version="rules-v1",
+    )
     return row

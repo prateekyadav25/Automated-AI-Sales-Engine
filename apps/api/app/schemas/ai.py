@@ -66,6 +66,7 @@ class ApprovalOut(APIModel):
     message: str = ""
     commercial_impact: str = ""
     budget_impact: str = ""
+    category: str = "SALES"
 
 
 class ApprovalDecision(APIModel):

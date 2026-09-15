@@ -46,6 +46,7 @@ def emit_event(
     entity_id: str,
     payload: dict | None = None,
     correlation_id: str = "",
+    schema_version: int = 1,
 ) -> None:
     db.add(
         DomainEvent(
@@ -55,5 +56,6 @@ def emit_event(
             entity_id=entity_id,
             payload_json=json.dumps(payload or {}, default=str),
             correlation_id=correlation_id,
+            schema_version=schema_version,
         )
     )

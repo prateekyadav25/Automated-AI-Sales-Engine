@@ -2,7 +2,7 @@
 
 import { PageHeader } from "@/components/page-header";
 import { DeniedState, EmptyState, ErrorState, LoadingState } from "@/components/states";
-import { Badge, Button, Field, Textarea } from "@/components/ui";
+import { Badge, Button, Field, Select, Textarea } from "@/components/ui";
 import { useAuth } from "@/lib/auth";
 import { labelize } from "@/lib/format";
 import type { Approval } from "@/lib/types";
@@ -16,6 +16,7 @@ export default function ApprovalsPage() {
   const client = useQueryClient();
   const [editId, setEditId] = useState<string | null>(null);
   const [draft, setDraft] = useState("");
+  const [category, setCategory] = useState("ALL");
   const query = useQuery({
     queryKey: ["approvals"],
     queryFn: async () => (await api<Approval[]>("/api/v1/ai/approvals")).data ?? [],
@@ -55,15 +56,24 @@ export default function ApprovalsPage() {
   if (!can("ai.approvals.read")) return <DeniedState />;
   if (query.isLoading) return <LoadingState />;
   if (query.isError) return <ErrorState message="Approvals could not be assembled." />;
-  const rows = query.data ?? [];
+  const rows = (query.data ?? []).filter((row) => category === "ALL" || row.category === category);
 
   return (
     <div>
       <PageHeader
         eyebrow="Your job"
         title="Approvals"
-        subtitle="Authorize send, spend, and dial here. Evidence is on the card. You do not need the lead screen to decide."
+        subtitle="Authorize send, spend, dial, renewal, expansion, and advocacy here. Evidence is on the card."
       />
+      <div className="mb-4 max-w-xs">
+        <Field label="Category">
+          <Select value={category} onChange={(event) => setCategory(event.target.value)}>
+            {["ALL", "SALES", "CUSTOMER SUCCESS", "RENEWAL", "EXPANSION", "ADVOCACY"].map((item) => (
+              <option key={item} value={item}>{item}</option>
+            ))}
+          </Select>
+        </Field>
+      </div>
       {rows.length === 0 ? (
         <EmptyState title="Nothing in the chamber" body="Autopilot queues Level 2 actions when consent and policy allow." />
       ) : (
@@ -74,7 +84,7 @@ export default function ApprovalsPage() {
                 <div>
                   <p className="text-sm text-ink">{row.title}</p>
                   <p className="mt-1 text-xs uppercase tracking-[0.16em] text-[var(--muted)]">
-                    L{row.action_level} · {labelize(row.action_type)}
+                    L{row.action_level} · {row.category || "SALES"} · {labelize(row.action_type)}
                   </p>
                 </div>
                 <Badge tone={row.status === "pending" ? "gold" : row.status === "approved" ? "ok" : "rose"}>
@@ -93,6 +103,15 @@ export default function ApprovalsPage() {
               {row.decision_note ? <p className="text-xs text-[var(--muted)]">{row.decision_note}</p> : null}
               {row.entity_type === "lead" && row.entity_id ? (
                 <Link href={`/leads/${row.entity_id}`} className="text-sm text-brand">Inspect lead</Link>
+              ) : null}
+              {row.entity_type === "customer" && row.entity_id ? (
+                <Link href={`/customers/${row.entity_id}`} className="text-sm text-brand">Inspect customer</Link>
+              ) : null}
+              {row.entity_type === "campaign" && row.entity_id ? (
+                <Link href="/campaigns" className="text-sm text-brand">Inspect campaign</Link>
+              ) : null}
+              {row.entity_type === "contact" && row.entity_id ? (
+                <Link href="/conversations" className="text-sm text-brand">Inspect conversation</Link>
               ) : null}
               {can("ai.approvals.decide") && row.status === "pending" ? (
                 <div className="flex flex-wrap items-center gap-3">

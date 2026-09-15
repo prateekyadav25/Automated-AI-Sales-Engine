@@ -3,8 +3,12 @@ import math
 import time
 from abc import ABC, abstractmethod
 from dataclasses import dataclass
+from uuid import UUID
+
+from sqlalchemy.orm import Session
 
 from app.core.config import get_settings
+from app.services.provider_resolve import resolve_channel
 
 
 @dataclass
@@ -71,7 +75,26 @@ class MockEmbeddingProvider(EmbeddingProvider):
         return vectors
 
 
+class NotConfiguredLLMProvider(LLMProvider):
+    def complete(self, prompt: str, *, system: str, model: str | None = None) -> CompletionResult:
+        _ = (prompt, system)
+        text = "[NOT_CONFIGURED LLM] OPENAI_API_KEY is missing. No model was called."
+        return CompletionResult(
+            text=text,
+            provider="openai",
+            model=model or "not-configured",
+            input_tokens=0,
+            output_tokens=0,
+            latency_ms=0,
+            is_mock=False,
+            estimated_cost=0.0,
+        )
+
+
 class OpenAILLMProvider(LLMProvider):
+    def __init__(self, api_key: str = "") -> None:
+        self._api_key = api_key
+
     def complete(self, prompt: str, *, system: str, model: str | None = None) -> CompletionResult:
         from openai import OpenAI
 
@@ -79,7 +102,7 @@ class OpenAILLMProvider(LLMProvider):
         chosen = model or settings.openai_default_model or settings.openai_fast_model
         if not chosen:
             raise RuntimeError("OPENAI_DEFAULT_MODEL is not configured")
-        client = OpenAI(api_key=settings.openai_api_key)
+        client = OpenAI(api_key=self._api_key or settings.openai_api_key)
         started = time.perf_counter()
         response = client.responses.create(
             model=chosen,
@@ -118,10 +141,19 @@ class OpenAIEmbeddingProvider(EmbeddingProvider):
         return [item.embedding for item in response.data]
 
 
-def get_llm_provider() -> LLMProvider:
+def get_llm_provider(db: Session | None = None, tenant_id: UUID | None = None) -> LLMProvider:
     settings = get_settings()
-    if settings.resolved_llm_provider == "openai":
-        return OpenAILLMProvider()
+    if db is not None and tenant_id is not None:
+        resolved = resolve_channel(db, tenant_id, "openai")
+        if resolved.mode == "LIVE" and resolved.secrets.get("access_token"):
+            return OpenAILLMProvider(api_key=resolved.secrets["access_token"])
+        if resolved.mode == "NOT_CONFIGURED" or settings.llm_provider == "openai":
+            return NotConfiguredLLMProvider()
+        return MockLLMProvider()
+    if settings.llm_provider == "openai":
+        if settings.openai_api_key:
+            return OpenAILLMProvider()
+        return NotConfiguredLLMProvider()
     return MockLLMProvider()
 
 

@@ -107,7 +107,7 @@ def run_copilot(
         conversation = AIConversation(tenant_id=tenant_id, created_by=actor_id, title=message[:80])
         db.add(conversation)
         db.flush()
-    db.add(AIMessage(conversation_id=conversation.id, role="user", content=message))
+    db.add(AIMessage(tenant_id=tenant_id, conversation_id=conversation.id, role="user", content=message))
 
     intent = route_intent(message)
     run = AgentRun(
@@ -170,6 +170,7 @@ def run_copilot(
 
     db.add(
         ToolCall(
+            tenant_id=tenant_id,
             run_id=run.id,
             tool_name="bundle",
             input_json=json.dumps({"intent": intent}),
@@ -205,6 +206,7 @@ def run_copilot(
 
     db.add(
         AIMessage(
+            tenant_id=tenant_id,
             conversation_id=conversation.id,
             role="assistant",
             content=result.text,
@@ -343,8 +345,20 @@ def draft_email(
                 action_level=2,
                 action_type="email.send",
                 title="Send email draft",
-                payload_json=json.dumps({"recommendation_id": str(rec.id), "body": result.text}),
+                payload_json=json.dumps(
+                    {
+                        "recommendation_id": str(rec.id),
+                        "body": result.text,
+                        "lead_id": str(entity_id) if entity_type == "lead" else "",
+                        "entity_type": entity_type,
+                        "entity_id": str(entity_id),
+                        "subject": "Follow-up",
+                    }
+                ),
                 status="pending",
+                entity_type=entity_type,
+                entity_id=str(entity_id),
+                idempotency_key=f"email.send.draft:{entity_type}:{entity_id}:{rec.id}",
             )
             db.add(approval)
             db.flush()
@@ -356,8 +370,20 @@ def draft_email(
                 action_level=2,
                 action_type="email.send",
                 title="Send email draft (auto-send disabled)",
-                payload_json=json.dumps({"recommendation_id": str(rec.id), "body": result.text}),
+                payload_json=json.dumps(
+                    {
+                        "recommendation_id": str(rec.id),
+                        "body": result.text,
+                        "lead_id": str(entity_id) if entity_type == "lead" else "",
+                        "entity_type": entity_type,
+                        "entity_id": str(entity_id),
+                        "subject": "Follow-up",
+                    }
+                ),
                 status="pending",
+                entity_type=entity_type,
+                entity_id=str(entity_id),
+                idempotency_key=f"email.send.draft:{entity_type}:{entity_id}:{rec.id}",
             )
             db.add(approval)
             db.flush()
@@ -377,7 +403,7 @@ def draft_email(
 
 
 def meeting_prep(
-    db: Session, *, tenant_id: UUID, actor_id: UUID, permissions: set[str], account_id: UUID
+    db: Session, *, tenant_id: UUID, actor_id: UUID, permissions: set[str], account_id: UUID, commit: bool = True
 ) -> dict:
     ctx = ToolContext(db=db, tenant_id=tenant_id, actor_id=actor_id, permissions=permissions)
     account = run_tool(ctx, "get_account", {"account_id": str(account_id)})
@@ -406,7 +432,8 @@ def meeting_prep(
         status="draft",
     )
     db.add(rec)
-    db.commit()
+    if commit:
+        db.commit()
     return {"brief": result.text, "provider": result.provider, "is_mock": result.is_mock}
 
 

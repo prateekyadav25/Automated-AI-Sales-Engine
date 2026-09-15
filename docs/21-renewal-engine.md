@@ -1,6 +1,6 @@
 # Renewal Engine
 
-Phase 18. **Implemented as a desk over Closed Won renewal stubs.** GRR/NRR stay 1.0 until amendments exist.
+Phase 18 plus Autopilot batch 3. **Implemented:** Closed Won mints a Contract (when evidence exists) and a renewal record. Autopilot opens windows at 180/120/90/60/30 days without duplicates. Readiness is `rules-v1`. Commercial baseline is copied from the contract and stays `needs_review` when escalation is unknown. RenewalAgent drafts; `renewal.commercial` stays in Approvals. GRR/NRR stay 1.0 until amendments exist.
 
 Track contract start/end, notice, ARR, escalation, owner, probability, health, risk.
 

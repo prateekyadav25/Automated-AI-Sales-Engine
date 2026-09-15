@@ -1,3 +1,4 @@
+import base64
 import hashlib
 import secrets
 from datetime import UTC, datetime, timedelta
@@ -6,10 +7,34 @@ from uuid import UUID
 import jwt
 from argon2 import PasswordHasher
 from argon2.exceptions import VerifyMismatchError
+from cryptography.fernet import Fernet, InvalidToken
 
 from app.core.config import get_settings
 
 hasher = PasswordHasher()
+
+
+def _fernet() -> Fernet:
+    settings = get_settings()
+    raw = (settings.token_encryption_key or settings.secret_key).encode("utf-8")
+    digest = hashlib.sha256(raw).digest()
+    return Fernet(base64.urlsafe_b64encode(digest))
+
+
+def encrypt_credential(value: str) -> str:
+    if not value:
+        return ""
+    return "v1:" + _fernet().encrypt(value.encode("utf-8")).decode("utf-8")
+
+
+def decrypt_credential(value: str) -> str:
+    if not value:
+        return ""
+    raw = value[3:] if value.startswith("v1:") else value
+    try:
+        return _fernet().decrypt(raw.encode("utf-8")).decode("utf-8")
+    except InvalidToken as exc:
+        raise ValueError("Integration credential could not be decrypted") from exc
 
 
 def hash_password(password: str) -> str:

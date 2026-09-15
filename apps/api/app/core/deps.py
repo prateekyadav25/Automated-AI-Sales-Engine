@@ -11,6 +11,7 @@ from sqlalchemy.orm import Session
 from app.core.logging import correlation_id_ctx, tenant_id_ctx
 from app.core.security import decode_access_token
 from app.db.session import get_db
+from app.db.tenant_context import set_tenant_context
 from app.models.identity import User
 from app.services.rbac import user_permissions
 
@@ -44,8 +45,10 @@ def get_current_user(
         payload = decode_access_token(creds.credentials)
     except InvalidTokenError as exc:
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid token") from exc
+    tenant_id = UUID(payload["tenant_id"])
+    set_tenant_context(db, tenant_id)
     user = db.get(User, UUID(payload["sub"]))
-    if user is None or not user.is_active:
+    if user is None or not user.is_active or user.tenant_id != tenant_id:
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid user")
     tenant_id_ctx.set(str(user.tenant_id))
     return AuthContext(

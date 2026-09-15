@@ -16,10 +16,10 @@ router = APIRouter(prefix="/discovery", tags=["discovery"])
 
 @router.get("/health", response_model=Envelope[DiscoveryHealthOut])
 def discovery_health(
+    db: Annotated[Session, Depends(get_db)],
     ctx: Annotated[AuthContext, Depends(require_permission("leads.read"))],
 ) -> Envelope[DiscoveryHealthOut]:
-    _ = ctx
-    return Envelope(data=DiscoveryHealthOut.model_validate(get_lead_discovery_provider().health()))
+    return Envelope(data=DiscoveryHealthOut.model_validate(get_lead_discovery_provider(db, ctx.tenant_id).health()))
 
 
 @router.post("/run", response_model=Envelope[DiscoveryRunOut])

@@ -1,0 +1,31 @@
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+resources:
+  - ../../base
+namePrefix: staging-
+patches:
+  - target:
+      kind: ConfigMap
+      name: agrayian-config
+    patch: |-
+      - op: replace
+        path: /data/ENVIRONMENT
+        value: staging
+      - op: replace
+        path: /data/EMAIL_PROVIDER
+        value: mock
+      - op: replace
+        path: /data/DISCOVERY_PROVIDER
+        value: mock
+      - op: replace
+        path: /data/VOICE_PROVIDER
+        value: mock
+      - op: replace
+        path: /data/LINKEDIN_ADS_MODE
+        value: mock
+      - op: replace
+        path: /data/META_ADS_MODE
+        value: mock
+      - op: replace
+        path: /data/SEED_DEMO
+        value: "false"

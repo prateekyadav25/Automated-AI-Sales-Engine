@@ -1,7 +1,8 @@
 from typing import Annotated
 from uuid import UUID
 
-from fastapi import APIRouter, Depends, File, Form, HTTPException, UploadFile
+from fastapi import APIRouter, Depends, File, Form, HTTPException, Query, UploadFile
+from fastapi.responses import Response
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
@@ -24,7 +25,8 @@ from app.schemas.common import Envelope, Meta
 from app.services.approval_view import approval_out
 from app.services.approvals import apply_approval_decision
 from app.services.audit import write_audit
-from app.services.query import get_owned
+from app.services.knowledge_scan import apply_scan
+from app.services.query import get_owned, paginate
 
 router = APIRouter(prefix="/ai", tags=["ai"])
 
@@ -126,11 +128,29 @@ async def upload_knowledge(
     title: Annotated[str, Form()],
     file: Annotated[UploadFile, File()],
 ) -> Envelope[KnowledgeUploadResponse]:
+    from app.core.config import get_settings
+    from app.providers.object_storage import content_checksum, get_object_storage, knowledge_object_key
+
+    settings = get_settings()
     raw = await file.read()
-    if len(raw) > 1_000_000:
+    if len(raw) > settings.knowledge_max_bytes:
         raise HTTPException(status_code=413, detail="File too large")
+    filename = (file.filename or "upload.txt").replace("\\", "/").split("/")[-1]
+    mime = file.content_type or "application/octet-stream"
+    allowed = {"text/plain", "text/markdown", "text/csv", "application/json"}
+    if mime not in allowed and not filename.lower().endswith((".txt", ".md", ".csv", ".json")):
+        raise HTTPException(status_code=415, detail="Unsupported file type")
     text = raw.decode("utf-8", errors="ignore")
     source = ingest_text(db, tenant_id=ctx.tenant_id, actor_id=ctx.user.id, title=title, text=text)
+    key = knowledge_object_key(tenant_id=ctx.tenant_id, document_id=source.id)
+    storage = get_object_storage()
+    storage.put(key, raw, content_type=mime)
+    source.object_key = key
+    source.original_filename = filename
+    source.byte_size = len(raw)
+    source.checksum = content_checksum(raw)
+    source.mime_type = mime
+    apply_scan(db, tenant_id=ctx.tenant_id, source=source, raw=raw, filename=filename, object_key=key)
     write_audit(
         db,
         tenant_id=ctx.tenant_id,
@@ -171,6 +191,25 @@ def list_knowledge(
     )
 
 
+@router.get("/knowledge/{source_id}/file")
+def download_knowledge(
+    source_id: UUID,
+    db: Annotated[Session, Depends(get_db)],
+    ctx: Annotated[AuthContext, Depends(require_permission("knowledge.read"))],
+) -> Response:
+    from app.providers.object_storage import get_object_storage
+
+    source = get_owned(db, KnowledgeSource, ctx.tenant_id, source_id)
+    if source.malware_status == "SCANNED_BLOCKED" or not source.object_key:
+        raise HTTPException(status_code=404, detail="Object not stored")
+    data = get_object_storage().get(source.object_key)
+    return Response(
+        content=data,
+        media_type=source.mime_type or "application/octet-stream",
+        headers={"Content-Disposition": f'attachment; filename="{source.original_filename or "document"}"'},
+    )
+
+
 @router.get("/knowledge/search", response_model=Envelope[list[KnowledgeHit]])
 def search_knowledge(
     q: str,
@@ -185,13 +224,16 @@ def search_knowledge(
 def list_approvals(
     db: Annotated[Session, Depends(get_db)],
     ctx: Annotated[AuthContext, Depends(require_permission("ai.approvals.read"))],
+    page: int = Query(default=1, ge=1),
+    page_size: int = Query(default=50, ge=1, le=100),
 ) -> Envelope[list[ApprovalOut]]:
-    rows = db.scalars(
+    stmt = (
         select(AIApproval)
         .where(AIApproval.tenant_id == ctx.tenant_id, AIApproval.deleted_at.is_(None))
         .order_by(AIApproval.created_at.desc())
-    ).all()
-    return Envelope(data=[approval_out(row) for row in rows], meta=Meta(total=len(rows)))
+    )
+    rows, total = paginate(db, stmt, page, page_size)
+    return Envelope(data=[approval_out(row) for row in rows], meta=Meta(page=page, page_size=page_size, total=total))
 
 
 @router.post("/approvals/{approval_id}/decide", response_model=Envelope[ApprovalOut])

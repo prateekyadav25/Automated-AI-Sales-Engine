@@ -16,6 +16,7 @@ export default function CustomersPage() {
     queryKey: ["customers"],
     queryFn: async () => (await api<Customer[]>("/api/v1/customers")).data ?? [],
     enabled: can("accounts.read"),
+    refetchInterval: 5000,
   });
   if (!can("accounts.read")) return <DeniedState />;
   if (query.isLoading) return <LoadingState />;
@@ -26,17 +27,18 @@ export default function CustomersPage() {
       <PageHeader
         eyebrow="Close"
         title="Customers"
-        subtitle="Closed Won mints the customer, renewal stub, onboarding plan, and a rules-v1 health score."
+        subtitle="Closed Won activates the customer, handoff, onboarding, health, and a renewal record."
       />
       {rows.length === 0 ? (
-        <EmptyState title="No customers yet" body="Close an opportunity as won to mint a customer and a renewal stub." />
+        <EmptyState title="No customers yet" body="Close an opportunity as won to mint a customer and a renewal record." />
       ) : (
         <DataTable
           rows={rows}
-          href={(row) => `/accounts/${row.account_id}`}
+          href={(row) => `/customers/${row.id}`}
           columns={[
             { key: "name", header: "Account", cell: (row) => row.account_name || row.id.slice(0, 8) },
-            { key: "status", header: "Status", cell: (row) => <Badge tone="ok">{labelize(row.status)}</Badge> },
+            { key: "lifecycle", header: "Lifecycle", cell: (row) => <Badge>{labelize(row.lifecycle_state || row.status)}</Badge> },
+            { key: "trend", header: "Health trend", cell: (row) => labelize(row.health_trend || "stable") },
             { key: "arr", header: "ARR", cell: (row) => money(row.arr) },
           ]}
         />

@@ -1,11 +1,15 @@
+import asyncio
+import json
 from typing import Annotated
 from uuid import UUID
 
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, HTTPException, Query, Request
+from fastapi.responses import StreamingResponse
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from app.core.deps import AuthContext, require_permission
+from app.core.rate_limit import enforce_rate_limit
 from app.db.session import get_db
 from app.models.autonomy import AutonomousRun, AutonomousRunStep
 from app.schemas.autonomy import (
@@ -26,8 +30,9 @@ from app.services.automation_state import pause_entity, resume_entity
 from app.services.autonomy import run_autonomous_cycle
 from app.services.autopilot_settings import apply_settings_update, get_or_create_settings
 from app.services.autopilot_status import activity_feed, build_status, entity_trace
+from app.services.journey_trace import full_trace
 from app.services.orchestrator import retry_entity
-from app.services.query import get_owned
+from app.services.query import get_owned, paginate
 
 router = APIRouter(prefix="/autonomy", tags=["autonomy"])
 
@@ -89,9 +94,13 @@ def status(
 def activity(
     db: Annotated[Session, Depends(get_db)],
     ctx: Annotated[AuthContext, Depends(require_permission("autonomy.read"))],
+    page: int = Query(default=1, ge=1),
+    page_size: int = Query(default=40, ge=1, le=100),
 ) -> Envelope[list[AutonomyActivityOut]]:
-    rows = activity_feed(db, tenant_id=ctx.tenant_id)
-    return Envelope(data=rows, meta=Meta(total=len(rows)))
+    rows = activity_feed(db, tenant_id=ctx.tenant_id, limit=500)
+    start = (page - 1) * page_size
+    window = rows[start : start + page_size]
+    return Envelope(data=window, meta=Meta(page=page, page_size=page_size, total=len(rows)))
 
 
 @router.get("/entities/{entity_type}/{entity_id}", response_model=Envelope[EntityAutomationOut])
@@ -102,6 +111,16 @@ def entity_automation(
     ctx: Annotated[AuthContext, Depends(require_permission("autonomy.read"))],
 ) -> Envelope[EntityAutomationOut]:
     return Envelope(data=entity_trace(db, tenant_id=ctx.tenant_id, entity_type=entity_type, entity_id=entity_id))
+
+
+@router.get("/entities/{entity_type}/{entity_id}/trace")
+def entity_full_trace(
+    entity_type: str,
+    entity_id: str,
+    db: Annotated[Session, Depends(get_db)],
+    ctx: Annotated[AuthContext, Depends(require_permission("autonomy.read"))],
+) -> Envelope[dict]:
+    return Envelope(data=full_trace(db, tenant_id=ctx.tenant_id, entity_type=entity_type, entity_id=entity_id))
 
 
 @router.post("/pause", response_model=Envelope[EntityAutomationOut])
@@ -194,13 +213,38 @@ def retry(
 def list_runs(
     db: Annotated[Session, Depends(get_db)],
     ctx: Annotated[AuthContext, Depends(require_permission("autonomy.read"))],
+    page: int = Query(default=1, ge=1),
+    page_size: int = Query(default=25, ge=1, le=100),
 ) -> Envelope[list[AutonomyRunOut]]:
-    rows = db.scalars(
+    stmt = (
         select(AutonomousRun)
         .where(AutonomousRun.tenant_id == ctx.tenant_id, AutonomousRun.deleted_at.is_(None))
         .order_by(AutonomousRun.created_at.desc())
-    ).all()
-    return Envelope(data=[_run_out(db, row) for row in rows], meta=Meta(total=len(rows)))
+    )
+    rows, total = paginate(db, stmt, page, page_size)
+    return Envelope(data=[_run_out(db, row) for row in rows], meta=Meta(page=page, page_size=page_size, total=total))
+
+
+@router.get("/events")
+async def autonomy_events(
+    request: Request,
+    db: Annotated[Session, Depends(get_db)],
+    ctx: Annotated[AuthContext, Depends(require_permission("autonomy.read"))],
+) -> StreamingResponse:
+    async def stream():
+        last = ""
+        while not await request.is_disconnected():
+            status = build_status(db, tenant_id=ctx.tenant_id, actor_id=ctx.user.id)
+            payload = status.model_dump(mode="json")
+            encoded = json.dumps({"type": "status", "data": payload}, default=str)
+            if encoded != last:
+                yield f"data: {encoded}\n\n"
+                last = encoded
+            else:
+                yield "event: heartbeat\ndata: {}\n\n"
+            await asyncio.sleep(2)
+
+    return StreamingResponse(stream(), media_type="text/event-stream")
 
 
 @router.post("/runs", response_model=Envelope[AutonomyRunOut])
@@ -209,6 +253,7 @@ def start_run(
     db: Annotated[Session, Depends(get_db)],
     ctx: Annotated[AuthContext, Depends(require_permission("autonomy.write"))],
 ) -> Envelope[AutonomyRunOut]:
+    enforce_rate_limit(key=f"run:{ctx.tenant_id}", limit=20, window_seconds=60)
     row = run_autonomous_cycle(
         db,
         tenant_id=ctx.tenant_id,

@@ -16,11 +16,17 @@ def get_engine() -> Engine:
     if _engine is None:
         settings = get_settings()
         url = settings.database_url
-        kwargs: dict = {}
+        kwargs: dict = {
+            "pool_pre_ping": True,
+            "pool_recycle": 1800,
+        }
         if url.startswith("sqlite"):
-            kwargs["connect_args"] = {"check_same_thread": False}
+            kwargs = {"connect_args": {"check_same_thread": False}}
             if url in {"sqlite://", "sqlite:///:memory:"}:
                 kwargs["poolclass"] = StaticPool
+        else:
+            kwargs["pool_size"] = 5
+            kwargs["max_overflow"] = 10
         _engine = create_engine(url, **kwargs)
         SessionLocal = sessionmaker(bind=_engine, autoflush=False, autocommit=False)
     return _engine

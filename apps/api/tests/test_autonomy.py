@@ -22,7 +22,7 @@ def test_autonomous_run_persists_and_queues_only_consented_sends(client: TestCli
     run = started.json()["data"]
     assert run["status"] == "completed"
     names = [step["name"] for step in run["steps"]]
-    assert names == ["discover", "refresh_markets", "rescore", "propose_enrollments", "queue_approvals"]
+    assert names == ["discover", "refresh_markets", "rescore", "propose_enrollments", "queue_approvals", "post_sale"]
     approvals = client.get("/api/v1/ai/approvals", headers=headers).json()["data"]
     titles = [row["title"] for row in approvals]
     assert all("silent.buyer@example.com" not in title for title in titles)

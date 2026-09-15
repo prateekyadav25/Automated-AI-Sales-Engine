@@ -64,12 +64,24 @@ PERMISSIONS = [
     ("revops.write", "Write RevOps"),
     ("autonomy.read", "Read autonomous runs"),
     ("autonomy.write", "Start autonomous runs"),
+    ("integrations.read", "Read integrations"),
+    ("integrations.write", "Connect integrations"),
+    ("ml.view", "View ML readiness and registries"),
+    ("ml.dataset.create", "Build ML datasets"),
+    ("ml.train", "Start ML training jobs"),
+    ("ml.promote", "Promote model versions"),
+    ("ml.rollback", "Rollback champion models"),
+    ("pilot.view", "View pilot readiness"),
+    ("pilot.activate", "Activate tenant operating mode"),
 ]
+
+ML_MUTATE = {"ml.dataset.create", "ml.train", "ml.promote", "ml.rollback"}
+PILOT_MUTATE = {"pilot.activate"}
 
 ROLE_PERMISSIONS: dict[str, list[str]] = {
     "Super Admin": [p[0] for p in PERMISSIONS],
     "Tenant Admin": [p[0] for p in PERMISSIONS],
-    "CEO": [p[0] for p in PERMISSIONS if not p[0].startswith("users.write")],
+    "CEO": [p[0] for p in PERMISSIONS if not p[0].startswith("users.write") and p[0] not in ML_MUTATE | PILOT_MUTATE],
     "CRO": [p[0] for p in PERMISSIONS],
     "CMO": [
         "command_center.read",
@@ -98,9 +110,10 @@ ROLE_PERMISSIONS: dict[str, list[str]] = {
         "autonomy.write",
         "ai.approvals.read",
         "ai.approvals.decide",
+        "integrations.read",
     ],
-    "Sales Director": [p[0] for p in PERMISSIONS if p[0] != "flags.write"],
-    "Sales Manager": [p[0] for p in PERMISSIONS if p[0] not in {"flags.write", "users.write"}],
+    "Sales Director": [p[0] for p in PERMISSIONS if p[0] != "flags.write" and p[0] not in ML_MUTATE | PILOT_MUTATE],
+    "Sales Manager": [p[0] for p in PERMISSIONS if p[0] not in {"flags.write", "users.write"} | ML_MUTATE | PILOT_MUTATE],
     "Sales Rep": [
         "command_center.read",
         "accounts.read",

@@ -1,4 +1,4 @@
-from datetime import UTC, datetime
+from datetime import UTC, datetime, timedelta
 from uuid import UUID, uuid4
 
 from sqlalchemy import DateTime, ForeignKey, Integer, Numeric, String, Text
@@ -33,6 +33,7 @@ class ToolCall(Base):
     __tablename__ = "tool_calls"
 
     id: Mapped[UUID] = mapped_column(primary_key=True, default=uuid4)
+    tenant_id: Mapped[UUID] = mapped_column(ForeignKey("tenants.id"), index=True, nullable=False)
     run_id: Mapped[UUID] = mapped_column(ForeignKey("agent_runs.id"), index=True, nullable=False)
     tool_name: Mapped[str] = mapped_column(String(80), nullable=False)
     input_json: Mapped[str] = mapped_column(Text, default="{}", nullable=False)
@@ -71,6 +72,11 @@ class AIApproval(Base, TenantOwnedMixin):
     entity_type: Mapped[str] = mapped_column(String(40), default="", nullable=False)
     entity_id: Mapped[str] = mapped_column(String(64), default="", nullable=False)
     idempotency_key: Mapped[str] = mapped_column(String(200), default="", index=True, nullable=False)
+    expires_at: Mapped[datetime | None] = mapped_column(
+        DateTime(timezone=True),
+        default=lambda: datetime.now(UTC) + timedelta(days=7),
+        nullable=True,
+    )
 
 
 class AIRecommendation(Base, TenantOwnedMixin):
@@ -94,6 +100,7 @@ class AIMessage(Base):
     __tablename__ = "ai_messages"
 
     id: Mapped[UUID] = mapped_column(primary_key=True, default=uuid4)
+    tenant_id: Mapped[UUID] = mapped_column(ForeignKey("tenants.id"), index=True, nullable=False)
     conversation_id: Mapped[UUID] = mapped_column(
         ForeignKey("ai_conversations.id"), index=True, nullable=False
     )
@@ -110,6 +117,12 @@ class KnowledgeSource(Base, TenantOwnedMixin):
     source_type: Mapped[str] = mapped_column(String(40), default="upload", nullable=False)
     mime_type: Mapped[str] = mapped_column(String(80), default="text/plain", nullable=False)
     status: Mapped[str] = mapped_column(String(20), default="ready", nullable=False)
+    object_key: Mapped[str] = mapped_column(String(400), default="", nullable=False)
+    original_filename: Mapped[str] = mapped_column(String(255), default="", nullable=False)
+    byte_size: Mapped[int] = mapped_column(Integer, default=0, nullable=False)
+    checksum: Mapped[str] = mapped_column(String(64), default="", nullable=False)
+    malware_status: Mapped[str] = mapped_column(String(40), default="NOT_CONFIGURED", nullable=False)
+    quarantine_key: Mapped[str] = mapped_column(String(400), default="", nullable=False)
 
 
 class KnowledgeChunk(Base, TenantOwnedMixin):

@@ -2,10 +2,12 @@
 
 Evolution: rules → statistics → ML → ensemble.
 
-MVP uses deterministic scoring (lead score, KPI math, NBA heuristics). LLMs explain scores; they do not fabricate them.
+Production scoring remains deterministic (`rules-v1` / `rules-v2`). LLMs explain scores; they do not fabricate them.
 
-Phase 21 in this build is **rules-v1 model cards only**. `last_trained` is null. No invented accuracy, drift, or trained win/churn models until labeled history exists.
+Batch 7 adds the trustworthy-learning foundation: versioned prediction tasks, point-in-time feature snapshots, versioned labels with censoring, reproducible tenant-local datasets, readiness gates, an internal experiment/model registry, shadow predictions, delayed evaluation, and governed promote/rollback.
 
-Phase 21 later adds feature pipelines, training, a model registry, drift monitors, and models for conversion, win probability, forecast, churn, expansion, LTV, and affinity.
+No production ML model is required to complete this foundation. Tasks stay `DATA_COLLECTION` until minimums are met. Experimental models, if ever trained, start as `SHADOW` only.
 
-Libraries later: scikit-learn, XGBoost, LightGBM, PyTorch. Do not over-engineer MLOps before labeled data exists.
+See docs 45–51 and ADRs 023–028.
+
+Libraries later: scikit-learn (optional extra), then XGBoost / LightGBM. Do not start with deep networks without evidence.

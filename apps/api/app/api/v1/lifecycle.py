@@ -1,3 +1,4 @@
+import json
 from decimal import Decimal
 from typing import Annotated
 from uuid import UUID
@@ -6,9 +7,12 @@ from fastapi import APIRouter, Depends
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
+from app.ai.providers import get_llm_provider
 from app.core.deps import AuthContext, require_permission
 from app.db.session import get_db
 from app.models.crm import Account, Customer, Lead, Opportunity, Renewal
+from app.models.funnel import MeetingCapture, VoiceScript, VoiceScriptVersion
+from app.models.integrations import EmailMessage
 from app.models.lifecycle import (
     AbmPlay,
     AdvocacyAsset,
@@ -50,14 +54,18 @@ from app.schemas.lifecycle import (
     ConversationIn,
     ConversationOut,
     DealInsightOut,
+    EmailMessageOut,
     EnrollIn,
     EnrollmentOut,
     ForecastOut,
     HealthOut,
     LifecycleOverview,
+    MeetingCaptureIn,
+    MeetingCaptureOut,
     MeetingExtractIn,
     MeetingIn,
     MeetingOut,
+    MeetingTranscriptIn,
     MilestoneOut,
     ModelCardOut,
     PlaybookIn,
@@ -79,11 +87,22 @@ from app.schemas.lifecycle import (
     SuccessRow,
     VoiceDialIn,
     VoiceDialOut,
+    VoiceScriptIn,
+    VoiceScriptOut,
+    VoiceScriptVersionOut,
     WhitespaceOut,
     WorkflowRunOut,
 )
-from app.services.ads import queue_campaign_launch
+from app.schemas.pilot import HealthRebuildIn, HealthRebuildOut
+from app.services.ads import (
+    queue_campaign_launch,
+    queue_campaign_pause,
+    queue_creative_draft,
+    sync_campaign,
+    sync_consented_audience,
+)
 from app.services.audit import write_audit
+from app.services.customer_intelligence import rebuild_health
 from app.services.lifecycle import (
     build_forecast,
     create_quote,
@@ -96,8 +115,16 @@ from app.services.lifecycle import (
     score_deal,
     score_health,
 )
+from app.services.meeting_capture import (
+    ingest_manual_transcript,
+    queue_recording_consent,
+    refresh_capture,
+    schedule_capture,
+)
+from app.services.outcomes import mark_renewed
 from app.services.query import get_owned, paginate
 from app.services.voice import extract_meeting_notes, queue_voice_dial
+from app.services.voice_scripts import add_version, create_script, list_scripts, publish_version
 
 router = APIRouter(prefix="/lifecycle", tags=["lifecycle"])
 
@@ -304,13 +331,34 @@ def list_enrollments(
     return Envelope(data=[EnrollmentOut.model_validate(row) for row in rows], meta=Meta(total=len(rows)))
 
 
+def _conversation_out(db: Session, row: Conversation) -> ConversationOut:
+    payload = ConversationOut.model_validate(row)
+    messages = db.scalars(
+        select(EmailMessage)
+        .where(EmailMessage.conversation_id == row.id, EmailMessage.deleted_at.is_(None))
+        .order_by(EmailMessage.created_at.asc())
+    ).all()
+    payload.messages = [EmailMessageOut.model_validate(item) for item in messages]
+    return payload
+
+
 @router.get("/conversations", response_model=Envelope[list[ConversationOut]])
 def list_conversations(
     db: Annotated[Session, Depends(get_db)],
     ctx: Annotated[AuthContext, Depends(require_permission("conversations.read"))],
 ) -> Envelope[list[ConversationOut]]:
     rows = db.scalars(select(Conversation).where(Conversation.tenant_id == ctx.tenant_id, Conversation.deleted_at.is_(None)).order_by(Conversation.created_at.desc())).all()
-    return Envelope(data=[ConversationOut.model_validate(row) for row in rows], meta=Meta(total=len(rows)))
+    return Envelope(data=[_conversation_out(db, row) for row in rows], meta=Meta(total=len(rows)))
+
+
+@router.get("/conversations/{conversation_id}", response_model=Envelope[ConversationOut])
+def get_conversation(
+    conversation_id: UUID,
+    db: Annotated[Session, Depends(get_db)],
+    ctx: Annotated[AuthContext, Depends(require_permission("conversations.read"))],
+) -> Envelope[ConversationOut]:
+    row = get_owned(db, Conversation, ctx.tenant_id, conversation_id)
+    return Envelope(data=_conversation_out(db, row))
 
 
 @router.post("/conversations", response_model=Envelope[ConversationOut])
@@ -352,7 +400,7 @@ def list_meetings(
     ctx: Annotated[AuthContext, Depends(require_permission("meetings.read"))],
 ) -> Envelope[list[MeetingOut]]:
     rows = db.scalars(select(MeetingRecord).where(MeetingRecord.tenant_id == ctx.tenant_id, MeetingRecord.deleted_at.is_(None)).order_by(MeetingRecord.created_at.desc())).all()
-    return Envelope(data=[MeetingOut.model_validate(row) for row in rows], meta=Meta(total=len(rows)))
+    return Envelope(data=[_meeting_out(db, row) for row in rows], meta=Meta(total=len(rows)))
 
 
 @router.post("/meetings", response_model=Envelope[MeetingOut])
@@ -369,7 +417,7 @@ def create_meeting(
     db.add(row)
     db.commit()
     db.refresh(row)
-    return Envelope(data=MeetingOut.model_validate(row))
+    return Envelope(data=_meeting_out(db, row))
 
 
 @router.post("/meetings/extract", response_model=Envelope[MeetingOut])
@@ -394,7 +442,222 @@ def extract_meeting(
     )
     db.commit()
     db.refresh(row)
-    return Envelope(data=MeetingOut.model_validate(row))
+    return Envelope(data=_meeting_out(db, row))
+
+
+def _meeting_out(db: Session, row: MeetingRecord) -> MeetingOut:
+    payload = MeetingOut.model_validate(row)
+    captures = db.scalars(
+        select(MeetingCapture).where(
+            MeetingCapture.meeting_record_id == row.id,
+            MeetingCapture.deleted_at.is_(None),
+        )
+    ).all()
+    payload.captures = [MeetingCaptureOut.model_validate(item) for item in captures]
+    return payload
+
+
+@router.post("/meetings/{meeting_id}/consent", response_model=Envelope[MeetingOut])
+def request_recording_consent(
+    meeting_id: UUID,
+    db: Annotated[Session, Depends(get_db)],
+    ctx: Annotated[AuthContext, Depends(require_permission("meetings.write"))],
+) -> Envelope[MeetingOut]:
+    meeting = get_owned(db, MeetingRecord, ctx.tenant_id, meeting_id)
+    queue_recording_consent(db, tenant_id=ctx.tenant_id, actor_id=ctx.user.id, meeting=meeting)
+    db.commit()
+    db.refresh(meeting)
+    return Envelope(data=_meeting_out(db, meeting))
+
+
+@router.post("/meetings/{meeting_id}/capture", response_model=Envelope[MeetingCaptureOut])
+def start_meeting_capture(
+    meeting_id: UUID,
+    body: MeetingCaptureIn,
+    db: Annotated[Session, Depends(get_db)],
+    ctx: Annotated[AuthContext, Depends(require_permission("meetings.write"))],
+) -> Envelope[MeetingCaptureOut]:
+    meeting = get_owned(db, MeetingRecord, ctx.tenant_id, meeting_id)
+    row = schedule_capture(
+        db,
+        tenant_id=ctx.tenant_id,
+        actor_id=ctx.user.id,
+        meeting=meeting,
+        meeting_url=body.meeting_url,
+    )
+    db.commit()
+    db.refresh(row)
+    return Envelope(data=MeetingCaptureOut.model_validate(row))
+
+
+@router.post("/meetings/{meeting_id}/transcript", response_model=Envelope[MeetingOut])
+def paste_meeting_transcript(
+    meeting_id: UUID,
+    body: MeetingTranscriptIn,
+    db: Annotated[Session, Depends(get_db)],
+    ctx: Annotated[AuthContext, Depends(require_permission("meetings.write"))],
+) -> Envelope[MeetingOut]:
+    meeting = get_owned(db, MeetingRecord, ctx.tenant_id, meeting_id)
+    ingest_manual_transcript(
+        db,
+        tenant_id=ctx.tenant_id,
+        actor_id=ctx.user.id,
+        meeting=meeting,
+        transcript=body.transcript,
+    )
+    db.commit()
+    db.refresh(meeting)
+    return Envelope(data=_meeting_out(db, meeting))
+
+
+@router.post("/captures/{capture_id}/refresh", response_model=Envelope[MeetingCaptureOut])
+def refresh_meeting_capture(
+    capture_id: UUID,
+    db: Annotated[Session, Depends(get_db)],
+    ctx: Annotated[AuthContext, Depends(require_permission("meetings.write"))],
+) -> Envelope[MeetingCaptureOut]:
+    capture = get_owned(db, MeetingCapture, ctx.tenant_id, capture_id)
+    refresh_capture(db, tenant_id=ctx.tenant_id, actor_id=ctx.user.id, capture=capture)
+    db.commit()
+    db.refresh(capture)
+    return Envelope(data=MeetingCaptureOut.model_validate(capture))
+
+
+@router.get("/voice-scripts", response_model=Envelope[list[VoiceScriptOut]])
+def list_voice_scripts(
+    db: Annotated[Session, Depends(get_db)],
+    ctx: Annotated[AuthContext, Depends(require_permission("conversations.read"))],
+) -> Envelope[list[VoiceScriptOut]]:
+    rows = list_scripts(db, ctx.tenant_id)
+    payloads = []
+    for row in rows:
+        versions = db.scalars(select(VoiceScriptVersion).where(VoiceScriptVersion.script_id == row.id).order_by(VoiceScriptVersion.version.desc())).all()
+        item = VoiceScriptOut.model_validate(row)
+        item.versions = [VoiceScriptVersionOut.model_validate(version) for version in versions]
+        payloads.append(item)
+    return Envelope(data=payloads, meta=Meta(total=len(payloads)))
+
+
+@router.post("/voice-scripts", response_model=Envelope[VoiceScriptOut])
+def create_voice_script(
+    body: VoiceScriptIn,
+    db: Annotated[Session, Depends(get_db)],
+    ctx: Annotated[AuthContext, Depends(require_permission("conversations.write"))],
+) -> Envelope[VoiceScriptOut]:
+    row = create_script(db, tenant_id=ctx.tenant_id, actor_id=ctx.user.id, name=body.name, purpose=body.purpose)
+    if body.body.strip():
+        add_version(db, tenant_id=ctx.tenant_id, actor_id=ctx.user.id, script=row, body=body.body)
+    db.commit()
+    db.refresh(row)
+    payload = VoiceScriptOut.model_validate(row)
+    versions = db.scalars(select(VoiceScriptVersion).where(VoiceScriptVersion.script_id == row.id)).all()
+    payload.versions = [VoiceScriptVersionOut.model_validate(version) for version in versions]
+    return Envelope(data=payload)
+
+
+@router.post("/voice-scripts/{script_id}/versions", response_model=Envelope[VoiceScriptVersionOut])
+def add_voice_script_version(
+    script_id: UUID,
+    body: MeetingTranscriptIn,
+    db: Annotated[Session, Depends(get_db)],
+    ctx: Annotated[AuthContext, Depends(require_permission("conversations.write"))],
+) -> Envelope[VoiceScriptVersionOut]:
+    script = get_owned(db, VoiceScript, ctx.tenant_id, script_id)
+    version = add_version(db, tenant_id=ctx.tenant_id, actor_id=ctx.user.id, script=script, body=body.transcript)
+    db.commit()
+    db.refresh(version)
+    return Envelope(data=VoiceScriptVersionOut.model_validate(version))
+
+
+@router.post("/voice-scripts/{script_id}/publish/{version_id}", response_model=Envelope[VoiceScriptOut])
+def publish_voice_script(
+    script_id: UUID,
+    version_id: UUID,
+    db: Annotated[Session, Depends(get_db)],
+    ctx: Annotated[AuthContext, Depends(require_permission("conversations.write"))],
+) -> Envelope[VoiceScriptOut]:
+    row = publish_version(db, tenant_id=ctx.tenant_id, actor_id=ctx.user.id, script_id=script_id, version_id=version_id)
+    db.commit()
+    db.refresh(row)
+    payload = VoiceScriptOut.model_validate(row)
+    versions = db.scalars(select(VoiceScriptVersion).where(VoiceScriptVersion.script_id == row.id)).all()
+    payload.versions = [VoiceScriptVersionOut.model_validate(version) for version in versions]
+    return Envelope(data=payload)
+
+
+@router.post("/campaigns/{campaign_id}/pause", response_model=Envelope[CampaignLaunchOut])
+def pause_campaign(
+    campaign_id: UUID,
+    db: Annotated[Session, Depends(get_db)],
+    ctx: Annotated[AuthContext, Depends(require_permission("campaigns.write"))],
+) -> Envelope[CampaignLaunchOut]:
+    campaign = get_owned(db, Campaign, ctx.tenant_id, campaign_id)
+    approval = queue_campaign_pause(db, tenant_id=ctx.tenant_id, actor_id=ctx.user.id, campaign=campaign)
+    db.commit()
+    return Envelope(data=CampaignLaunchOut(approval_id=approval.id, campaign_id=campaign.id, status=campaign.status))
+
+
+@router.post("/campaigns/{campaign_id}/sync", response_model=Envelope[CampaignOut])
+def sync_campaign_metrics(
+    campaign_id: UUID,
+    db: Annotated[Session, Depends(get_db)],
+    ctx: Annotated[AuthContext, Depends(require_permission("campaigns.write"))],
+) -> Envelope[CampaignOut]:
+    campaign = get_owned(db, Campaign, ctx.tenant_id, campaign_id)
+    sync_campaign(db, tenant_id=ctx.tenant_id, actor_id=ctx.user.id, campaign=campaign)
+    db.commit()
+    db.refresh(campaign)
+    return Envelope(data=CampaignOut.model_validate(campaign))
+
+
+@router.post("/campaigns/{campaign_id}/creative", response_model=Envelope[CampaignLaunchOut])
+def draft_campaign_creative(
+    campaign_id: UUID,
+    body: MeetingTranscriptIn,
+    db: Annotated[Session, Depends(get_db)],
+    ctx: Annotated[AuthContext, Depends(require_permission("campaigns.write"))],
+) -> Envelope[CampaignLaunchOut]:
+    campaign = get_owned(db, Campaign, ctx.tenant_id, campaign_id)
+    headline = ""
+    copy = body.transcript.strip()
+    if not copy:
+        completion = get_llm_provider(db, ctx.tenant_id).complete(
+            f"Draft one ad headline and one body for campaign {campaign.name} with objective {campaign.objective}. Do not invent metrics.",
+            system="You draft ad copy for human review. Never invent spend, CTR, or performance numbers.",
+        )
+        copy = completion.text.strip()
+        headline = campaign.name[:80]
+    else:
+        headline = copy.split("\n", 1)[0][:80]
+    approval = queue_creative_draft(
+        db,
+        tenant_id=ctx.tenant_id,
+        actor_id=ctx.user.id,
+        campaign=campaign,
+        headline=headline,
+        body=copy,
+    )
+    db.commit()
+    return Envelope(data=CampaignLaunchOut(approval_id=approval.id, campaign_id=campaign.id, status="creative_review"))
+
+
+@router.post("/campaigns/{campaign_id}/audience", response_model=Envelope[dict])
+def sync_campaign_audience(
+    campaign_id: UUID,
+    db: Annotated[Session, Depends(get_db)],
+    ctx: Annotated[AuthContext, Depends(require_permission("campaigns.write"))],
+    lookalike: bool = False,
+) -> Envelope[dict]:
+    campaign = get_owned(db, Campaign, ctx.tenant_id, campaign_id)
+    audience = sync_consented_audience(
+        db,
+        tenant_id=ctx.tenant_id,
+        actor_id=ctx.user.id,
+        campaign=campaign,
+        lookalike=lookalike,
+    )
+    db.commit()
+    return Envelope(data={"id": str(audience.id), "status": audience.status, "member_count": audience.member_count, "last_error": audience.last_error})
 
 
 @router.get("/deals", response_model=Envelope[list[DealInsightOut]])
@@ -566,6 +829,17 @@ def list_success(
     return Envelope(data=rows, meta=Meta(total=len(rows)))
 
 
+@router.post("/success/health/rebuild", response_model=Envelope[HealthRebuildOut])
+def rebuild_health_scores(
+    body: HealthRebuildIn,
+    db: Annotated[Session, Depends(get_db)],
+    ctx: Annotated[AuthContext, Depends(require_permission("success.write"))],
+) -> Envelope[HealthRebuildOut]:
+    rebuilt = rebuild_health(db, tenant_id=ctx.tenant_id, actor_id=ctx.user.id, customer_id=body.customer_id)
+    db.commit()
+    return Envelope(data=HealthRebuildOut(rebuilt=rebuilt))
+
+
 @router.post("/success/health/{customer_id}", response_model=Envelope[HealthOut])
 def rescore_health(
     customer_id: UUID,
@@ -579,6 +853,18 @@ def rescore_health(
     return Envelope(data=HealthOut.model_validate(row))
 
 
+@router.post("/renewals/{renewal_id}/complete", response_model=Envelope[RenewalOut])
+def complete_renewal(
+    renewal_id: UUID,
+    db: Annotated[Session, Depends(get_db)],
+    ctx: Annotated[AuthContext, Depends(require_permission("success.write"))],
+) -> Envelope[RenewalOut]:
+    row = mark_renewed(db, tenant_id=ctx.tenant_id, actor_id=ctx.user.id, renewal_id=renewal_id)
+    db.commit()
+    db.refresh(row)
+    return Envelope(data=RenewalOut.model_validate(row))
+
+
 @router.get("/renewals", response_model=Envelope[list[RenewalOut]])
 def list_renewals(
     db: Annotated[Session, Depends(get_db)],
@@ -590,6 +876,11 @@ def list_renewals(
         account = db.scalar(select(Account).where(Account.id == row.account_id, Account.tenant_id == ctx.tenant_id))
         payload = RenewalOut.model_validate(row)
         payload.account_name = account.name if account else ""
+        try:
+            payload.why_ready = json.loads(row.why_ready_json or "[]")
+            payload.why_at_risk = json.loads(row.why_at_risk_json or "[]")
+        except json.JSONDecodeError:
+            payload.why_ready, payload.why_at_risk = [], []
         out.append(payload)
     return Envelope(data=out, meta=Meta(total=len(out)))
 

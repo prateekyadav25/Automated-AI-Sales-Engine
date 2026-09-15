@@ -28,10 +28,13 @@ from app.schemas.crm import (
     TaskIn,
     TaskOut,
 )
+from app.schemas.pilot import ChurnIn, CloseLostIn
 from app.services.audit import emit_event, write_audit
 from app.services.crm import STAGE_PROBABILITY, add_activity, close_won, latest_lead_score
+from app.services.enrichment import enrich_owned_lead
 from app.services.nba import generate_for_lead, generate_for_opportunity
 from app.services.orchestrator import process_pending_events
+from app.services.outcomes import close_lost, mark_churned
 from app.services.query import get_owned, paginate
 from app.services.scoring import score_lead
 
@@ -394,6 +397,17 @@ def get_lead(
     return Envelope(data=_lead_out(db, get_owned(db, Lead, ctx.tenant_id, lead_id)))
 
 
+@router.post("/leads/{lead_id}/enrich", response_model=Envelope[dict])
+def enrich_lead_endpoint(
+    lead_id: UUID,
+    db: Annotated[Session, Depends(get_db)],
+    ctx: Annotated[AuthContext, Depends(require_permission("leads.write"))],
+) -> Envelope[dict]:
+    result = enrich_owned_lead(db, tenant_id=ctx.tenant_id, actor_id=ctx.user.id, lead_id=lead_id)
+    db.commit()
+    return Envelope(data=result)
+
+
 @router.post("/leads/{lead_id}/score", response_model=Envelope[LeadScoreOut])
 def rescore_lead(
     lead_id: UUID,
@@ -436,11 +450,33 @@ def create_opportunity(
     ctx: Annotated[AuthContext, Depends(require_permission("opportunities.write"))],
 ) -> Envelope[OpportunityOut]:
     get_owned(db, Account, ctx.tenant_id, body.account_id)
-    payload = body.model_dump()
+    payload = body.model_dump(exclude={"lead_id"})
     payload["probability"] = STAGE_PROBABILITY.get(body.stage, body.probability)
+    if body.lead_id:
+        lead = get_owned(db, Lead, ctx.tenant_id, body.lead_id)
+        payload["campaign_id"] = payload.get("campaign_id") or lead.campaign_id
+        payload["ad_id"] = payload.get("ad_id") or lead.ad_id
+        payload["utm_source"] = payload.get("utm_source") or lead.utm_source
+        payload["utm_medium"] = payload.get("utm_medium") or lead.utm_medium
+        payload["utm_campaign"] = payload.get("utm_campaign") or lead.utm_campaign
     row = Opportunity(tenant_id=ctx.tenant_id, created_by=ctx.user.id, **payload)
     db.add(row)
     db.flush()
+    from app.services.ml.history import record_opportunity_fields
+
+    record_opportunity_fields(
+        db,
+        tenant_id=ctx.tenant_id,
+        actor_id=ctx.user.id,
+        opportunity_id=row.id,
+        changes={
+            "stage": ("", row.stage),
+            "amount": ("", row.amount),
+            "probability": ("", row.probability),
+            "expected_close": ("", row.expected_close),
+            "owner_id": ("", row.owner_id),
+        },
+    )
     emit_event(
         db,
         tenant_id=ctx.tenant_id,
@@ -482,10 +518,32 @@ def update_opportunity(
 ) -> Envelope[OpportunityOut]:
     row = get_owned(db, Opportunity, ctx.tenant_id, opportunity_id)
     previous = row.stage
+    before = {
+        "stage": row.stage,
+        "amount": row.amount,
+        "probability": row.probability,
+        "expected_close": row.expected_close,
+        "owner_id": row.owner_id,
+    }
     for key, value in body.model_dump().items():
         setattr(row, key, value)
     row.probability = STAGE_PROBABILITY.get(row.stage, row.probability)
     row.updated_by = ctx.user.id
+    from app.services.ml.history import record_opportunity_fields
+
+    record_opportunity_fields(
+        db,
+        tenant_id=ctx.tenant_id,
+        actor_id=ctx.user.id,
+        opportunity_id=row.id,
+        changes={
+            "stage": (before["stage"], row.stage),
+            "amount": (before["amount"], row.amount),
+            "probability": (before["probability"], row.probability),
+            "expected_close": (before["expected_close"], row.expected_close),
+            "owner_id": (before["owner_id"], row.owner_id),
+        },
+    )
     if previous != row.stage:
         emit_event(
             db,
@@ -514,9 +572,49 @@ def close_opportunity_won(
         opportunity_id=opportunity_id,
         correlation_id=ctx.correlation_id,
     )
+    process_pending_events(db, tenant_id=ctx.tenant_id, actor_id=ctx.user.id, limit=200)
     db.commit()
     db.refresh(customer)
     return Envelope(data=CustomerOut.model_validate(customer))
+
+
+@router.post("/opportunities/{opportunity_id}/close-lost", response_model=Envelope[OpportunityOut])
+def close_opportunity_lost(
+    opportunity_id: UUID,
+    body: CloseLostIn,
+    db: Annotated[Session, Depends(get_db)],
+    ctx: Annotated[AuthContext, Depends(require_permission("opportunities.close"))],
+) -> Envelope[OpportunityOut]:
+    try:
+        row = close_lost(
+            db,
+            tenant_id=ctx.tenant_id,
+            actor_id=ctx.user.id,
+            opportunity_id=opportunity_id,
+            reason=body.reason,
+            note=body.note,
+        )
+    except ValueError as exc:
+        raise HTTPException(status_code=422, detail=str(exc)) from exc
+    db.commit()
+    db.refresh(row)
+    return Envelope(data=OpportunityOut.model_validate(row))
+
+
+@router.post("/customers/{customer_id}/churn", response_model=Envelope[CustomerOut])
+def churn_customer(
+    customer_id: UUID,
+    body: ChurnIn,
+    db: Annotated[Session, Depends(get_db)],
+    ctx: Annotated[AuthContext, Depends(require_permission("success.write"))],
+) -> Envelope[CustomerOut]:
+    try:
+        row = mark_churned(db, tenant_id=ctx.tenant_id, actor_id=ctx.user.id, customer_id=customer_id, reason=body.reason)
+    except ValueError as exc:
+        raise HTTPException(status_code=422, detail=str(exc)) from exc
+    db.commit()
+    db.refresh(row)
+    return Envelope(data=CustomerOut.model_validate(row))
 
 
 @router.get("/tasks", response_model=Envelope[list[TaskOut]])
@@ -660,6 +758,19 @@ def list_customers(
         payload.account_name = account.name if account else None
         out.append(payload)
     return Envelope(data=out, meta=Meta(total=len(out)))
+
+
+@router.get("/customers/{customer_id}", response_model=Envelope[CustomerOut])
+def get_customer(
+    customer_id: UUID,
+    db: Annotated[Session, Depends(get_db)],
+    ctx: Annotated[AuthContext, Depends(require_permission("accounts.read"))],
+) -> Envelope[CustomerOut]:
+    row = get_owned(db, Customer, ctx.tenant_id, customer_id)
+    payload = CustomerOut.model_validate(row)
+    account = db.scalar(select(Account).where(Account.id == row.account_id, Account.tenant_id == ctx.tenant_id))
+    payload.account_name = account.name if account else None
+    return Envelope(data=payload)
 
 
 @router.post("/leads/{lead_id}/nba", response_model=Envelope[NBAOut])

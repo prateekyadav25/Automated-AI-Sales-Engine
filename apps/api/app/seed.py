@@ -8,9 +8,11 @@ from decimal import Decimal
 from sqlalchemy import select
 
 from app.ai.rag import ingest_text
+from app.core.config import get_settings
 from app.core.security import hash_password
 from app.db.base import Base
 from app.db.session import get_engine, get_session
+from app.db.tenant_context import set_tenant_context
 from app.models import *  # noqa: F403
 from app.models.acquisition import InboundCapture
 from app.models.ai import Prompt
@@ -56,6 +58,7 @@ from app.services.lifecycle import (
 from app.services.market import score_market
 from app.services.rbac import PERMISSIONS, ROLE_PERMISSIONS
 from app.services.scoring import score_lead
+from app.services.webhook_routes import demo_routing_token, ensure_route
 
 DEMO_PASSWORD = "Agrarian!Demo1"
 
@@ -151,8 +154,29 @@ def _flags(db, tenant_id) -> None:
 
 def _autopilot_settings(db, tenant_id, actor_id) -> None:
     row = db.scalar(select(AutopilotSettings).where(AutopilotSettings.tenant_id == tenant_id, AutopilotSettings.deleted_at.is_(None)))
+    flags = {
+        "enabled": True,
+        "discovery_enabled": True,
+        "customer_health_enabled": True,
+        "renewal_enabled": True,
+        "expansion_enabled": True,
+        "advocacy_enabled": True,
+        "customer_success_enabled": True,
+        "qbr_automation_enabled": True,
+        "upsell_enabled": True,
+        "cross_sell_enabled": True,
+        "expansion_auto_opportunity_enabled": False,
+        "max_discovery_runs_per_day": 50,
+        "max_candidates_per_day": 200,
+        "max_leads_per_day": 100,
+        "quiet_hours_start": "00:00",
+        "quiet_hours_end": "00:00",
+    }
     if row is None:
-        db.add(AutopilotSettings(tenant_id=tenant_id, created_by=actor_id, enabled=True, discovery_enabled=True))
+        db.add(AutopilotSettings(tenant_id=tenant_id, created_by=actor_id, **flags))
+        return
+    for key, value in flags.items():
+        setattr(row, key, value)
 
 
 def _prompts(db, tenant_id, actor_id) -> None:
@@ -184,6 +208,11 @@ def _prompts(db, tenant_id, actor_id) -> None:
 
 
 def seed() -> None:
+    settings = get_settings()
+    if settings.is_production:
+        raise RuntimeError("Demo seed is forbidden in production")
+    if not settings.seed_demo:
+        raise RuntimeError("SEED_DEMO is disabled")
     get_engine()
     Base.metadata.create_all(bind=get_engine())
     db = get_session()
@@ -200,18 +229,27 @@ def seed() -> None:
             db.add(northline)
             db.flush()
 
+        set_tenant_context(db, agrayian.id)
         roles_a = _ensure_roles(db, agrayian.id, permissions)
-        roles_b = _ensure_roles(db, northline.id, permissions)
         admin = _user(db, agrayian.id, "admin@agrayian.demo", "Asha Menon", roles_a["Tenant Admin"], True)
         seller = _user(db, agrayian.id, "seller@agrayian.demo", "Rohan Iyer", roles_a["Sales Rep"])
         _user(db, agrayian.id, "readonly@agrayian.demo", "Priya Nair", roles_a["Read Only"])
-        _user(db, northline.id, "admin@northline.demo", "James Cole", roles_b["Tenant Admin"])
         _flags(db, agrayian.id)
-        _flags(db, northline.id)
         _autopilot_settings(db, agrayian.id, admin.id)
-        _autopilot_settings(db, northline.id, admin.id)
         _prompts(db, agrayian.id, admin.id)
-        _prompts(db, northline.id, admin.id)
+        for provider in ("gmail", "mock-email", "twilio", "vapi", "google", "usage", "support", "finance", "erp"):
+            ensure_route(db, tenant_id=agrayian.id, provider=provider, raw_token=demo_routing_token("agrayian", provider))
+
+        set_tenant_context(db, northline.id)
+        roles_b = _ensure_roles(db, northline.id, permissions)
+        northline_admin = _user(db, northline.id, "admin@northline.demo", "James Cole", roles_b["Tenant Admin"])
+        _flags(db, northline.id)
+        _autopilot_settings(db, northline.id, northline_admin.id)
+        _prompts(db, northline.id, northline_admin.id)
+        for provider in ("gmail", "mock-email", "twilio", "vapi", "google", "usage", "support", "finance", "erp"):
+            ensure_route(db, tenant_id=northline.id, provider=provider, raw_token=demo_routing_token("northline", provider))
+
+        set_tenant_context(db, agrayian.id)
 
         if db.scalar(select(Team).where(Team.tenant_id == agrayian.id)) is None:
             db.add(Team(tenant_id=agrayian.id, name="Enterprise Sales", team_type="sales"))
@@ -229,6 +267,10 @@ def seed() -> None:
                 min_employees=200,
                 description="Large organizations adopting AI with executive sponsors.",
                 is_default=True,
+                personas="CIO,CTO,VP Engineering",
+                seniorities="cxo,director,vp",
+                job_functions="information technology,engineering",
+                keywords="AI transformation",
             )
             db.add(icp)
             db.flush()
@@ -497,6 +539,10 @@ def seed() -> None:
                     )
 
         _seed_lifecycle(db, agrayian.id, admin.id, seller.id, accounts)
+        from app.services.ml.catalog import ensure_catalog
+
+        ensure_catalog(db, tenant_id=agrayian.id, actor_id=admin.id)
+        ensure_catalog(db, tenant_id=northline.id, actor_id=northline_admin.id)
 
         existing_knowledge = db.scalar(
             select(Prompt).where(Prompt.tenant_id == agrayian.id, Prompt.prompt_key == "copilot")
@@ -779,6 +825,10 @@ def _seed_lifecycle(db, tenant_id, admin_id, seller_id, accounts: list[Account])
                     version="rules-v1",
                     status="production_rules",
                     notes=notes,
+                    last_trained=None,
+                    algorithm="rules",
+                    metrics_json=None,
+                    limitations="Deterministic production rules. No trained model.",
                 )
             )
 

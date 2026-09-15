@@ -23,6 +23,7 @@ export default function AdvocacyPage() {
     queryKey: ["advocacy"],
     queryFn: async () => (await api<{ assets: AdvocacyAsset[]; referrals: Referral[] }>("/api/v1/lifecycle/advocacy")).data,
     enabled: can("advocacy.read"),
+    refetchInterval: 5000,
   });
   const accounts = useQuery({
     queryKey: ["accounts"],
@@ -49,7 +50,7 @@ export default function AdvocacyPage() {
       <PageHeader
         eyebrow="Phase 20"
         title="Advocacy"
-        subtitle="References and referrals are identified, not invented reviews. Readiness is a human score."
+        subtitle="advocacy-rules-v1 decides eligibility. Quotes stay null until a human approves the ask."
         actions={can("advocacy.write") ? <Button onClick={() => setOpen(true)}>Add asset</Button> : null}
       />
       {assets.length === 0 ? (
@@ -58,10 +59,12 @@ export default function AdvocacyPage() {
         <DataTable
           rows={assets}
           columns={[
-            { key: "kind", header: "Kind", cell: (row) => labelize(row.kind) },
+            { key: "kind", header: "Kind", cell: (row) => labelize(row.advocacy_type || row.kind) },
             { key: "ready", header: "Readiness", cell: (row) => String(row.readiness) },
+            { key: "score", header: "Score", cell: (row) => String(row.eligibility_score ?? "—") },
+            { key: "quote", header: "Quote", cell: (row) => row.quote ?? "null" },
             { key: "status", header: "Status", cell: (row) => <Badge>{labelize(row.status)}</Badge> },
-            { key: "notes", header: "Notes", cell: (row) => row.notes || "—" },
+            { key: "notes", header: "Evidence", cell: (row) => row.notes || "—" },
           ]}
         />
       )}

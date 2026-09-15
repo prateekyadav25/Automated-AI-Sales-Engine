@@ -17,6 +17,8 @@ htmlcov
 .ds_store
 .DS_Store
 apps/api/.data
+apps/api/.object-storage
+*.tsbuildinfo
 minio_data
 postgres_data
 redis_data

@@ -8,6 +8,7 @@ from sqlalchemy.orm import Session
 from app.models.autonomy import AutopilotSettings
 from app.models.crm import Lead
 from app.models.identity import FeatureFlag
+from app.services.policy_versions import record_settings_version
 
 
 def _flag(db: Session, tenant_id: UUID, key: str) -> FeatureFlag | None:
@@ -105,11 +106,50 @@ def apply_settings_update(db: Session, settings: AutopilotSettings, payload: dic
         "minimum_lead_score",
         "minimum_intent_score",
         "minimum_expansion_score",
+        "max_emails_per_day",
+        "max_emails_per_contact_per_day",
+        "minimum_hours_between_outreach",
+        "customer_success_enabled",
+        "qbr_automation_enabled",
+        "upsell_enabled",
+        "cross_sell_enabled",
+        "expansion_auto_opportunity_enabled",
+        "renewal_windows",
+        "minimum_expansion_confidence",
+        "minimum_advocacy_score",
+        "max_discovery_runs_per_day",
+        "max_candidates_per_run",
+        "max_candidates_per_day",
+        "emergency_stop",
+        "email_channel_paused",
+        "ads_channel_paused",
+        "voice_channel_paused",
+        "discovery_channel_paused",
+        "usage_freshness_hours",
+        "support_freshness_hours",
+        "finance_freshness_hours",
+        "high_utilization_pct",
+        "low_utilization_pct",
+        "usage_live_enabled",
+        "support_live_enabled",
+        "finance_live_enabled",
+        "erp_live_enabled",
+        "raw_payload_retention_days",
+        "minimum_health_coverage",
+        "ai_daily_budget",
+        "max_calls_per_day",
+        "allow_deployment_provider_defaults",
+        "allow_unscanned_uploads",
+        "whatsapp_channel_paused",
     }
+    changed = False
     for key, value in payload.items():
-        if key in allowed and value is not None:
+        if key in allowed and value is not None and getattr(settings, key, None) != value:
             setattr(settings, key, value)
+            changed = True
     sync_flags(db, settings)
+    if changed:
+        record_settings_version(db, settings=settings, actor_id=settings.updated_by, reason="settings.patch")
     return settings
 
 

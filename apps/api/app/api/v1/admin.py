@@ -1,6 +1,6 @@
 from typing import Annotated
 
-from fastapi import APIRouter, Depends
+from fastapi import APIRouter, Depends, Query
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
@@ -20,6 +20,7 @@ from app.schemas.admin import (
 )
 from app.schemas.common import Envelope, Meta
 from app.services.audit import write_audit
+from app.services.query import paginate
 from app.services.rbac import user_role_names
 
 router = APIRouter(prefix="/admin", tags=["admin"])
@@ -173,13 +174,11 @@ def update_flag(
 def list_audit(
     db: Annotated[Session, Depends(get_db)],
     ctx: Annotated[AuthContext, Depends(require_permission("audit.read"))],
+    page: int = Query(default=1, ge=1),
+    page_size: int = Query(default=50, ge=1, le=200),
 ) -> Envelope[list[AuditOut]]:
-    rows = db.scalars(
-        select(AuditLog)
-        .where(AuditLog.tenant_id == ctx.tenant_id)
-        .order_by(AuditLog.created_at.desc())
-        .limit(100)
-    ).all()
+    stmt = select(AuditLog).where(AuditLog.tenant_id == ctx.tenant_id).order_by(AuditLog.created_at.desc())
+    rows, total = paginate(db, stmt, page, page_size)
     data = [
         AuditOut(
             id=row.id,
@@ -191,7 +190,7 @@ def list_audit(
         )
         for row in rows
     ]
-    return Envelope(data=data, meta=Meta(total=len(data)))
+    return Envelope(data=data, meta=Meta(page=page, page_size=page_size, total=total))
 
 
 @router.get("/role-assignments")

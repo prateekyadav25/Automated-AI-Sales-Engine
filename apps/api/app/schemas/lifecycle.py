@@ -18,6 +18,15 @@ class CampaignIn(APIModel):
     start_date: date | None = None
     end_date: date | None = None
     notes: str = ""
+    external_campaign_id: str = ""
+    provider: str = ""
+    provider_status: str = ""
+    impressions: int = 0
+    clicks: int = 0
+    conversions: int = 0
+    ctr: Decimal | None = None
+    cpc: Decimal | None = None
+    cpl: Decimal | None = None
 
 
 class CampaignOut(CampaignIn):
@@ -111,12 +120,33 @@ class ConversationIn(APIModel):
     summary: str = ""
 
 
+class EmailMessageOut(APIModel):
+    id: UUID
+    direction: str
+    from_addr: str
+    to_addrs: str
+    subject: str
+    body_text: str
+    provider: str
+    provider_message_id: str
+    provider_thread_id: str
+    status: str
+    classification: str = ""
+    sent_at: datetime | None = None
+    received_at: datetime | None = None
+    created_at: datetime
+
+
 class ConversationOut(ConversationIn):
     id: UUID
     status: str
     provider: str
     is_mock: bool
     created_at: datetime
+    lead_id: UUID | None = None
+    provider_thread_id: str = ""
+    call_status: str = ""
+    messages: list[EmailMessageOut] = Field(default_factory=list)
 
 
 class MeetingIn(APIModel):
@@ -126,6 +156,7 @@ class MeetingIn(APIModel):
     occurred_at: datetime | None = None
     summary: str = ""
     next_steps: str = ""
+    recording_consent: bool = False
 
 
 class MeetingOut(MeetingIn):
@@ -133,6 +164,59 @@ class MeetingOut(MeetingIn):
     provider: str
     is_mock: bool
     created_at: datetime
+    lead_id: UUID | None = None
+    contact_id: UUID | None = None
+    owner_id: UUID | None = None
+    start_at: datetime | None = None
+    end_at: datetime | None = None
+    timezone: str = "UTC"
+    status: str = "logged"
+    provider_event_id: str | None = None
+    calendar_account: str = ""
+    recording_consent: bool = False
+    transcript: str = ""
+    insights_json: str = "{}"
+    captures: list["MeetingCaptureOut"] = Field(default_factory=list)
+
+
+class MeetingCaptureOut(APIModel):
+    id: UUID
+    meeting_record_id: UUID | None = None
+    provider: str
+    provider_bot_id: str = ""
+    status: str
+    meeting_url: str = ""
+    last_error: str = ""
+
+
+class MeetingCaptureIn(APIModel):
+    meeting_url: str = ""
+
+
+class MeetingTranscriptIn(APIModel):
+    transcript: str
+
+
+class VoiceScriptIn(APIModel):
+    name: str
+    purpose: str = "outbound"
+    body: str = ""
+
+
+class VoiceScriptVersionOut(APIModel):
+    id: UUID
+    version: int
+    body: str
+    status: str
+
+
+class VoiceScriptOut(APIModel):
+    id: UUID
+    name: str
+    status: str
+    current_version: int
+    purpose: str
+    versions: list[VoiceScriptVersionOut] = Field(default_factory=list)
 
 
 class CampaignLaunchOut(APIModel):
@@ -243,6 +327,10 @@ class HealthOut(APIModel):
     onboarding: int
     reasons: str
     version: str
+    unavailable_components: str = ""
+    trend: str = "stable"
+    data_freshness: str = ""
+    health_data_coverage: int = 0
 
 
 class MilestoneOut(APIModel):
@@ -271,6 +359,13 @@ class RenewalOut(APIModel):
     renewal_date: date | None
     current_arr: Decimal
     status: str
+    readiness: int = 0
+    recommended_action: str = ""
+    baseline_amount: Decimal | None = None
+    baseline_status: str = "needs_review"
+    stage: str = "monitoring"
+    why_ready: list[str] = Field(default_factory=list)
+    why_at_risk: list[str] = Field(default_factory=list)
 
 
 class WhitespaceOut(APIModel):
@@ -294,6 +389,11 @@ class AdvocacyIn(APIModel):
 
 class AdvocacyOut(AdvocacyIn):
     id: UUID
+    customer_id: UUID | None = None
+    advocacy_type: str = "reference"
+    eligibility_score: int = 0
+    quote: str | None = None
+    ruleset_version: str = "advocacy-rules-v1"
 
 
 class ReferralIn(APIModel):
@@ -314,6 +414,12 @@ class ModelCardOut(APIModel):
     version: str
     status: str
     notes: str
+    last_trained: datetime | None = None
+    task_key: str = ""
+    algorithm: str = "rules"
+    dataset_version: str = ""
+    metrics_json: str | None = None
+    limitations: str = ""
 
 
 class PlaybookIn(APIModel):

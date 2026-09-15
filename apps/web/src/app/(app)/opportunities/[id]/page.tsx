@@ -13,6 +13,19 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import Link from "next/link";
 import { useParams } from "next/navigation";
 import { useState } from "react";
+
+const LOSS_REASONS = [
+  "pricing",
+  "competition",
+  "timing",
+  "budget",
+  "product_fit",
+  "relationship",
+  "procurement",
+  "legal",
+  "no_decision",
+  "other",
+];
 import { useForm } from "react-hook-form";
 
 export default function OpportunityDetailPage() {
@@ -49,6 +62,15 @@ export default function OpportunityDetailPage() {
     mutationFn: () => api(`/api/v1/opportunities/${params.id}/close-won`, { method: "POST" }),
     onSuccess: () => void client.invalidateQueries({ queryKey: ["opportunity", params.id] }),
   });
+  const closeLost = useMutation({
+    mutationFn: (reason: string) =>
+      api(`/api/v1/opportunities/${params.id}/close-lost`, {
+        method: "POST",
+        body: JSON.stringify({ reason, note: "" }),
+      }),
+    onSuccess: () => void client.invalidateQueries({ queryKey: ["opportunity", params.id] }),
+  });
+  const [lossReason, setLossReason] = useState("pricing");
   const summary = useMutation({
     mutationFn: () => api(`/api/v1/ai/summaries/opportunity/${params.id}`, { method: "POST" }),
   });
@@ -87,8 +109,20 @@ export default function OpportunityDetailPage() {
                 Summarize
               </Button>
             ) : null}
-            {can("opportunities.close") && opp.stage !== "closed_won" ? (
-              <Button onClick={() => closeWon.mutate()}>Close won</Button>
+            {can("opportunities.close") && opp.stage !== "closed_won" && opp.stage !== "closed_lost" ? (
+              <>
+                <Button onClick={() => closeWon.mutate()}>Close won</Button>
+                <Select value={lossReason} onChange={(event) => setLossReason(event.target.value)} aria-label="Loss reason">
+                  {LOSS_REASONS.map((item) => (
+                    <option key={item} value={item}>
+                      {item}
+                    </option>
+                  ))}
+                </Select>
+                <Button variant="line" data-testid="close-lost" onClick={() => closeLost.mutate(lossReason)}>
+                  Close lost
+                </Button>
+              </>
             ) : null}
           </>
         }
@@ -101,6 +135,7 @@ export default function OpportunityDetailPage() {
             <li className="flex justify-between"><span className="text-[var(--muted)]">Amount</span>{money(opp.amount)}</li>
             <li className="flex justify-between"><span className="text-[var(--muted)]">Probability</span>{opp.probability}%</li>
             <li className="flex justify-between"><span className="text-[var(--muted)]">Close</span>{opp.expected_close || "—"}</li>
+            {opp.loss_reason ? <li className="flex justify-between"><span className="text-[var(--muted)]">Lost</span>{opp.loss_reason}</li> : null}
           </ul>
           <p className="mt-5 text-sm leading-6 text-[var(--muted)]">Next step: {opp.next_step || "not set"}</p>
           <Link href={`/accounts/${opp.account_id}`} className="mt-4 inline-block text-sm text-brand">

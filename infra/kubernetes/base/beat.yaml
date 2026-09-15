@@ -1,0 +1,26 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: agrayian-beat
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: agrayian-beat
+  template:
+    metadata:
+      labels:
+        app: agrayian-beat
+    spec:
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 10001
+      containers:
+        - name: beat
+          image: agrayian/api:prod
+          command: ["celery", "-A", "app.workers.celery_app", "beat", "--loglevel=info"]
+          envFrom:
+            - configMapRef:
+                name: agrayian-config
+            - secretRef:
+                name: agrayian-secrets

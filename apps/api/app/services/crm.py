@@ -1,12 +1,13 @@
-from datetime import UTC, datetime, timedelta
 from decimal import Decimal
 from uuid import UUID
 
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
-from app.models.crm import Account, Activity, Customer, Lead, Opportunity, Renewal, Task
+from app.models.crm import Account, Activity, Customer, Lead, Opportunity, Renewal
 from app.services.audit import emit_event, write_audit
+from app.services.idempotency import lock_row
+from app.services.ml.history import record_opportunity_fields
 from app.services.query import get_owned
 
 STAGE_PROBABILITY = {
@@ -61,7 +62,15 @@ def close_won(
     opportunity_id: UUID,
     correlation_id: str = "",
 ) -> tuple[Opportunity, Customer, Renewal]:
-    opp = get_owned(db, Opportunity, tenant_id, opportunity_id)
+    opp = lock_row(db, Opportunity, tenant_id, opportunity_id) or get_owned(db, Opportunity, tenant_id, opportunity_id)
+
+    record_opportunity_fields(
+        db,
+        tenant_id=tenant_id,
+        actor_id=actor_id,
+        opportunity_id=opp.id,
+        changes={"stage": (opp.stage, "closed_won"), "probability": (opp.probability, 100)},
+    )
     opp.stage = "closed_won"
     opp.probability = 100
     account = get_owned(db, Account, tenant_id, opp.account_id)
@@ -79,6 +88,7 @@ def close_won(
         account_id=account.id,
         opportunity_id=opp.id,
         status="onboarding",
+        lifecycle_state="NEW_CUSTOMER",
         arr=opp.amount or Decimal("0"),
     )
     if existing:
@@ -87,30 +97,6 @@ def close_won(
     else:
         db.add(customer)
         db.flush()
-    renewal = Renewal(
-        tenant_id=tenant_id,
-        created_by=actor_id,
-        customer_id=customer.id,
-        account_id=account.id,
-        renewal_date=(datetime.now(UTC) + timedelta(days=365)).date(),
-        current_arr=customer.arr,
-        status="stub",
-    )
-    db.add(renewal)
-    db.add(
-        Task(
-            tenant_id=tenant_id,
-            created_by=actor_id,
-            title=f"Sales-to-success handoff: {account.name}",
-            description="Prepare onboarding kickoff from the closed-won opportunity.",
-            status="open",
-            priority="high",
-            entity_type="customer",
-            entity_id=str(customer.id),
-            source="workflow",
-            owner_id=actor_id,
-        )
-    )
     add_activity(
         db,
         tenant_id=tenant_id,
@@ -149,9 +135,18 @@ def close_won(
         payload={"account_id": str(account.id)},
         correlation_id=correlation_id,
     )
-    from app.services.lifecycle import ensure_post_sale  # circular: lifecycle imports add_activity
+    from app.services.post_sale import activate_customer, ensure_renewal
 
-    ensure_post_sale(db, tenant_id=tenant_id, actor_id=actor_id, customer=customer, account_name=account.name)
+    activate_customer(
+        db,
+        tenant_id=tenant_id,
+        actor_id=actor_id,
+        customer=customer,
+        account=account,
+        opportunity=opp,
+        correlation_id=correlation_id,
+    )
+    renewal = ensure_renewal(db, tenant_id=tenant_id, actor_id=actor_id, customer=customer, account=account, contract=None)
     return opp, customer, renewal
 
 

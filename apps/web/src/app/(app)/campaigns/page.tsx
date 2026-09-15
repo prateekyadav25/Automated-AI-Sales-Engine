@@ -45,6 +45,17 @@ export default function CampaignsPage() {
       void client.invalidateQueries({ queryKey: ["approvals"] });
     },
   });
+  const pause = useMutation({
+    mutationFn: (id: string) => api(`/api/v1/lifecycle/campaigns/${id}/pause`, { method: "POST" }),
+    onSuccess: () => {
+      void client.invalidateQueries({ queryKey: ["campaigns"] });
+      void client.invalidateQueries({ queryKey: ["approvals"] });
+    },
+  });
+  const sync = useMutation({
+    mutationFn: (id: string) => api(`/api/v1/lifecycle/campaigns/${id}/sync`, { method: "POST" }),
+    onSuccess: () => void client.invalidateQueries({ queryKey: ["campaigns"] }),
+  });
 
   if (!can("campaigns.read")) return <DeniedState />;
   if (query.isLoading) return <LoadingState label="Reading campaigns" />;
@@ -56,7 +67,7 @@ export default function CampaignsPage() {
       <PageHeader
         eyebrow="Phase 9"
         title="Campaigns & ABM"
-        subtitle="Named motions with a budget ledger. LinkedIn and Instagram Launch queues Approvals. No fake CTR."
+        subtitle="Named motions with a budget ledger. Derived CTR, CPC, and CPL persist only after a live metrics sync. Launch and pause stay approval-gated."
         actions={can("campaigns.write") ? <Button onClick={() => setOpen(true)}>New campaign</Button> : null}
       />
       {rows.length === 0 ? (
@@ -70,14 +81,28 @@ export default function CampaignsPage() {
             { key: "status", header: "Status", cell: (row) => <Badge tone="gold">{labelize(row.status)}</Badge> },
             { key: "budget", header: "Budget", cell: (row) => money(row.budget) },
             { key: "spent", header: "Spent", cell: (row) => money(row.spent) },
+            { key: "ctr", header: "CTR", cell: (row) => row.ctr ?? "—" },
+            { key: "cpc", header: "CPC", cell: (row) => row.cpc ? money(row.cpc) : "—" },
+            { key: "cpl", header: "CPL", cell: (row) => row.cpl ? money(row.cpl) : "—" },
             {
-              key: "launch",
+              key: "actions",
               header: "",
               cell: (row) =>
-                can("campaigns.write") && (row.channel === "linkedin" || row.channel === "instagram") && row.status !== "launched" ? (
-                  <Button variant="line" onClick={() => launch.mutate(row.id)} disabled={launch.isPending}>
-                    Launch
-                  </Button>
+                can("campaigns.write") && (row.channel === "linkedin" || row.channel === "instagram") ? (
+                  <div className="flex flex-wrap gap-2">
+                    {row.status !== "launched" ? (
+                      <Button variant="line" onClick={() => launch.mutate(row.id)} disabled={launch.isPending}>
+                        Launch
+                      </Button>
+                    ) : (
+                      <Button variant="line" onClick={() => pause.mutate(row.id)} disabled={pause.isPending}>
+                        Pause
+                      </Button>
+                    )}
+                    <Button variant="line" onClick={() => sync.mutate(row.id)} disabled={sync.isPending}>
+                      Sync
+                    </Button>
+                  </div>
                 ) : (
                   "—"
                 ),

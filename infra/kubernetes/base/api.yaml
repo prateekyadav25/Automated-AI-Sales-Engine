@@ -1,0 +1,65 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: agrayian-api
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app: agrayian-api
+  template:
+    metadata:
+      labels:
+        app: agrayian-api
+    spec:
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 10001
+      containers:
+        - name: api
+          image: agrayian/api:prod
+          securityContext:
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: false
+          ports:
+            - containerPort: 8000
+          envFrom:
+            - configMapRef:
+                name: agrayian-config
+            - secretRef:
+                name: agrayian-secrets
+          readinessProbe:
+            httpGet:
+              path: /health/ready
+              port: 8000
+          livenessProbe:
+            httpGet:
+              path: /health/live
+              port: 8000
+          resources:
+            requests:
+              cpu: 100m
+              memory: 256Mi
+            limits:
+              memory: 1Gi
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: agrayian-api
+spec:
+  selector:
+    app: agrayian-api
+  ports:
+    - port: 8000
+      targetPort: 8000
+---
+apiVersion: policy/v1
+kind: PodDisruptionBudget
+metadata:
+  name: agrayian-api
+spec:
+  minAvailable: 1
+  selector:
+    matchLabels:
+      app: agrayian-api

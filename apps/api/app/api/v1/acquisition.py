@@ -8,6 +8,7 @@ from sqlalchemy.orm import Session
 from app.core.deps import AuthContext, require_permission
 from app.db.session import get_db
 from app.models.acquisition import DedupeReview, InboundCapture
+from app.models.funnel import PublicFormKey
 from app.schemas.acquisition import (
     AcquisitionOverview,
     CaptureIn,
@@ -22,6 +23,7 @@ from app.services.acquisition import capture_inbound, decide_dedupe
 from app.services.audit import write_audit
 from app.services.crm import latest_lead_score
 from app.services.orchestrator import process_pending_events
+from app.services.public_forms import create_form_key, list_form_keys, revoke_form_key
 from app.services.query import get_owned, paginate
 
 router = APIRouter(prefix="/acquisition", tags=["acquisition"])
@@ -138,3 +140,38 @@ def decide(
     db.commit()
     db.refresh(row)
     return Envelope(data=DedupeOut.model_validate(row))
+
+
+@router.get("/form-keys", response_model=Envelope[list[dict]])
+def list_public_form_keys(
+    db: Annotated[Session, Depends(get_db)],
+    ctx: Annotated[AuthContext, Depends(require_permission("acquisition.read"))],
+) -> Envelope[list[dict]]:
+    rows = list_form_keys(db, ctx.tenant_id)
+    return Envelope(
+        data=[{"id": str(row.id), "name": row.name, "status": row.status, "last_used_at": row.last_used_at} for row in rows],
+        meta=Meta(total=len(rows)),
+    )
+
+
+@router.post("/form-keys", response_model=Envelope[dict])
+def create_public_form_key(
+    db: Annotated[Session, Depends(get_db)],
+    ctx: Annotated[AuthContext, Depends(require_permission("acquisition.write"))],
+    name: str = "website",
+) -> Envelope[dict]:
+    row, raw = create_form_key(db, tenant_id=ctx.tenant_id, actor_id=ctx.user.id, name=name)
+    db.commit()
+    return Envelope(data={"id": str(row.id), "name": row.name, "token": raw, "status": row.status})
+
+
+@router.post("/form-keys/{key_id}/revoke", response_model=Envelope[dict])
+def revoke_public_form_key(
+    key_id: UUID,
+    db: Annotated[Session, Depends(get_db)],
+    ctx: Annotated[AuthContext, Depends(require_permission("acquisition.write"))],
+) -> Envelope[dict]:
+    row = get_owned(db, PublicFormKey, ctx.tenant_id, key_id)
+    revoke_form_key(db, row)
+    db.commit()
+    return Envelope(data={"id": str(row.id), "status": row.status})

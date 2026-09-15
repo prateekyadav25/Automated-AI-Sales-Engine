@@ -10,9 +10,16 @@ from app.api.v1 import (
     crm,
     discovery,
     imports,
+    integrations,
     lifecycle,
     market,
+    ml,
+    pilot,
+    post_sale,
+    providers,
+    public,
     search,
+    webhooks,
 )
 
 api_router = APIRouter(prefix="/api/v1")
@@ -28,3 +35,10 @@ api_router.include_router(acquisition.router)
 api_router.include_router(lifecycle.router)
 api_router.include_router(discovery.router)
 api_router.include_router(autonomy.router)
+api_router.include_router(integrations.router)
+api_router.include_router(webhooks.router)
+api_router.include_router(public.router)
+api_router.include_router(post_sale.router)
+api_router.include_router(ml.router)
+api_router.include_router(pilot.router)
+api_router.include_router(providers.router)

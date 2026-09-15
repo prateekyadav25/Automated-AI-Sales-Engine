@@ -1,0 +1,26 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: agrayian-worker
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app: agrayian-worker
+  template:
+    metadata:
+      labels:
+        app: agrayian-worker
+    spec:
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 10001
+      containers:
+        - name: worker
+          image: agrayian/api:prod
+          command: ["celery", "-A", "app.workers.celery_app", "worker", "--loglevel=info", "-Q", "celery,automation,providers,ai,maintenance"]
+          envFrom:
+            - configMapRef:
+                name: agrayian-config
+            - secretRef:
+                name: agrayian-secrets

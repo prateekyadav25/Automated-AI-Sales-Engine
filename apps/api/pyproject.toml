@@ -19,12 +19,27 @@ dependencies = [
   "psycopg[binary]>=3.2.3",
   "openai>=1.58.1",
   "prometheus-client>=0.21.1",
+  "cryptography>=44.0.0",
 ]
 
 [project.optional-dependencies]
 dev = [
   "pytest>=8.3.4",
   "ruff>=0.8.4",
+  "bandit>=1.8.0",
+  "pip-audit>=2.7.3",
+]
+otel = [
+  "opentelemetry-api>=1.29.0",
+  "opentelemetry-sdk>=1.29.0",
+  "opentelemetry-exporter-otlp>=1.29.0",
+  "opentelemetry-instrumentation-fastapi>=0.50b0",
+]
+storage = [
+  "boto3>=1.35.0",
+]
+ml = [
+  "scikit-learn>=1.5.0",
 ]
 
 [build-system]
@@ -45,3 +60,6 @@ ignore = ["E501"]
 [tool.pytest.ini_options]
 testpaths = ["tests"]
 pythonpath = ["."]
+markers = [
+  "postgres: tests that require PostgreSQL RLS",
+]

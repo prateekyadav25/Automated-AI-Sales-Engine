@@ -21,6 +21,15 @@ def _domain_from_email(email: str) -> str:
     return email.split("@", 1)[1].lower()
 
 
+def _as_uuid(value) -> UUID | None:
+    if not value:
+        return None
+    try:
+        return value if isinstance(value, UUID) else UUID(str(value))
+    except ValueError:
+        return None
+
+
 def capture_inbound(
     db: Session,
     *,
@@ -69,8 +78,12 @@ def capture_inbound(
             title=payload.get("title", ""),
             source=payload.get("source") or "inbound",
             channel=payload.get("channel") or "website",
-            campaign=payload.get("campaign") or "",
+            campaign=payload.get("campaign") or payload.get("utm_campaign") or "",
             utm_source=payload.get("utm_source") or "",
+            utm_medium=payload.get("utm_medium") or "",
+            utm_campaign=payload.get("utm_campaign") or "",
+            campaign_id=_as_uuid(payload.get("campaign_id")),
+            ad_id=str(payload.get("ad_id") or payload.get("ad_name") or ""),
             status="new",
             consent_email=bool(payload.get("consent_email")),
             opt_out=False,
@@ -150,6 +163,8 @@ def capture_inbound(
         consent_email=bool(payload.get("consent_email")),
         status="accepted" if created_lead else "duplicate_review",
         captured_at=datetime.now(UTC),
+        campaign_id=_as_uuid(payload.get("campaign_id")),
+        ad_id=str(payload.get("ad_id") or payload.get("ad_name") or ""),
     )
     db.add(capture)
     db.flush()

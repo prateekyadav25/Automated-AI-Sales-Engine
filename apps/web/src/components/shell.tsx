@@ -76,6 +76,7 @@ const GROUPS = [
     items: [
       { href: "/conversations", label: "Conversations", permission: "conversations.read", icon: MessageSquare },
       { href: "/meetings", label: "Meetings", permission: "meetings.read", icon: Calendar },
+      { href: "/automation/voice-scripts", label: "Voice scripts", permission: "conversations.read", icon: MessageSquare },
     ],
   },
   {
@@ -101,6 +102,14 @@ const GROUPS = [
       { href: "/market", label: "Market", permission: "markets.read", icon: TrendingUp },
       { href: "/playbooks", label: "Playbooks", permission: "revops.read", icon: Workflow },
       { href: "/models", label: "Models", permission: "revops.read", icon: Settings },
+    ],
+  },
+  {
+    label: "Admin",
+    defaultOpen: false,
+    items: [
+      { href: "/admin/pilot", label: "Pilot readiness", permission: "pilot.view", icon: ShieldCheck },
+      { href: "/admin/integrations", label: "Integrations", permission: "integrations.read", icon: Settings },
       { href: "/admin/users", label: "People", permission: "users.read", icon: Users },
       { href: "/admin/teams", label: "Teams", permission: "teams.read", icon: Users },
       { href: "/admin/flags", label: "Flags", permission: "flags.read", icon: Flag },
@@ -124,6 +133,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
   useEffect(() => {
     if (!loading && !user) router.replace("/login");
   }, [loading, user, router]);
+
 
   useEffect(() => {
     const match = GROUPS.find((group) =>

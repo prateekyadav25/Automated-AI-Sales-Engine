@@ -17,8 +17,6 @@ from app.models.lifecycle import (
     ForecastSnapshot,
     HealthScore,
     MeetingRecord,
-    OnboardingMilestone,
-    OnboardingPlan,
     Playbook,
     Product,
     Quote,
@@ -26,12 +24,10 @@ from app.models.lifecycle import (
     Sequence,
     SequenceEnrollment,
     SequenceStep,
-    SuccessPlan,
     WhitespaceCell,
 )
 from app.models.market import CompetitiveSignal
 from app.models.workflow import WorkflowRun
-from app.providers.usage import get_usage_provider
 from app.services.crm import add_activity
 from app.services.market import clamp
 from app.services.query import get_owned
@@ -168,100 +164,32 @@ def build_forecast(db: Session, tenant_id: UUID, actor_id: UUID) -> ForecastSnap
         weighted=weighted,
         win_rate=Decimal(str(round(float(won) / decided, 4))) if decided else Decimal("0"),
         version="rules-v1",
+        payload_json=json.dumps(
+            {
+                "open_count": len(open_rows),
+                "stages": {row.stage: str(row.amount) for row in open_rows},
+                "owners": [str(row.owner_id) for row in open_rows if row.owner_id],
+            },
+            default=str,
+        ),
     )
     db.add(snapshot)
     return snapshot
 
 
 def score_health(db: Session, tenant_id: UUID, customer: Customer) -> HealthScore:
-    account = get_owned(db, Account, tenant_id, customer.account_id)
-    usage = get_usage_provider().snapshot(account_name=account.name)
-    plan = db.scalar(
-        select(OnboardingPlan).where(
-            OnboardingPlan.tenant_id == tenant_id,
-            OnboardingPlan.customer_id == customer.id,
-            OnboardingPlan.deleted_at.is_(None),
-        )
-    )
-    milestones = []
-    if plan:
-        milestones = db.scalars(
-            select(OnboardingMilestone).where(OnboardingMilestone.plan_id == plan.id, OnboardingMilestone.deleted_at.is_(None))
-        ).all()
-    done = sum(1 for row in milestones if row.status == "done")
-    onboarding = 20 if not milestones else clamp(int(done / len(milestones) * 20))
-    open_tasks = db.scalar(
-        select(func.count()).where(
-            Task.tenant_id == tenant_id,
-            Task.entity_type == "customer",
-            Task.entity_id == str(customer.id),
-            Task.status == "open",
-        )
-    ) or 0
-    engagement = clamp(20 - int(open_tasks) * 4)
-    commercial = 18 if customer.arr and customer.arr > 0 else 6
-    relationship = 16 if account.ownership == "customer" else 8
-    adoption = clamp(usage.adoption // 5)
-    usage_score = clamp(usage.usage // 5)
-    total = clamp(onboarding + engagement + commercial + relationship + adoption + usage_score)
-    reasons = f"Onboarding {onboarding}/20; engagement {engagement}/20; commercial {commercial}; usage {usage.provider} ({usage.evidence})"
-    row = db.scalar(
-        select(HealthScore).where(HealthScore.tenant_id == tenant_id, HealthScore.customer_id == customer.id, HealthScore.deleted_at.is_(None))
-    )
-    payload = dict(
-        total=total,
-        adoption=adoption,
-        usage=usage_score,
-        engagement=engagement,
-        commercial=commercial,
-        relationship=relationship,
-        onboarding=onboarding,
-        reasons=reasons,
-        version="rules-v1",
-    )
-    if row is None:
-        row = HealthScore(tenant_id=tenant_id, customer_id=customer.id, **payload)
-        db.add(row)
-    else:
-        for key, value in payload.items():
-            setattr(row, key, value)
-    return row
+    from app.services.customer_health import recalculate
+
+    return recalculate(db, tenant_id, customer, customer.created_by)
 
 
 def ensure_post_sale(db: Session, *, tenant_id: UUID, actor_id: UUID, customer: Customer, account_name: str) -> None:
-    plan = db.scalar(
-        select(OnboardingPlan).where(OnboardingPlan.tenant_id == tenant_id, OnboardingPlan.customer_id == customer.id)
-    )
-    if plan is None:
-        plan = OnboardingPlan(
-            tenant_id=tenant_id,
-            created_by=actor_id,
-            customer_id=customer.id,
-            status="planned",
-            objective=f"Land value for {account_name} in the first 90 days.",
-        )
-        db.add(plan)
-        db.flush()
-        for title, days in (("Kickoff", 7), ("Data workshop", 21), ("First outcome review", 60)):
-            db.add(
-                OnboardingMilestone(
-                    tenant_id=tenant_id,
-                    created_by=actor_id,
-                    plan_id=plan.id,
-                    title=title,
-                    due_date=date.today() + timedelta(days=days),
-                )
-            )
-    if db.scalar(select(SuccessPlan).where(SuccessPlan.tenant_id == tenant_id, SuccessPlan.customer_id == customer.id)) is None:
-        db.add(
-            SuccessPlan(
-                tenant_id=tenant_id,
-                created_by=actor_id,
-                customer_id=customer.id,
-                objective="Governed AI outcomes with an executive sponsor.",
-                status="active",
-            )
-        )
+    account = get_owned(db, Account, tenant_id, customer.account_id)
+    from app.services.onboarding import start_onboarding
+    from app.services.post_sale import ensure_success_plan
+
+    start_onboarding(db, tenant_id=tenant_id, actor_id=actor_id, customer=customer, account=account)
+    ensure_success_plan(db, tenant_id=tenant_id, actor_id=actor_id, customer=customer, account_name=account_name)
     score_health(db, tenant_id, customer)
 
 
@@ -306,7 +234,7 @@ def enroll_sequence(
         .order_by(SequenceStep.position.asc())
     )
     if first and first.action_type == "email_draft":
-        key = f"sequence.email.send:{lead.id}:{enrollment.id}"
+        key = f"sequence.email.send:{lead.id}:{enrollment.id}:{enrollment.current_step}"
         already = db.scalar(
             select(AIApproval).where(
                 AIApproval.tenant_id == tenant_id,
@@ -563,7 +491,7 @@ def fill_whitespace(db: Session, *, tenant_id: UUID, actor_id: UUID, account: Ac
         if existing:
             created.append(existing)
             continue
-        propensity = 35 + (15 if account.industry in {"bfsi", "technology", "healthcare"} else 0)
+        propensity = 40 + (30 if account.industry in {"bfsi", "technology", "healthcare"} else 0)
         cell = WhitespaceCell(
             tenant_id=tenant_id,
             created_by=actor_id,
@@ -575,6 +503,7 @@ def fill_whitespace(db: Session, *, tenant_id: UUID, actor_id: UUID, account: Ac
         )
         db.add(cell)
         created.append(cell)
+    db.flush()
     return created
 
 

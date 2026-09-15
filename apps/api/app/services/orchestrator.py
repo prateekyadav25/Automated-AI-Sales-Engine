@@ -17,6 +17,7 @@ from app.services.autopilot_settings import get_or_create_settings, in_quiet_hou
 from app.services.crm import add_activity
 from app.services.enrichment import enrich_lead
 from app.services.idempotency import claim_key, remember_result
+from app.services.inbox import handle_email_received
 from app.services.lifecycle import enroll_sequence
 from app.services.nba import generate_for_lead
 from app.services.qualification import latest_score, qualify_lead
@@ -35,6 +36,7 @@ LEAD_STATES = [
     "READY_FOR_OUTREACH",
     "OUTREACH_APPROVAL_PENDING",
     "CONTACTED",
+    "MEETING_SCHEDULED",
     "BLOCKED",
     "PAUSED",
 ]
@@ -608,6 +610,10 @@ def handle_event(db: Session, event: DomainEvent, *, actor_id: UUID | None = Non
     if not settings.enabled:
         return "skipped_disabled"
     event_type = event.event_type
+    from app.services.post_sale import POST_SALE_EVENTS, handle_post_sale_event
+
+    if event_type in POST_SALE_EVENTS:
+        return handle_post_sale_event(db, event, actor_id=actor)
     if event_type in {
         "lead.created",
         "lead.enriched",
@@ -616,6 +622,9 @@ def handle_event(db: Session, event: DomainEvent, *, actor_id: UUID | None = Non
         "lead.disqualified",
         "lead.ready_for_outreach",
         "email.sent",
+        "email.received",
+        "meeting.booked",
+        "meeting.created",
     }:
         lead = _load_lead(db, tenant_id, event.entity_id)
         if lead is None:
@@ -664,6 +673,47 @@ def handle_event(db: Session, event: DomainEvent, *, actor_id: UUID | None = Non
                 from_step="research",
             )
             return "continued"
+        if event_type == "email.sent":
+            upsert_state(
+                db,
+                tenant_id=tenant_id,
+                actor_id=actor,
+                entity_type="lead",
+                entity_id=str(lead.id),
+                state="CONTACTED",
+                last_action="email_sent",
+                next_action="wait_for_reply",
+                blocked_reason="",
+            )
+            return "contacted"
+        if event_type == "email.received":
+            payload = {}
+            try:
+                payload = json.loads(event.payload_json or "{}")
+            except json.JSONDecodeError:
+                payload = {}
+            return handle_email_received(
+                db,
+                tenant_id=tenant_id,
+                actor_id=actor,
+                lead=lead,
+                message_id=str(payload.get("message_id") or ""),
+            )
+        if event_type in {"meeting.booked", "meeting.created"}:
+            upsert_state(
+                db,
+                tenant_id=tenant_id,
+                actor_id=actor,
+                entity_type="lead",
+                entity_id=str(lead.id),
+                state="MEETING_SCHEDULED",
+                last_action="meeting_booked",
+                next_action="prepare_meeting",
+                blocked_reason="",
+            )
+            if lead.status != "meeting_scheduled":
+                lead.status = "meeting_scheduled"
+            return "meeting_booked"
         return "recorded"
     return "ignored"
 
@@ -675,6 +725,14 @@ def process_pending_events(
     actor_id: UUID | None = None,
     limit: int = 200,
 ) -> int:
+    from app.db.tenant_context import supports_rls
+    from app.db.tenant_jobs import run_per_tenant
+
+    if tenant_id is None and supports_rls(db):
+        return run_per_tenant(
+            db,
+            lambda tid: process_pending_events(db, tenant_id=tid, actor_id=actor_id, limit=limit),
+        )
     db.flush()
     processed = 0
     while processed < limit:

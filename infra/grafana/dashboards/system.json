@@ -1,0 +1,9 @@
+{
+  "title": "AGRAYIAN SYSTEM",
+  "uid": "agrayian-system",
+  "schemaVersion": 39,
+  "panels": [
+    {"type": "stat", "title": "API up", "targets": [{"expr": "up{job=\"api\"}"}]},
+    {"type": "timeseries", "title": "HTTP requests", "targets": [{"expr": "rate(http_requests_total[5m])"}]}
+  ]
+}

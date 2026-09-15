@@ -134,7 +134,7 @@ def test_health_is_rules_and_close_won_mints_onboarding(client: TestClient) -> N
     assert success.status_code == 200
     rows = success.json()["data"]
     assert rows
-    assert rows[0]["health"]["version"] == "rules-v1"
+    assert rows[0]["health"]["version"] == "rules-v2"
     cards = client.get("/api/v1/lifecycle/models", headers=headers).json()["data"]
     assert all(row["version"] == "rules-v1" for row in cards)
     overview = client.get("/api/v1/command-center/overview", headers=headers)

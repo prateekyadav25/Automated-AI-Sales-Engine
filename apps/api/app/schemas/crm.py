@@ -38,6 +38,9 @@ class ContactIn(APIModel):
     buying_role: str = ""
     consent_email: bool = False
     opt_out: bool = False
+    linkedin_url: str = ""
+    preferred_channel: str = "EMAIL"
+    consent_voice: bool = False
 
 
 class ContactOut(ContactIn):
@@ -66,6 +69,14 @@ class LeadIn(APIModel):
     engagement_score: int = 0
     has_buying_trigger: bool = False
     notes: str = ""
+    linkedin_url: str = ""
+    provider_ref: str = ""
+    discovery_provider: str = ""
+    discovery_confidence: int = 0
+    campaign_id: UUID | None = None
+    ad_id: str = ""
+    utm_medium: str = ""
+    utm_campaign: str = ""
 
 
 class LeadScoreOut(APIModel):
@@ -89,6 +100,7 @@ class LeadOut(LeadIn):
     id: UUID
     tenant_id: UUID
     created_at: datetime
+    retrieved_at: datetime | None = None
     latest_score: LeadScoreOut | None = None
 
 
@@ -101,6 +113,12 @@ class OpportunityIn(APIModel):
     expected_close: date | None = None
     next_step: str = ""
     owner_id: UUID | None = None
+    lead_id: UUID | None = None
+    campaign_id: UUID | None = None
+    ad_id: str = ""
+    utm_source: str = ""
+    utm_medium: str = ""
+    utm_campaign: str = ""
 
 
 class OpportunityOut(OpportunityIn):
@@ -147,6 +165,11 @@ class ICPIn(APIModel):
     max_employees: int | None = None
     description: str = ""
     is_default: bool = False
+    personas: str = ""
+    seniorities: str = ""
+    job_functions: str = ""
+    target_companies: str = ""
+    keywords: str = ""
 
 
 class ICPOut(ICPIn):
@@ -161,6 +184,13 @@ class CustomerOut(APIModel):
     status: str
     arr: Decimal
     account_name: str | None = None
+    lifecycle_state: str = "NEW_CUSTOMER"
+    owner_id: UUID | None = None
+    csm_owner_id: UUID | None = None
+    health_trend: str = "stable"
+    qbr_cadence: str = "quarterly"
+    next_qbr_at: date | None = None
+    churn_reason: str = ""
 
 
 class NBAOut(APIModel):

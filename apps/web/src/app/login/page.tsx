@@ -3,6 +3,7 @@
 import { GlassMotif } from "@/components/glass-motif";
 import { Button, Field, Input } from "@/components/ui";
 import { useAuth } from "@/lib/auth";
+import { ApiError } from "@agrayian/sdk";
 import { useRouter } from "next/navigation";
 import { FormEvent, useState } from "react";
 
@@ -21,8 +22,14 @@ export default function LoginPage() {
     try {
       await login(email, password);
       router.replace("/");
-    } catch {
-      setError("Those credentials were declined.");
+    } catch (error) {
+      if (error instanceof ApiError && error.status === 429) {
+        setError("Too many sign-in attempts. Wait a few minutes and try again.");
+      } else if (error instanceof ApiError && error.status === 401) {
+        setError("Those credentials were declined.");
+      } else {
+        setError(error instanceof Error ? error.message : "Sign-in failed.");
+      }
     } finally {
       setPending(false);
     }

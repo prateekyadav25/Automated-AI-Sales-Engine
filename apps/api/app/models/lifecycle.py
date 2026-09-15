@@ -2,7 +2,7 @@ from datetime import date, datetime
 from decimal import Decimal
 from uuid import UUID
 
-from sqlalchemy import Boolean, Date, DateTime, ForeignKey, Integer, Numeric, String, Text
+from sqlalchemy import Boolean, Date, DateTime, ForeignKey, Integer, Numeric, String, Text, UniqueConstraint
 from sqlalchemy.orm import Mapped, mapped_column
 
 from app.db.base import Base, TenantOwnedMixin
@@ -20,6 +20,17 @@ class Campaign(Base, TenantOwnedMixin):
     start_date: Mapped[date | None] = mapped_column(Date, nullable=True)
     end_date: Mapped[date | None] = mapped_column(Date, nullable=True)
     notes: Mapped[str] = mapped_column(Text, default="", nullable=False)
+    external_campaign_id: Mapped[str] = mapped_column(String(200), default="", index=True, nullable=False)
+    provider: Mapped[str] = mapped_column(String(40), default="", nullable=False)
+    provider_status: Mapped[str] = mapped_column(String(20), default="", nullable=False)
+    impressions: Mapped[int] = mapped_column(Integer, default=0, nullable=False)
+    clicks: Mapped[int] = mapped_column(Integer, default=0, nullable=False)
+    conversions: Mapped[int] = mapped_column(Integer, default=0, nullable=False)
+    last_synced_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    launch_approval_id: Mapped[UUID | None] = mapped_column(nullable=True)
+    ctr: Mapped[Decimal | None] = mapped_column(Numeric(18, 6), nullable=True)
+    cpc: Mapped[Decimal | None] = mapped_column(Numeric(18, 4), nullable=True)
+    cpl: Mapped[Decimal | None] = mapped_column(Numeric(18, 4), nullable=True)
 
 
 class CampaignMember(Base, TenantOwnedMixin):
@@ -84,10 +95,14 @@ class Conversation(Base, TenantOwnedMixin):
     is_mock: Mapped[bool] = mapped_column(Boolean, default=True, nullable=False)
     transcript: Mapped[str] = mapped_column(Text, default="", nullable=False)
     summary: Mapped[str] = mapped_column(Text, default="", nullable=False)
+    provider_thread_id: Mapped[str] = mapped_column(String(200), default="", index=True, nullable=False)
+    lead_id: Mapped[UUID | None] = mapped_column(ForeignKey("leads.id"), nullable=True)
+    call_status: Mapped[str] = mapped_column(String(20), default="", nullable=False)
 
 
 class MeetingRecord(Base, TenantOwnedMixin):
     __tablename__ = "meeting_records"
+    __table_args__ = (UniqueConstraint("tenant_id", "provider", "provider_event_id", name="uq_meeting_provider_event"),)
 
     account_id: Mapped[UUID | None] = mapped_column(ForeignKey("accounts.id"), nullable=True)
     opportunity_id: Mapped[UUID | None] = mapped_column(ForeignKey("opportunities.id"), nullable=True)
@@ -97,6 +112,18 @@ class MeetingRecord(Base, TenantOwnedMixin):
     next_steps: Mapped[str] = mapped_column(Text, default="", nullable=False)
     provider: Mapped[str] = mapped_column(String(40), default="human", nullable=False)
     is_mock: Mapped[bool] = mapped_column(Boolean, default=False, nullable=False)
+    lead_id: Mapped[UUID | None] = mapped_column(ForeignKey("leads.id"), nullable=True)
+    contact_id: Mapped[UUID | None] = mapped_column(ForeignKey("contacts.id"), nullable=True)
+    owner_id: Mapped[UUID | None] = mapped_column(ForeignKey("users.id"), nullable=True)
+    start_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    end_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    timezone: Mapped[str] = mapped_column(String(64), default="UTC", nullable=False)
+    status: Mapped[str] = mapped_column(String(40), default="logged", nullable=False)
+    provider_event_id: Mapped[str | None] = mapped_column(String(200), nullable=True)
+    calendar_account: Mapped[str] = mapped_column(String(255), default="", nullable=False)
+    recording_consent: Mapped[bool] = mapped_column(Boolean, default=False, nullable=False)
+    insights_json: Mapped[str] = mapped_column(Text, default="{}", nullable=False)
+    transcript: Mapped[str] = mapped_column(Text, default="", nullable=False)
 
 
 class DealInsight(Base, TenantOwnedMixin):
@@ -156,6 +183,7 @@ class ForecastSnapshot(Base, TenantOwnedMixin):
     weighted: Mapped[Decimal] = mapped_column(Numeric(18, 2), default=0, nullable=False)
     win_rate: Mapped[float] = mapped_column(Numeric(8, 4), default=0, nullable=False)
     version: Mapped[str] = mapped_column(String(20), default="rules-v1", nullable=False)
+    payload_json: Mapped[str] = mapped_column(Text, default="{}", nullable=False)
 
 
 class OnboardingPlan(Base, TenantOwnedMixin):
@@ -173,6 +201,13 @@ class OnboardingMilestone(Base, TenantOwnedMixin):
     title: Mapped[str] = mapped_column(String(160), nullable=False)
     due_date: Mapped[date | None] = mapped_column(Date, nullable=True)
     status: Mapped[str] = mapped_column(String(20), default="open", nullable=False)
+    owner_id: Mapped[UUID | None] = mapped_column(ForeignKey("users.id"), nullable=True)
+    position: Mapped[int] = mapped_column(Integer, default=1, nullable=False)
+    sla_days: Mapped[int] = mapped_column(Integer, default=7, nullable=False)
+    depends_on_id: Mapped[UUID | None] = mapped_column(ForeignKey("onboarding_milestones.id"), nullable=True)
+    required_evidence: Mapped[str] = mapped_column(String(200), default="", nullable=False)
+    completed_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    template_key: Mapped[str] = mapped_column(String(80), default="", nullable=False)
 
 
 class SuccessPlan(Base, TenantOwnedMixin):
@@ -196,6 +231,13 @@ class HealthScore(Base, TenantOwnedMixin):
     onboarding: Mapped[int] = mapped_column(Integer, default=0, nullable=False)
     reasons: Mapped[str] = mapped_column(Text, default="", nullable=False)
     version: Mapped[str] = mapped_column(String(20), default="rules-v1", nullable=False)
+    components_json: Mapped[str] = mapped_column(Text, default="{}", nullable=False)
+    reason_codes_json: Mapped[str] = mapped_column(Text, default="[]", nullable=False)
+    unavailable_components: Mapped[str] = mapped_column(String(255), default="", nullable=False)
+    calculated_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    data_freshness: Mapped[str] = mapped_column(String(40), default="", nullable=False)
+    trend: Mapped[str] = mapped_column(String(20), default="stable", nullable=False)
+    health_data_coverage: Mapped[int] = mapped_column(Integer, default=0, nullable=False)
 
 
 class WhitespaceCell(Base, TenantOwnedMixin):
@@ -216,6 +258,12 @@ class AdvocacyAsset(Base, TenantOwnedMixin):
     readiness: Mapped[int] = mapped_column(Integer, default=0, nullable=False)
     status: Mapped[str] = mapped_column(String(20), default="identified", nullable=False)
     notes: Mapped[str] = mapped_column(Text, default="", nullable=False)
+    customer_id: Mapped[UUID | None] = mapped_column(ForeignKey("customers.id"), nullable=True)
+    advocacy_type: Mapped[str] = mapped_column(String(40), default="reference", nullable=False)
+    eligibility_score: Mapped[int] = mapped_column(Integer, default=0, nullable=False)
+    ruleset_version: Mapped[str] = mapped_column(String(20), default="advocacy-rules-v1", nullable=False)
+    evidence_json: Mapped[str] = mapped_column(Text, default="{}", nullable=False)
+    quote: Mapped[str | None] = mapped_column(Text, nullable=True)
 
 
 class Referral(Base, TenantOwnedMixin):
@@ -225,6 +273,8 @@ class Referral(Base, TenantOwnedMixin):
     referred_name: Mapped[str] = mapped_column(String(160), nullable=False)
     email: Mapped[str] = mapped_column(String(255), default="", nullable=False)
     status: Mapped[str] = mapped_column(String(20), default="new", nullable=False)
+    converted_lead_id: Mapped[UUID | None] = mapped_column(ForeignKey("leads.id"), nullable=True)
+    source_customer_id: Mapped[UUID | None] = mapped_column(ForeignKey("customers.id"), nullable=True)
 
 
 class ModelCard(Base, TenantOwnedMixin):
@@ -235,6 +285,12 @@ class ModelCard(Base, TenantOwnedMixin):
     version: Mapped[str] = mapped_column(String(20), default="rules-v1", nullable=False)
     status: Mapped[str] = mapped_column(String(20), default="production_rules", nullable=False)
     notes: Mapped[str] = mapped_column(Text, default="", nullable=False)
+    last_trained: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    task_key: Mapped[str] = mapped_column(String(60), default="", nullable=False)
+    algorithm: Mapped[str] = mapped_column(String(80), default="rules", nullable=False)
+    dataset_version: Mapped[str] = mapped_column(String(40), default="", nullable=False)
+    metrics_json: Mapped[str | None] = mapped_column(Text, nullable=True)
+    limitations: Mapped[str] = mapped_column(Text, default="", nullable=False)
 
 
 class Playbook(Base, TenantOwnedMixin):

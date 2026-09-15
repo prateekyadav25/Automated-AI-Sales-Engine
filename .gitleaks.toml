@@ -1,0 +1,8 @@
+[allowlist]
+description = "Demo credentials used only in local seed and tests"
+paths = [
+  '''apps/web/e2e/''',
+  '''apps/api/tests/''',
+  '''apps/api/app/seed.py''',
+  '''docs/''',
+]

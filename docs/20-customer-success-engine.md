@@ -1,6 +1,6 @@
 # Customer Success Engine
 
-Phases 16–17. **Implemented:** Closed Won mints onboarding milestones, a success plan, and a rules-v1 health score. Usage is a labeled mock provider.
+Phases 16–17 plus Autopilot batch 3. **Implemented:** Closed Won activates the customer, a handoff package, an 8-milestone onboarding plan, a success plan, and a rules-v1 health score. Usage is a labeled mock provider and is excluded from the numeric total. Support and finance are UNAVAILABLE until connected. Risks use `churn-rules-v1`. CustomerSuccessAgent drafts only; send stays in Approvals.
 
 Closed Won creates Customer and a handoff pack: objectives, solution, scope, commercials, stakeholders, risks, success criteria.
 

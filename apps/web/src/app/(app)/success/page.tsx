@@ -18,6 +18,7 @@ export default function SuccessPage() {
     queryKey: ["success"],
     queryFn: async () => (await api<SuccessRow[]>("/api/v1/lifecycle/success")).data ?? [],
     enabled: can("success.read"),
+    refetchInterval: 5000,
   });
   const rescore = useMutation({
     mutationFn: (customerId: string) => api(`/api/v1/lifecycle/success/health/${customerId}`, { method: "POST" }),
@@ -34,7 +35,7 @@ export default function SuccessPage() {
       <PageHeader
         eyebrow="Phases 16–17"
         title="Success"
-        subtitle="Onboarding plans and health scores mint from Closed Won. Usage is a labeled mock provider."
+        subtitle="Onboarding, health, and risk are Autopilot-owned. Mock usage and unavailable support stay labeled."
       />
       {rows.length === 0 ? (
         <EmptyState title="No customers" body="Close a deal as won. This desk will not invent health." />
@@ -42,10 +43,12 @@ export default function SuccessPage() {
         <DataTable
           rows={rows.map((row) => ({ ...row, id: row.customer.id }))}
           columns={[
-            { key: "name", header: "Account", cell: (row) => <Link href={`/accounts/${row.account_id}`} className="text-brand">{row.account_name}</Link> },
+            { key: "name", header: "Account", cell: (row) => <Link href={`/customers/${row.customer.id}`} className="text-brand">{row.account_name}</Link> },
+            { key: "life", header: "Lifecycle", cell: (row) => labelize(row.customer.lifecycle_state || row.customer.status) },
             { key: "arr", header: "ARR", cell: (row) => money(row.arr) },
             { key: "onb", header: "Onboarding", cell: (row) => labelize(row.onboarding_status) || "—" },
             { key: "health", header: "Health", cell: (row) => <Badge tone={(row.health?.total ?? 0) < 50 ? "gold" : "ok"}>{row.health?.total ?? "—"}</Badge> },
+            { key: "trend", header: "Trend", cell: (row) => labelize(row.health?.trend || row.customer.health_trend || "stable") },
             { key: "ver", header: "Version", cell: (row) => row.health?.version ?? "—" },
             {
               key: "act",

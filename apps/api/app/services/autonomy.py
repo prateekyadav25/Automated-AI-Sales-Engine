@@ -2,14 +2,16 @@ import json
 from datetime import UTC, datetime
 from uuid import UUID
 
+from fastapi import HTTPException
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from app.models.ai import AIApproval
-from app.models.autonomy import AutonomousRun, AutonomousRunStep
-from app.models.crm import Account, Lead
-from app.models.identity import Tenant, User
+from app.models.autonomy import AutonomousRun, AutonomousRunStep, AutopilotSettings
+from app.models.crm import Account, Contact, Lead
+from app.models.identity import User
 from app.models.lifecycle import Campaign
+from app.services.ai_budget import ai_budget_reason
 from app.services.audit import emit_event, write_audit
 from app.services.automation_state import get_state
 from app.services.autopilot_settings import (
@@ -19,10 +21,12 @@ from app.services.autopilot_settings import (
 )
 from app.services.crm import add_activity
 from app.services.discovery import run_discovery
-from app.services.idempotency import claim_key
+from app.services.idempotency import claim_key, lock_row
 from app.services.market import refresh_account_intelligence
 from app.services.orchestrator import due_sequence_work, process_pending_events
+from app.services.provider_ops import is_circuit_open
 from app.services.scoring import score_lead
+from app.services.voice import queue_voice_dial
 
 
 def _step(
@@ -63,6 +67,9 @@ def run_autonomous_cycle(
     profile_urls: list[str] | None = None,
 ) -> AutonomousRun:
     settings = get_or_create_settings(db, tenant_id=tenant_id, actor_id=actor_id)
+    locked = lock_row(db, AutopilotSettings, tenant_id, settings.id)
+    if locked is not None:
+        settings = locked
     run = AutonomousRun(
         tenant_id=tenant_id,
         created_by=actor_id,
@@ -75,6 +82,37 @@ def run_autonomous_cycle(
     )
     db.add(run)
     db.flush()
+    budget_block = ai_budget_reason(db, settings)
+    if budget_block:
+        _step(
+            db,
+            tenant_id=tenant_id,
+            actor_id=actor_id,
+            run=run,
+            name="discover",
+            position=1,
+            status="skipped",
+            detail={"reason": "ai_daily_budget"},
+        )
+        run.status = "paused"
+        run.finished_at = datetime.now(UTC)
+        run.summary = budget_block
+        return run
+    if settings.emergency_stop:
+        _step(
+            db,
+            tenant_id=tenant_id,
+            actor_id=actor_id,
+            run=run,
+            name="discover",
+            position=1,
+            status="skipped",
+            detail={"reason": "emergency_stop"},
+        )
+        run.status = "paused"
+        run.finished_at = datetime.now(UTC)
+        run.summary = "Emergency stop is active. Existing work was not deleted."
+        return run
     if not settings.enabled:
         _step(
             db,
@@ -102,7 +140,12 @@ def run_autonomous_cycle(
         "candidate_count": 0,
         "icp_name": "",
     }
-    if settings.discovery_enabled and not at_daily_lead_cap(db, settings) and not in_quiet_hours(settings):
+    if (
+        settings.discovery_enabled
+        and not settings.discovery_channel_paused
+        and not at_daily_lead_cap(db, settings)
+        and not in_quiet_hours(settings)
+    ):
         discovery = run_discovery(
             db,
             tenant_id=tenant_id,
@@ -208,6 +251,9 @@ def run_autonomous_cycle(
     ).all()
     queued_ads = 0
     for campaign in campaigns:
+        provider_key = "linkedin-ads" if campaign.channel == "linkedin" else "meta-ads"
+        if is_circuit_open(db, tenant_id=tenant_id, provider=provider_key):
+            continue
         key = f"ads.spend:{campaign.id}"
         fresh, _ = claim_key(
             db,
@@ -238,6 +284,32 @@ def run_autonomous_cycle(
             )
         )
         queued_ads += 1
+    queued_voice = 0
+    if settings.voice_approval_required and not is_circuit_open(db, tenant_id=tenant_id, provider="voice"):
+        contacts = db.scalars(
+            select(Contact).where(
+                Contact.tenant_id == tenant_id,
+                Contact.deleted_at.is_(None),
+                Contact.preferred_channel == "VOICE",
+                Contact.consent_voice.is_(True),
+                Contact.opt_out.is_(False),
+                Contact.phone != "",
+            )
+        ).all()
+        for contact in contacts:
+            try:
+                queue_voice_dial(
+                    db,
+                    tenant_id=tenant_id,
+                    actor_id=actor_id,
+                    contact_id=contact.id,
+                    consent=True,
+                    correlation_id=correlation_id,
+                    run_id=run.id,
+                )
+                queued_voice += 1
+            except HTTPException:
+                continue
     _step(
         db,
         tenant_id=tenant_id,
@@ -246,7 +318,22 @@ def run_autonomous_cycle(
         name="queue_approvals",
         position=5,
         status="completed",
-        detail={"ads_queued": queued_ads, "due_sends": due.get("queued", 0)},
+        detail={"ads_queued": queued_ads, "voice_queued": queued_voice, "due_sends": due.get("queued", 0)},
+    )
+
+    from app.services.post_sale_reconcile import reconcile_daily, reconcile_frequent
+
+    frequent = reconcile_frequent(db, tenant_id=tenant_id, actor_id=actor_id)
+    daily = reconcile_daily(db, tenant_id=tenant_id, actor_id=actor_id)
+    _step(
+        db,
+        tenant_id=tenant_id,
+        actor_id=actor_id,
+        run=run,
+        name="post_sale",
+        position=6,
+        status="completed",
+        detail={"frequent": frequent, "daily": daily},
     )
 
     add_activity(
@@ -282,21 +369,22 @@ def run_autonomous_cycle(
 
 def run_autonomous_cycles_for_all_tenants() -> int:
     from app.db.session import get_engine, get_session
+    from app.db.tenant_jobs import run_per_tenant
 
     get_engine()
     db = get_session()
     try:
-        tenants = db.scalars(select(Tenant).where(Tenant.is_active.is_(True))).all()
-        ran = 0
-        for tenant in tenants:
-            settings = get_or_create_settings(db, tenant_id=tenant.id)
+        def _one(tenant_id):
+            settings = get_or_create_settings(db, tenant_id=tenant_id)
             if not settings.enabled:
-                continue
-            actor = db.scalar(select(User).where(User.tenant_id == tenant.id, User.is_active.is_(True)))
+                return 0
+            actor = db.scalar(select(User).where(User.tenant_id == tenant_id, User.is_active.is_(True)))
             if actor is None:
-                continue
-            run_autonomous_cycle(db, tenant_id=tenant.id, actor_id=actor.id, trigger="schedule")
-            ran += 1
+                return 0
+            run_autonomous_cycle(db, tenant_id=tenant_id, actor_id=actor.id, trigger="schedule")
+            return 1
+
+        ran = run_per_tenant(db, _one)
         db.commit()
         return ran
     finally:

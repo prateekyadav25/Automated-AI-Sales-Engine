@@ -43,9 +43,14 @@ services:
     env_file:
       - .env
     environment:
-      DATABASE_URL: postgresql+psycopg://agrayian:agrayian@postgres:5432/agrayian
+      DATABASE_URL: postgresql+psycopg://agrayian_app:agrayian@postgres:5432/agrayian
+      DATABASE_ADMIN_URL: postgresql+psycopg://agrayian:agrayian@postgres:5432/agrayian
       REDIS_URL: redis://redis:6379/0
       S3_ENDPOINT: http://minio:9000
+      OBJECT_STORAGE_PROVIDER: minio
+      S3_ACCESS_KEY: agrayian
+      S3_SECRET_KEY: agrayiansecret
+      S3_BUCKET: agrayian
     ports:
       - "8000:8000"
     depends_on:
@@ -55,7 +60,7 @@ services:
         condition: service_healthy
     command: >
       sh -c "alembic upgrade head &&
-             python -m app.seed &&
+             if [ \"$$SEED_DEMO\" = \"true\" ]; then python -m app.seed; fi &&
              uvicorn app.main:app --host 0.0.0.0 --port 8000"
 
   worker:
@@ -64,14 +69,15 @@ services:
     env_file:
       - .env
     environment:
-      DATABASE_URL: postgresql+psycopg://agrayian:agrayian@postgres:5432/agrayian
+      DATABASE_URL: postgresql+psycopg://agrayian_app:agrayian@postgres:5432/agrayian
+      DATABASE_ADMIN_URL: postgresql+psycopg://agrayian:agrayian@postgres:5432/agrayian
       REDIS_URL: redis://redis:6379/0
     depends_on:
       postgres:
         condition: service_healthy
       redis:
         condition: service_healthy
-    command: celery -A app.workers.celery_app worker --loglevel=info
+    command: celery -A app.workers.celery_app worker --loglevel=info -Q celery,automation,providers,ai,maintenance
 
   beat:
     build:
@@ -79,7 +85,8 @@ services:
     env_file:
       - .env
     environment:
-      DATABASE_URL: postgresql+psycopg://agrayian:agrayian@postgres:5432/agrayian
+      DATABASE_URL: postgresql+psycopg://agrayian_app:agrayian@postgres:5432/agrayian
+      DATABASE_ADMIN_URL: postgresql+psycopg://agrayian:agrayian@postgres:5432/agrayian
       REDIS_URL: redis://redis:6379/0
     depends_on:
       postgres:

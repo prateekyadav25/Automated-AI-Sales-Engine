@@ -37,6 +37,12 @@ class Contact(Base, TenantOwnedMixin):
     buying_role: Mapped[str] = mapped_column(String(40), default="", nullable=False)
     consent_email: Mapped[bool] = mapped_column(default=False, nullable=False)
     opt_out: Mapped[bool] = mapped_column(default=False, nullable=False)
+    linkedin_url: Mapped[str] = mapped_column(String(255), default="", nullable=False)
+    preferred_channel: Mapped[str] = mapped_column(String(20), default="EMAIL", nullable=False)
+    consent_voice: Mapped[bool] = mapped_column(default=False, nullable=False)
+    consent_whatsapp: Mapped[bool] = mapped_column(default=False, nullable=False)
+    consent_recording: Mapped[bool] = mapped_column(default=False, nullable=False)
+    ndnc_status: Mapped[str] = mapped_column(String(20), default="", nullable=False)
 
 
 class ICP(Base, TenantOwnedMixin):
@@ -49,6 +55,11 @@ class ICP(Base, TenantOwnedMixin):
     max_employees: Mapped[int | None] = mapped_column(Integer, nullable=True)
     description: Mapped[str] = mapped_column(Text, default="", nullable=False)
     is_default: Mapped[bool] = mapped_column(default=False, nullable=False)
+    personas: Mapped[str] = mapped_column(Text, default="", nullable=False)
+    seniorities: Mapped[str] = mapped_column(Text, default="", nullable=False)
+    job_functions: Mapped[str] = mapped_column(Text, default="", nullable=False)
+    target_companies: Mapped[str] = mapped_column(Text, default="", nullable=False)
+    keywords: Mapped[str] = mapped_column(Text, default="", nullable=False)
 
 
 class Lead(Base, TenantOwnedMixin):
@@ -68,10 +79,20 @@ class Lead(Base, TenantOwnedMixin):
     status: Mapped[str] = mapped_column(String(40), default="new", nullable=False)
     consent_email: Mapped[bool] = mapped_column(default=False, nullable=False)
     opt_out: Mapped[bool] = mapped_column(default=False, nullable=False)
+    consent_whatsapp: Mapped[bool] = mapped_column(default=False, nullable=False)
     intent_score: Mapped[int] = mapped_column(Integer, default=0, nullable=False)
     engagement_score: Mapped[int] = mapped_column(Integer, default=0, nullable=False)
     has_buying_trigger: Mapped[bool] = mapped_column(default=False, nullable=False)
     notes: Mapped[str] = mapped_column(Text, default="", nullable=False)
+    linkedin_url: Mapped[str] = mapped_column(String(255), default="", index=True, nullable=False)
+    provider_ref: Mapped[str] = mapped_column(String(200), default="", index=True, nullable=False)
+    discovery_provider: Mapped[str] = mapped_column(String(40), default="", nullable=False)
+    retrieved_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    discovery_confidence: Mapped[int] = mapped_column(Integer, default=0, nullable=False)
+    campaign_id: Mapped[UUID | None] = mapped_column(ForeignKey("campaigns.id"), nullable=True)
+    ad_id: Mapped[str] = mapped_column(String(120), default="", nullable=False)
+    utm_medium: Mapped[str] = mapped_column(String(80), default="", nullable=False)
+    utm_campaign: Mapped[str] = mapped_column(String(120), default="", nullable=False)
 
 
 class LeadScore(Base, TenantOwnedMixin):
@@ -103,6 +124,11 @@ class Opportunity(Base, TenantOwnedMixin):
     next_step: Mapped[str] = mapped_column(String(255), default="", nullable=False)
     loss_reason: Mapped[str] = mapped_column(String(120), default="", nullable=False)
     owner_id: Mapped[UUID | None] = mapped_column(ForeignKey("users.id"), nullable=True)
+    campaign_id: Mapped[UUID | None] = mapped_column(ForeignKey("campaigns.id"), nullable=True)
+    ad_id: Mapped[str] = mapped_column(String(120), default="", nullable=False)
+    utm_source: Mapped[str] = mapped_column(String(80), default="", nullable=False)
+    utm_medium: Mapped[str] = mapped_column(String(80), default="", nullable=False)
+    utm_campaign: Mapped[str] = mapped_column(String(120), default="", nullable=False)
 
 
 class Task(Base, TenantOwnedMixin):
@@ -137,6 +163,20 @@ class Customer(Base, TenantOwnedMixin):
     opportunity_id: Mapped[UUID | None] = mapped_column(ForeignKey("opportunities.id"), nullable=True)
     status: Mapped[str] = mapped_column(String(40), default="onboarding", nullable=False)
     arr: Mapped[Decimal] = mapped_column(Numeric(18, 2), default=0, nullable=False)
+    lifecycle_state: Mapped[str] = mapped_column(String(40), default="NEW_CUSTOMER", nullable=False)
+    owner_id: Mapped[UUID | None] = mapped_column(ForeignKey("users.id"), nullable=True)
+    csm_owner_id: Mapped[UUID | None] = mapped_column(ForeignKey("users.id"), nullable=True)
+    segment: Mapped[str] = mapped_column(String(40), default="", nullable=False)
+    contract_id: Mapped[UUID | None] = mapped_column(nullable=True)
+    activated_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    onboarding_started_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    go_live_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    first_value_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    onboarding_completed_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    qbr_cadence: Mapped[str] = mapped_column(String(20), default="quarterly", nullable=False)
+    next_qbr_at: Mapped[date | None] = mapped_column(Date, nullable=True)
+    health_trend: Mapped[str] = mapped_column(String(20), default="stable", nullable=False)
+    churn_reason: Mapped[str] = mapped_column(String(80), default="", nullable=False)
 
 
 class Renewal(Base, TenantOwnedMixin):
@@ -147,6 +187,20 @@ class Renewal(Base, TenantOwnedMixin):
     renewal_date: Mapped[date | None] = mapped_column(Date, nullable=True)
     current_arr: Mapped[Decimal] = mapped_column(Numeric(18, 2), default=0, nullable=False)
     status: Mapped[str] = mapped_column(String(40), default="stub", nullable=False)
+    owner_id: Mapped[UUID | None] = mapped_column(ForeignKey("users.id"), nullable=True)
+    contract_id: Mapped[UUID | None] = mapped_column(nullable=True)
+    term_months: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    stage: Mapped[str] = mapped_column(String(40), default="monitoring", nullable=False)
+    readiness: Mapped[int] = mapped_column(Integer, default=0, nullable=False)
+    readiness_version: Mapped[str] = mapped_column(String(20), default="rules-v1", nullable=False)
+    risk_factors_json: Mapped[str] = mapped_column(Text, default="[]", nullable=False)
+    confidence: Mapped[int] = mapped_column(Integer, default=0, nullable=False)
+    recommended_action: Mapped[str] = mapped_column(String(200), default="", nullable=False)
+    baseline_amount: Mapped[Decimal | None] = mapped_column(Numeric(18, 2), nullable=True)
+    baseline_status: Mapped[str] = mapped_column(String(40), default="needs_review", nullable=False)
+    last_window_days: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    why_ready_json: Mapped[str] = mapped_column(Text, default="[]", nullable=False)
+    why_at_risk_json: Mapped[str] = mapped_column(Text, default="[]", nullable=False)
 
 
 class NextBestAction(Base, TenantOwnedMixin):

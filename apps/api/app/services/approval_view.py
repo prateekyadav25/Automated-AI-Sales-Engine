@@ -11,8 +11,20 @@ def approval_out(row: AIApproval) -> ApprovalOut:
         payload = {}
     if not isinstance(payload, dict):
         payload = {}
-    who = str(payload.get("lead_id") or payload.get("campaign_id") or row.entity_id or "")
+    who = str(payload.get("lead_id") or payload.get("customer_id") or payload.get("campaign_id") or row.entity_id or "")
     message = str(payload.get("body") or payload.get("template") or "")
+    action = row.action_type
+    category = "SALES"
+    if action.startswith("customer.") or "success" in action:
+        category = "CUSTOMER SUCCESS"
+    elif action.startswith("renewal."):
+        category = "RENEWAL"
+    elif action.startswith("expansion.") or action.startswith("upsell") or action.startswith("cross_sell"):
+        category = "EXPANSION"
+    elif action.startswith("advocacy."):
+        category = "ADVOCACY"
+    elif action.startswith("mapping."):
+        category = "INTEGRATIONS"
     return ApprovalOut(
         id=row.id,
         action_level=row.action_level,
@@ -32,4 +44,5 @@ def approval_out(row: AIApproval) -> ApprovalOut:
         message=message,
         commercial_impact=str(payload.get("commercial_impact") or ""),
         budget_impact=str(payload.get("budget") or payload.get("budget_impact") or ""),
+        category=category,
     )

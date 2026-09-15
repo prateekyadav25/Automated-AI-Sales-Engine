@@ -75,4 +75,16 @@ def qualify_lead(
         payload=payload,
         correlation_id=correlation_id,
     )
+    if qualified:
+        from app.services.ml_labels import record_outcome
+
+        record_outcome(
+            db,
+            tenant_id=tenant_id,
+            actor_id=actor_id,
+            entity_type="lead",
+            entity_id=str(lead.id),
+            outcome_type="LEAD_CONVERTED",
+            evidence=payload,
+        )
     return payload

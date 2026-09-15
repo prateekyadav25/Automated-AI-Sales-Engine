@@ -1,0 +1,9 @@
+{
+  "title": "AGRAYIAN AUTOPILOT",
+  "uid": "agrayian-autopilot",
+  "schemaVersion": 39,
+  "panels": [
+    {"type": "stat", "title": "Dead letters", "targets": [{"expr": "provider_actions{status=\"DEAD_LETTER\"}"}]},
+    {"type": "stat", "title": "Pending approvals", "targets": [{"expr": "approvals_pending"}]}
+  ]
+}

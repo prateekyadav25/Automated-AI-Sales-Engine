@@ -19,12 +19,14 @@ export default function ConversationsPage() {
   const client = useQueryClient();
   const [open, setOpen] = useState(false);
   const [dialOpen, setDialOpen] = useState(false);
+  const [selected, setSelected] = useState<Conversation | null>(null);
   const form = useForm<Form>({ defaultValues: { channel: "chat", subject: "", transcript: "", summary: "", consent: false } });
   const dialForm = useForm<{ contact_id: string; consent: boolean }>({ defaultValues: { contact_id: "", consent: false } });
   const query = useQuery({
     queryKey: ["conversations"],
     queryFn: async () => (await api<Conversation[]>("/api/v1/lifecycle/conversations")).data ?? [],
     enabled: can("conversations.read"),
+    refetchInterval: 5000,
   });
   const contacts = useQuery({
     queryKey: ["contacts-dial"],
@@ -59,7 +61,7 @@ export default function ConversationsPage() {
       <PageHeader
         eyebrow="Phase 11"
         title="Conversations"
-        subtitle="Transcripts store here. Outbound dial requires consent plus an Approval. Without Twilio or Vapi keys, the dial is refused and not faked."
+        subtitle="Email threads live here with inbound and outbound messages. Chat and voice transcripts still record manually. Dial requires consent plus an Approval."
         actions={
           can("conversations.write") ? (
             <div className="flex gap-2">
@@ -72,16 +74,37 @@ export default function ConversationsPage() {
       {rows.length === 0 ? (
         <EmptyState title="No conversations" body="A cold call without consent is refused." />
       ) : (
-        <DataTable
-          rows={rows}
-          columns={[
-            { key: "subject", header: "Subject", cell: (row) => row.subject || "—" },
-            { key: "channel", header: "Channel", cell: (row) => labelize(row.channel) },
-            { key: "provider", header: "Provider", cell: (row) => row.is_mock ? <Badge tone="gold">Mock</Badge> : row.provider },
-            { key: "sentiment", header: "Tone", cell: (row) => labelize(row.sentiment) },
-            { key: "consent", header: "Consent", cell: (row) => (row.consent ? "yes" : "no") },
-          ]}
-        />
+        <>
+          <DataTable
+            rows={rows}
+            columns={[
+              { key: "subject", header: "Subject", cell: (row) => (
+                <button className="text-left text-brand" onClick={() => setSelected(row)}>{row.subject || "—"}</button>
+              ) },
+              { key: "channel", header: "Channel", cell: (row) => labelize(row.channel) },
+              { key: "provider", header: "Provider", cell: (row) => row.is_mock ? <Badge tone="gold">Mock</Badge> : row.provider },
+              { key: "messages", header: "Messages", cell: (row) => String(row.messages?.length ?? 0) },
+              { key: "consent", header: "Consent", cell: (row) => (row.consent ? "yes" : "no") },
+            ]}
+          />
+          <Drawer open={Boolean(selected)} title={selected?.subject || "Thread"} onClose={() => setSelected(null)}>
+            {(selected?.messages ?? []).length === 0 ? (
+              <p className="text-sm text-[var(--muted)]">{selected?.transcript || selected?.summary || "No email messages on this thread."}</p>
+            ) : (
+              <ol className="space-y-3">
+                {(selected?.messages ?? []).map((message) => (
+                  <li key={message.id} className="rounded-lg border border-[var(--line)] p-3">
+                    <p className="text-xs uppercase tracking-[0.16em] text-[var(--muted)]">
+                      {message.direction} · {message.provider} · {message.classification || message.status}
+                    </p>
+                    <p className="mt-1 text-sm font-medium">{message.subject || "No subject"}</p>
+                    <p className="mt-2 whitespace-pre-wrap text-sm text-ink">{message.body_text}</p>
+                  </li>
+                ))}
+              </ol>
+            )}
+          </Drawer>
+        </>
       )}
       <Drawer open={open} title="Record conversation" onClose={() => setOpen(false)}>
         <form onSubmit={form.handleSubmit((values) => create.mutate(values))} className="space-y-4">

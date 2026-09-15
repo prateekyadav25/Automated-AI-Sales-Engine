@@ -1,6 +1,7 @@
 import os
 
-os.environ.setdefault("DATABASE_URL", "sqlite://")
+os.environ["DATABASE_URL"] = "sqlite://"
+os.environ["ENVIRONMENT"] = "test"
 os.environ.setdefault("SECRET_KEY", "test-secret-key-not-for-prod")
 os.environ.setdefault("LLM_PROVIDER", "mock")
 os.environ.setdefault("SEED_DEMO", "true")

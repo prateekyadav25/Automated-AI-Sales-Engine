@@ -1,6 +1,6 @@
 # Expansion Engine
 
-Phase 19. **Implemented:** account × product whitespace with a rules propensity. Value hint is list price.
+Phase 19 plus Autopilot batch 3. **Implemented:** account × product whitespace with a rules propensity. Catalog adjacency is stored as `product_relationships`, not invented by an LLM. Autopilot writes `ExpansionRecommendation` rows with `amount=null`. Opportunity minting is approval-gated and off by default.
 
 Upsell current footprint. Cross-sell adjacent AGRAYIAN offerings via configurable product relationships, then ML.
 

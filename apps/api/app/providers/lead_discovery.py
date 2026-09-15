@@ -1,9 +1,13 @@
 from dataclasses import dataclass, field
 from typing import Any, Protocol
+from uuid import UUID
 
 import httpx
+from sqlalchemy.orm import Session
 
 from app.core.config import get_settings
+from app.services.provider_ops import classify_http
+from app.services.provider_resolve import resolve_channel
 
 
 def normalize_actor_id(actor_id: str) -> str:
@@ -20,7 +24,7 @@ def _text(item: dict[str, Any], *keys: str) -> str:
             if isinstance(first, str) and first.strip():
                 return first.strip()
             if isinstance(first, dict):
-                nested = first.get("email") or first.get("value") or first.get("address")
+                nested = first.get("email") or first.get("value") or first.get("address") or first.get("id")
                 if isinstance(nested, str) and nested.strip():
                     return nested.strip()
     return ""
@@ -35,6 +39,9 @@ class DiscoveredLead:
     company_name: str
     linkedin_url: str
     raw_keys: tuple[str, ...] = field(default_factory=tuple)
+    provider_ref: str = ""
+    confidence: int = 0
+    source_url: str = ""
 
 
 @dataclass(frozen=True)
@@ -45,10 +52,27 @@ class DiscoveryQuery:
     profile_urls: tuple[str, ...] = ()
     max_items: int = 10
     process_token: str = ""
+    job_titles: tuple[str, ...] = ()
+    seniorities: tuple[str, ...] = ()
+    target_companies: tuple[str, ...] = ()
+    keywords: str = ""
+    min_employees: int | None = None
+    max_employees: int | None = None
+    industry_ids: tuple[str, ...] = ()
+    seniority_ids: tuple[str, ...] = ()
+    company_headcount: tuple[str, ...] = ()
 
     @property
     def has_icp(self) -> bool:
-        return bool(self.industries.strip() or self.geographies.strip() or self.search_query.strip() or self.profile_urls)
+        return bool(
+            self.industries.strip()
+            or self.geographies.strip()
+            or self.search_query.strip()
+            or self.profile_urls
+            or self.job_titles
+            or self.target_companies
+            or self.keywords.strip()
+        )
 
 
 @dataclass(frozen=True)
@@ -58,6 +82,8 @@ class DiscoveryResult:
     is_mock: bool
     connected: bool
     reason: str = ""
+    failure_class: str = ""
+    status_code: int = 0
 
 
 class LeadDiscoveryProvider(Protocol):
@@ -72,7 +98,7 @@ class MockLeadDiscoveryProvider:
             "provider": "mock-discovery",
             "is_mock": True,
             "connected": False,
-            "reason": "No Apify token or actor id. Discovery will not invent people.",
+            "reason": "DISCOVERY_PROVIDER is mock. Discovery will not invent people.",
         }
 
     def discover(self, query: DiscoveryQuery) -> DiscoveryResult:
@@ -90,6 +116,27 @@ class MockLeadDiscoveryProvider:
             is_mock=True,
             connected=False,
             reason="Labeled mock. No live vendor. No invented prospects.",
+        )
+
+
+class NotConfiguredDiscoveryProvider:
+    def health(self) -> dict[str, Any]:
+        return {
+            "provider": "apify",
+            "is_mock": False,
+            "connected": False,
+            "reason": "DISCOVERY_PROVIDER is apify but APIFY_API_TOKEN or APIFY_ACTOR_ID is missing.",
+        }
+
+    def discover(self, query: DiscoveryQuery) -> DiscoveryResult:
+        _ = query
+        return DiscoveryResult(
+            candidates=[],
+            provider="apify",
+            is_mock=False,
+            connected=False,
+            reason="Apify is not configured. No invented people.",
+            failure_class="CONFIGURATION",
         )
 
 
@@ -129,7 +176,7 @@ class ApifyLeadDiscoveryProvider:
         actor = self._actor_id.lower()
         payload: dict[str, Any] = {}
         if "profile-search" in actor:
-            search = query.search_query or ", ".join(part for part in (query.industries, query.geographies) if part)
+            search = query.search_query or ", ".join(part for part in (query.keywords, query.industries, query.geographies) if part)
             payload = {
                 "searchQuery": search,
                 "maxItems": max_items,
@@ -138,6 +185,16 @@ class ApifyLeadDiscoveryProvider:
             geos = [item.strip() for item in query.geographies.split(",") if item.strip()]
             if geos:
                 payload["locations"] = geos
+            if query.job_titles:
+                payload["currentJobTitles"] = list(query.job_titles)[:20]
+            if query.seniority_ids:
+                payload["seniorityLevelIds"] = list(query.seniority_ids)
+            if query.industry_ids:
+                payload["industryIds"] = list(query.industry_ids)
+            if query.company_headcount:
+                payload["companyHeadcount"] = list(query.company_headcount)
+            if query.target_companies:
+                payload["currentCompanies"] = list(query.target_companies)
         else:
             urls = [url.strip() for url in query.profile_urls if url.strip()]
             payload = {
@@ -147,6 +204,17 @@ class ApifyLeadDiscoveryProvider:
         if query.process_token or self._process_token:
             payload["token"] = query.process_token or self._process_token
         return payload
+
+    def _failed(self, *, reason: str, status_code: int = 0, timeout: bool = False) -> DiscoveryResult:
+        return DiscoveryResult(
+            candidates=[],
+            provider="apify",
+            is_mock=False,
+            connected=False,
+            reason=reason,
+            failure_class=classify_http(status_code, timeout=timeout) or "TRANSIENT",
+            status_code=status_code,
+        )
 
     def discover(self, query: DiscoveryQuery) -> DiscoveryResult:
         actor = self._actor_id.lower()
@@ -161,6 +229,7 @@ class ApifyLeadDiscoveryProvider:
                     "Configured actor scrapes LinkedIn profile URLs only. "
                     "Pass profile URLs or set APIFY_ACTOR_ID to a search actor such as harvestapi/linkedin-profile-search."
                 ),
+                failure_class="CONFIGURATION",
             )
         owns_client = self._client is None
         client = self._http()
@@ -172,12 +241,9 @@ class ApifyLeadDiscoveryProvider:
                 params={"waitForFinish": 60},
             )
             if start.status_code >= 400:
-                return DiscoveryResult(
-                    candidates=[],
-                    provider="apify",
-                    is_mock=False,
-                    connected=False,
+                return self._failed(
                     reason=f"Apify run refused ({start.status_code}). Falling back without inventing people.",
+                    status_code=start.status_code,
                 )
             body = start.json().get("data") or {}
             dataset_id = body.get("defaultDatasetId")
@@ -189,37 +255,19 @@ class ApifyLeadDiscoveryProvider:
                     params={"waitForFinish": 60},
                 )
                 if wait.status_code >= 400:
-                    return DiscoveryResult(
-                        candidates=[],
-                        provider="apify",
-                        is_mock=False,
-                        connected=False,
-                        reason="Apify wait failed. No invented people.",
-                    )
+                    return self._failed(reason="Apify wait failed. No invented people.", status_code=wait.status_code)
                 waited = wait.json().get("data") or {}
                 dataset_id = waited.get("defaultDatasetId")
                 status = waited.get("status")
             if status != "SUCCEEDED" or not dataset_id:
-                return DiscoveryResult(
-                    candidates=[],
-                    provider="apify",
-                    is_mock=False,
-                    connected=False,
-                    reason=f"Apify run ended {status or 'unknown'}. Dataset empty.",
-                )
+                return self._failed(reason=f"Apify run ended {status or 'unknown'}. Dataset empty.")
             items = client.get(
                 f"https://api.apify.com/v2/datasets/{dataset_id}/items",
                 headers=self._headers(),
                 params={"limit": self._max_items},
             )
             if items.status_code >= 400:
-                return DiscoveryResult(
-                    candidates=[],
-                    provider="apify",
-                    is_mock=False,
-                    connected=False,
-                    reason="Apify dataset read failed.",
-                )
+                return self._failed(reason="Apify dataset read failed.", status_code=items.status_code)
             rows = items.json()
             if not isinstance(rows, list):
                 return DiscoveryResult(
@@ -236,14 +284,10 @@ class ApifyLeadDiscoveryProvider:
                 connected=True,
                 reason="",
             )
+        except httpx.TimeoutException:
+            return self._failed(reason="Apify timeout. No invented people.", timeout=True)
         except httpx.HTTPError:
-            return DiscoveryResult(
-                candidates=[],
-                provider="apify",
-                is_mock=False,
-                connected=False,
-                reason="Apify network error. No invented people.",
-            )
+            return self._failed(reason="Apify network error. No invented people.", timeout=True)
         finally:
             if owns_client:
                 client.close()
@@ -270,7 +314,8 @@ def map_dataset_items(rows: list[Any]) -> list[DiscoveredLead]:
             if isinstance(position, dict):
                 company = _text(position, "companyName", "company")
                 title = title or _text(position, "title")
-        linkedin = _text(row, "linkedinUrl", "linkedin_url", "profileUrl", "url", "profile_url")
+        linkedin = _text(row, "linkedinUrl", "linkedin_url", "profileUrl", "url", "profile_url", "linkedinProfileUrl")
+        provider_ref = _text(row, "id", "profileId", "linkedinId", "publicIdentifier", "urn")
         if not first or not last:
             continue
         mapped.append(
@@ -282,18 +327,40 @@ def map_dataset_items(rows: list[Any]) -> list[DiscoveredLead]:
                 company_name=company[:200],
                 linkedin_url=linkedin[:255],
                 raw_keys=tuple(sorted(row.keys())),
+                provider_ref=provider_ref[:200],
+                confidence=70 if email or linkedin else 40,
+                source_url=linkedin[:255],
             )
         )
     return mapped
 
 
-def get_lead_discovery_provider() -> LeadDiscoveryProvider:
+def get_lead_discovery_provider(db: Session | None = None, tenant_id: UUID | None = None) -> LeadDiscoveryProvider:
     settings = get_settings()
-    if settings.apify_configured:
-        return ApifyLeadDiscoveryProvider(
-            token=settings.resolved_apify_token,
-            actor_id=settings.apify_actor_id,
-            max_items=settings.apify_max_items,
-            process_token=settings.apify_linkedin_process_token,
-        )
+    if db is not None and tenant_id is not None:
+        resolved = resolve_channel(db, tenant_id, "discovery")
+        if resolved.mode == "LIVE":
+            token = resolved.secrets.get("access_token") or ""
+            actor_id = resolved.secrets.get("actor_id") or settings.apify_actor_id
+            if token and actor_id:
+                return ApifyLeadDiscoveryProvider(
+                    token=token,
+                    actor_id=actor_id,
+                    max_items=settings.apify_max_items,
+                    process_token=resolved.secrets.get("process_token") or settings.apify_linkedin_process_token,
+                )
+            return NotConfiguredDiscoveryProvider()
+        if resolved.mode == "MOCK":
+            return MockLeadDiscoveryProvider()
+        return NotConfiguredDiscoveryProvider()
+    mode = (settings.discovery_provider or "mock").strip().lower()
+    if mode == "apify":
+        if settings.apify_configured:
+            return ApifyLeadDiscoveryProvider(
+                token=settings.resolved_apify_token,
+                actor_id=settings.apify_actor_id,
+                max_items=settings.apify_max_items,
+                process_token=settings.apify_linkedin_process_token,
+            )
+        return NotConfiguredDiscoveryProvider()
     return MockLeadDiscoveryProvider()
