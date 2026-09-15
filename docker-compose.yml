@@ -41,7 +41,8 @@ services:
     build:
       context: ./apps/api
     env_file:
-      - .env
+      - path: .env
+        required: false
     environment:
       DATABASE_URL: postgresql+psycopg://agrayian_app:agrayian@postgres:5432/agrayian
       DATABASE_ADMIN_URL: postgresql+psycopg://agrayian:agrayian@postgres:5432/agrayian
@@ -67,7 +68,8 @@ services:
     build:
       context: ./apps/api
     env_file:
-      - .env
+      - path: .env
+        required: false
     environment:
       DATABASE_URL: postgresql+psycopg://agrayian_app:agrayian@postgres:5432/agrayian
       DATABASE_ADMIN_URL: postgresql+psycopg://agrayian:agrayian@postgres:5432/agrayian
@@ -83,7 +85,8 @@ services:
     build:
       context: ./apps/api
     env_file:
-      - .env
+      - path: .env
+        required: false
     environment:
       DATABASE_URL: postgresql+psycopg://agrayian_app:agrayian@postgres:5432/agrayian
       DATABASE_ADMIN_URL: postgresql+psycopg://agrayian:agrayian@postgres:5432/agrayian

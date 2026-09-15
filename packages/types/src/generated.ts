@@ -7,6 +7,8 @@ export type GeneratedPaths = {
   "/api/v1/acquisition/captures": "get";
   "/api/v1/acquisition/dedupe": "get";
   "/api/v1/acquisition/dedupe/{review_id}/decide": "post";
+  "/api/v1/acquisition/form-keys": "get, post";
+  "/api/v1/acquisition/form-keys/{key_id}/revoke": "post";
   "/api/v1/acquisition/overview": "get";
   "/api/v1/activities": "get";
   "/api/v1/admin/audit": "get";
@@ -75,9 +77,11 @@ export type GeneratedPaths = {
   "/api/v1/integrations/mappings/{mapping_id}/unlink": "post";
   "/api/v1/integrations/product-usage/events/{routing_token}": "post";
   "/api/v1/integrations/providers": "get";
+  "/api/v1/integrations/provision-defaults": "post";
   "/api/v1/integrations/{account_id}": "delete";
   "/api/v1/leads": "get, post";
   "/api/v1/leads/{lead_id}": "get, patch";
+  "/api/v1/leads/{lead_id}/enrich": "post";
   "/api/v1/leads/{lead_id}/nba": "post";
   "/api/v1/leads/{lead_id}/score": "post";
   "/api/v1/lifecycle/abm": "get, post";
@@ -86,8 +90,13 @@ export type GeneratedPaths = {
   "/api/v1/lifecycle/advocacy/referrals": "post";
   "/api/v1/lifecycle/campaigns": "get, post";
   "/api/v1/lifecycle/campaigns/{campaign_id}": "get";
+  "/api/v1/lifecycle/campaigns/{campaign_id}/audience": "post";
+  "/api/v1/lifecycle/campaigns/{campaign_id}/creative": "post";
   "/api/v1/lifecycle/campaigns/{campaign_id}/launch": "post";
   "/api/v1/lifecycle/campaigns/{campaign_id}/members": "post";
+  "/api/v1/lifecycle/campaigns/{campaign_id}/pause": "post";
+  "/api/v1/lifecycle/campaigns/{campaign_id}/sync": "post";
+  "/api/v1/lifecycle/captures/{capture_id}/refresh": "post";
   "/api/v1/lifecycle/conversations": "get, post";
   "/api/v1/lifecycle/conversations/dial": "post";
   "/api/v1/lifecycle/conversations/{conversation_id}": "get";
@@ -100,6 +109,9 @@ export type GeneratedPaths = {
   "/api/v1/lifecycle/forecast/refresh": "post";
   "/api/v1/lifecycle/meetings": "get, post";
   "/api/v1/lifecycle/meetings/extract": "post";
+  "/api/v1/lifecycle/meetings/{meeting_id}/capture": "post";
+  "/api/v1/lifecycle/meetings/{meeting_id}/consent": "post";
+  "/api/v1/lifecycle/meetings/{meeting_id}/transcript": "post";
   "/api/v1/lifecycle/models": "get";
   "/api/v1/lifecycle/overview": "get";
   "/api/v1/lifecycle/playbooks": "get, post";
@@ -117,6 +129,9 @@ export type GeneratedPaths = {
   "/api/v1/lifecycle/success": "get";
   "/api/v1/lifecycle/success/health/rebuild": "post";
   "/api/v1/lifecycle/success/health/{customer_id}": "post";
+  "/api/v1/lifecycle/voice-scripts": "get, post";
+  "/api/v1/lifecycle/voice-scripts/{script_id}/publish/{version_id}": "post";
+  "/api/v1/lifecycle/voice-scripts/{script_id}/versions": "post";
   "/api/v1/market": "get, post";
   "/api/v1/market/desk/signals": "get";
   "/api/v1/market/desk/triggers": "get";
@@ -158,6 +173,8 @@ export type GeneratedPaths = {
   "/api/v1/providers/actions": "get";
   "/api/v1/providers/actions/{action_id}/cancel": "post";
   "/api/v1/providers/actions/{action_id}/retry": "post";
+  "/api/v1/public/forms/{token}": "get";
+  "/api/v1/public/forms/{token}/capture": "post";
   "/api/v1/search": "get";
   "/api/v1/tasks": "get, post";
   "/api/v1/tasks/{task_id}": "get, patch";
@@ -169,7 +186,7 @@ export type GeneratedPaths = {
   "/ready": "get";
 };
 
-export const generatedPathCount = 167;
+export const generatedPathCount = 184;
 export const generatedSchemaNames = [
   "AbmIn",
   "AbmOut",
@@ -286,6 +303,7 @@ export const generatedSchemaNames = [
   "Envelope_LoginResponse_",
   "Envelope_MarketOut_",
   "Envelope_MarketOverview_",
+  "Envelope_MeetingCaptureOut_",
   "Envelope_MeetingOut_",
   "Envelope_ModelVersionOut_",
   "Envelope_NBAOut_",
@@ -306,6 +324,8 @@ export const generatedSchemaNames = [
   "Envelope_TeamOut_",
   "Envelope_TerritoryOut_",
   "Envelope_VoiceDialOut_",
+  "Envelope_VoiceScriptOut_",
+  "Envelope_VoiceScriptVersionOut_",
   "Envelope_WhatsAppTemplateOut_",
   "Envelope_WorkflowRunOut_",
   "Envelope_dict_",
@@ -361,6 +381,7 @@ export const generatedSchemaNames = [
   "Envelope_list_TerritoryOut__",
   "Envelope_list_TriggerOut__",
   "Envelope_list_UserOut__",
+  "Envelope_list_VoiceScriptOut__",
   "Envelope_list_WhatsAppTemplateOut__",
   "Envelope_list_WhitespaceOut__",
   "Envelope_list_WorkflowRunOut__",
@@ -399,9 +420,12 @@ export const generatedSchemaNames = [
   "MarketIn",
   "MarketOut",
   "MarketOverview",
+  "MeetingCaptureIn",
+  "MeetingCaptureOut",
   "MeetingExtractIn",
   "MeetingIn",
   "MeetingOut",
+  "MeetingTranscriptIn",
   "Meta",
   "MilestoneOut",
   "ModelCardOut",
@@ -464,6 +488,9 @@ export const generatedSchemaNames = [
   "ValidationError",
   "VoiceDialIn",
   "VoiceDialOut",
+  "VoiceScriptIn",
+  "VoiceScriptOut",
+  "VoiceScriptVersionOut",
   "WhatsAppTemplateIn",
   "WhatsAppTemplateOut",
   "WhitespaceOut",

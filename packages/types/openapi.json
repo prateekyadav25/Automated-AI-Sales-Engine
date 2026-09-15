@@ -2372,10 +2372,43 @@
             "title": "Conversions",
             "type": "integer"
           },
+          "cpc": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Cpc"
+          },
+          "cpl": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Cpl"
+          },
           "created_at": {
             "format": "date-time",
             "title": "Created At",
             "type": "string"
+          },
+          "ctr": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Ctr"
           },
           "end_date": {
             "anyOf": [
@@ -2500,6 +2533,48 @@
             "default": 0,
             "title": "Conversions",
             "type": "integer"
+          },
+          "cpc": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Cpc"
+          },
+          "cpl": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Cpl"
+          },
+          "ctr": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Ctr"
           },
           "end_date": {
             "anyOf": [
@@ -2714,10 +2789,43 @@
             "title": "Conversions",
             "type": "integer"
           },
+          "cpc": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Cpc"
+          },
+          "cpl": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Cpl"
+          },
           "created_at": {
             "format": "date-time",
             "title": "Created At",
             "type": "string"
+          },
+          "ctr": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Ctr"
           },
           "end_date": {
             "anyOf": [
@@ -2809,6 +2917,11 @@
       },
       "CaptureIn": {
         "properties": {
+          "ad_id": {
+            "default": "",
+            "title": "Ad Id",
+            "type": "string"
+          },
           "ad_name": {
             "default": "",
             "title": "Ad Name",
@@ -2818,6 +2931,18 @@
             "default": "",
             "title": "Campaign",
             "type": "string"
+          },
+          "campaign_id": {
+            "anyOf": [
+              {
+                "format": "uuid",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Campaign Id"
           },
           "channel": {
             "default": "website",
@@ -2902,9 +3027,26 @@
       },
       "CaptureOut": {
         "properties": {
+          "ad_id": {
+            "default": "",
+            "title": "Ad Id",
+            "type": "string"
+          },
           "campaign": {
             "title": "Campaign",
             "type": "string"
+          },
+          "campaign_id": {
+            "anyOf": [
+              {
+                "format": "uuid",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Campaign Id"
           },
           "captured_at": {
             "anyOf": [
@@ -6698,6 +6840,42 @@
         "title": "Envelope[MarketOverview]",
         "type": "object"
       },
+      "Envelope_MeetingCaptureOut_": {
+        "properties": {
+          "data": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/MeetingCaptureOut"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "error": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/ErrorBody"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "meta": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/Meta"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          }
+        },
+        "title": "Envelope[MeetingCaptureOut]",
+        "type": "object"
+      },
       "Envelope_MeetingOut_": {
         "properties": {
           "data": {
@@ -7416,6 +7594,78 @@
           }
         },
         "title": "Envelope[VoiceDialOut]",
+        "type": "object"
+      },
+      "Envelope_VoiceScriptOut_": {
+        "properties": {
+          "data": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/VoiceScriptOut"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "error": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/ErrorBody"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "meta": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/Meta"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          }
+        },
+        "title": "Envelope[VoiceScriptOut]",
+        "type": "object"
+      },
+      "Envelope_VoiceScriptVersionOut_": {
+        "properties": {
+          "data": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/VoiceScriptVersionOut"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "error": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/ErrorBody"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "meta": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/Meta"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          }
+        },
+        "title": "Envelope[VoiceScriptVersionOut]",
         "type": "object"
       },
       "Envelope_WhatsAppTemplateOut_": {
@@ -9620,6 +9870,46 @@
         "title": "Envelope[list[UserOut]]",
         "type": "object"
       },
+      "Envelope_list_VoiceScriptOut__": {
+        "properties": {
+          "data": {
+            "anyOf": [
+              {
+                "items": {
+                  "$ref": "#/components/schemas/VoiceScriptOut"
+                },
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Data"
+          },
+          "error": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/ErrorBody"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "meta": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/Meta"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          }
+        },
+        "title": "Envelope[list[VoiceScriptOut]]",
+        "type": "object"
+      },
       "Envelope_list_WhatsAppTemplateOut__": {
         "properties": {
           "data": {
@@ -10826,10 +11116,27 @@
             ],
             "title": "Account Id"
           },
+          "ad_id": {
+            "default": "",
+            "title": "Ad Id",
+            "type": "string"
+          },
           "campaign": {
             "default": "",
             "title": "Campaign",
             "type": "string"
+          },
+          "campaign_id": {
+            "anyOf": [
+              {
+                "format": "uuid",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Campaign Id"
           },
           "channel": {
             "default": "",
@@ -10931,6 +11238,16 @@
             "title": "Title",
             "type": "string"
           },
+          "utm_campaign": {
+            "default": "",
+            "title": "Utm Campaign",
+            "type": "string"
+          },
+          "utm_medium": {
+            "default": "",
+            "title": "Utm Medium",
+            "type": "string"
+          },
           "utm_source": {
             "default": "",
             "title": "Utm Source",
@@ -10958,10 +11275,27 @@
             ],
             "title": "Account Id"
           },
+          "ad_id": {
+            "default": "",
+            "title": "Ad Id",
+            "type": "string"
+          },
           "campaign": {
             "default": "",
             "title": "Campaign",
             "type": "string"
+          },
+          "campaign_id": {
+            "anyOf": [
+              {
+                "format": "uuid",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Campaign Id"
           },
           "channel": {
             "default": "",
@@ -11098,6 +11432,16 @@
           "title": {
             "default": "",
             "title": "Title",
+            "type": "string"
+          },
+          "utm_campaign": {
+            "default": "",
+            "title": "Utm Campaign",
+            "type": "string"
+          },
+          "utm_medium": {
+            "default": "",
+            "title": "Utm Medium",
             "type": "string"
           },
           "utm_source": {
@@ -11515,6 +11859,68 @@
         "title": "MarketOverview",
         "type": "object"
       },
+      "MeetingCaptureIn": {
+        "properties": {
+          "meeting_url": {
+            "default": "",
+            "title": "Meeting Url",
+            "type": "string"
+          }
+        },
+        "title": "MeetingCaptureIn",
+        "type": "object"
+      },
+      "MeetingCaptureOut": {
+        "properties": {
+          "id": {
+            "format": "uuid",
+            "title": "Id",
+            "type": "string"
+          },
+          "last_error": {
+            "default": "",
+            "title": "Last Error",
+            "type": "string"
+          },
+          "meeting_record_id": {
+            "anyOf": [
+              {
+                "format": "uuid",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Meeting Record Id"
+          },
+          "meeting_url": {
+            "default": "",
+            "title": "Meeting Url",
+            "type": "string"
+          },
+          "provider": {
+            "title": "Provider",
+            "type": "string"
+          },
+          "provider_bot_id": {
+            "default": "",
+            "title": "Provider Bot Id",
+            "type": "string"
+          },
+          "status": {
+            "title": "Status",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "provider",
+          "status"
+        ],
+        "title": "MeetingCaptureOut",
+        "type": "object"
+      },
       "MeetingExtractIn": {
         "properties": {
           "account_id": {
@@ -11600,6 +12006,11 @@
             ],
             "title": "Opportunity Id"
           },
+          "recording_consent": {
+            "default": false,
+            "title": "Recording Consent",
+            "type": "boolean"
+          },
           "summary": {
             "default": "",
             "title": "Summary",
@@ -11635,6 +12046,13 @@
             "title": "Calendar Account",
             "type": "string"
           },
+          "captures": {
+            "items": {
+              "$ref": "#/components/schemas/MeetingCaptureOut"
+            },
+            "title": "Captures",
+            "type": "array"
+          },
           "contact_id": {
             "anyOf": [
               {
@@ -11667,6 +12085,11 @@
           "id": {
             "format": "uuid",
             "title": "Id",
+            "type": "string"
+          },
+          "insights_json": {
+            "default": "{}",
+            "title": "Insights Json",
             "type": "string"
           },
           "is_mock": {
@@ -11741,6 +12164,11 @@
             ],
             "title": "Provider Event Id"
           },
+          "recording_consent": {
+            "default": false,
+            "title": "Recording Consent",
+            "type": "boolean"
+          },
           "start_at": {
             "anyOf": [
               {
@@ -11771,6 +12199,11 @@
           "title": {
             "title": "Title",
             "type": "string"
+          },
+          "transcript": {
+            "default": "",
+            "title": "Transcript",
+            "type": "string"
           }
         },
         "required": [
@@ -11781,6 +12214,19 @@
           "created_at"
         ],
         "title": "MeetingOut",
+        "type": "object"
+      },
+      "MeetingTranscriptIn": {
+        "properties": {
+          "transcript": {
+            "title": "Transcript",
+            "type": "string"
+          }
+        },
+        "required": [
+          "transcript"
+        ],
+        "title": "MeetingTranscriptIn",
         "type": "object"
       },
       "Meta": {
@@ -12066,6 +12512,11 @@
             "title": "Account Id",
             "type": "string"
           },
+          "ad_id": {
+            "default": "",
+            "title": "Ad Id",
+            "type": "string"
+          },
           "amount": {
             "anyOf": [
               {
@@ -12078,6 +12529,18 @@
             "default": "0",
             "title": "Amount"
           },
+          "campaign_id": {
+            "anyOf": [
+              {
+                "format": "uuid",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Campaign Id"
+          },
           "expected_close": {
             "anyOf": [
               {
@@ -12089,6 +12552,18 @@
               }
             ],
             "title": "Expected Close"
+          },
+          "lead_id": {
+            "anyOf": [
+              {
+                "format": "uuid",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Lead Id"
           },
           "name": {
             "title": "Name",
@@ -12122,6 +12597,21 @@
             "default": "qualification",
             "title": "Stage",
             "type": "string"
+          },
+          "utm_campaign": {
+            "default": "",
+            "title": "Utm Campaign",
+            "type": "string"
+          },
+          "utm_medium": {
+            "default": "",
+            "title": "Utm Medium",
+            "type": "string"
+          },
+          "utm_source": {
+            "default": "",
+            "title": "Utm Source",
+            "type": "string"
           }
         },
         "required": [
@@ -12138,10 +12628,27 @@
             "title": "Account Id",
             "type": "string"
           },
+          "ad_id": {
+            "default": "",
+            "title": "Ad Id",
+            "type": "string"
+          },
           "amount": {
             "default": "0",
             "title": "Amount",
             "type": "string"
+          },
+          "campaign_id": {
+            "anyOf": [
+              {
+                "format": "uuid",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Campaign Id"
           },
           "created_at": {
             "format": "date-time",
@@ -12164,6 +12671,18 @@
             "format": "uuid",
             "title": "Id",
             "type": "string"
+          },
+          "lead_id": {
+            "anyOf": [
+              {
+                "format": "uuid",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Lead Id"
           },
           "loss_reason": {
             "default": "",
@@ -12206,6 +12725,21 @@
           "tenant_id": {
             "format": "uuid",
             "title": "Tenant Id",
+            "type": "string"
+          },
+          "utm_campaign": {
+            "default": "",
+            "title": "Utm Campaign",
+            "type": "string"
+          },
+          "utm_medium": {
+            "default": "",
+            "title": "Utm Medium",
+            "type": "string"
+          },
+          "utm_source": {
+            "default": "",
+            "title": "Utm Source",
             "type": "string"
           }
         },
@@ -14643,6 +15177,99 @@
         "title": "VoiceDialOut",
         "type": "object"
       },
+      "VoiceScriptIn": {
+        "properties": {
+          "body": {
+            "default": "",
+            "title": "Body",
+            "type": "string"
+          },
+          "name": {
+            "title": "Name",
+            "type": "string"
+          },
+          "purpose": {
+            "default": "outbound",
+            "title": "Purpose",
+            "type": "string"
+          }
+        },
+        "required": [
+          "name"
+        ],
+        "title": "VoiceScriptIn",
+        "type": "object"
+      },
+      "VoiceScriptOut": {
+        "properties": {
+          "current_version": {
+            "title": "Current Version",
+            "type": "integer"
+          },
+          "id": {
+            "format": "uuid",
+            "title": "Id",
+            "type": "string"
+          },
+          "name": {
+            "title": "Name",
+            "type": "string"
+          },
+          "purpose": {
+            "title": "Purpose",
+            "type": "string"
+          },
+          "status": {
+            "title": "Status",
+            "type": "string"
+          },
+          "versions": {
+            "items": {
+              "$ref": "#/components/schemas/VoiceScriptVersionOut"
+            },
+            "title": "Versions",
+            "type": "array"
+          }
+        },
+        "required": [
+          "id",
+          "name",
+          "status",
+          "current_version",
+          "purpose"
+        ],
+        "title": "VoiceScriptOut",
+        "type": "object"
+      },
+      "VoiceScriptVersionOut": {
+        "properties": {
+          "body": {
+            "title": "Body",
+            "type": "string"
+          },
+          "id": {
+            "format": "uuid",
+            "title": "Id",
+            "type": "string"
+          },
+          "status": {
+            "title": "Status",
+            "type": "string"
+          },
+          "version": {
+            "title": "Version",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "id",
+          "version",
+          "body",
+          "status"
+        ],
+        "title": "VoiceScriptVersionOut",
+        "type": "object"
+      },
       "WhatsAppTemplateIn": {
         "properties": {
           "body": {
@@ -15587,6 +16214,234 @@
           }
         ],
         "summary": "Decide",
+        "tags": [
+          "acquisition"
+        ]
+      }
+    },
+    "/api/v1/acquisition/form-keys": {
+      "get": {
+        "operationId": "list_public_form_keys_api_v1_acquisition_form_keys_get",
+        "parameters": [
+          {
+            "in": "header",
+            "name": "x-correlation-id",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Correlation-Id"
+            }
+          },
+          {
+            "in": "cookie",
+            "name": "refresh_token",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Refresh Token"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Envelope_list_dict__"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "List Public Form Keys",
+        "tags": [
+          "acquisition"
+        ]
+      },
+      "post": {
+        "operationId": "create_public_form_key_api_v1_acquisition_form_keys_post",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "name",
+            "required": false,
+            "schema": {
+              "default": "website",
+              "title": "Name",
+              "type": "string"
+            }
+          },
+          {
+            "in": "header",
+            "name": "x-correlation-id",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Correlation-Id"
+            }
+          },
+          {
+            "in": "cookie",
+            "name": "refresh_token",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Refresh Token"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Envelope_dict_"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Create Public Form Key",
+        "tags": [
+          "acquisition"
+        ]
+      }
+    },
+    "/api/v1/acquisition/form-keys/{key_id}/revoke": {
+      "post": {
+        "operationId": "revoke_public_form_key_api_v1_acquisition_form_keys__key_id__revoke_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "key_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Key Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "header",
+            "name": "x-correlation-id",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Correlation-Id"
+            }
+          },
+          {
+            "in": "cookie",
+            "name": "refresh_token",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Refresh Token"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Envelope_dict_"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Revoke Public Form Key",
         "tags": [
           "acquisition"
         ]
@@ -21478,6 +22333,76 @@
         ]
       }
     },
+    "/api/v1/integrations/provision-defaults": {
+      "post": {
+        "operationId": "provision_defaults_api_v1_integrations_provision_defaults_post",
+        "parameters": [
+          {
+            "in": "header",
+            "name": "x-correlation-id",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Correlation-Id"
+            }
+          },
+          {
+            "in": "cookie",
+            "name": "refresh_token",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Refresh Token"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Envelope_dict_"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Provision Defaults",
+        "tags": [
+          "integrations"
+        ]
+      }
+    },
     "/api/v1/integrations/{account_id}": {
       "delete": {
         "operationId": "disconnect_account_api_v1_integrations__account_id__delete",
@@ -21915,6 +22840,86 @@
           }
         ],
         "summary": "Update Lead",
+        "tags": [
+          "crm"
+        ]
+      }
+    },
+    "/api/v1/leads/{lead_id}/enrich": {
+      "post": {
+        "operationId": "enrich_lead_endpoint_api_v1_leads__lead_id__enrich_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "lead_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Lead Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "header",
+            "name": "x-correlation-id",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Correlation-Id"
+            }
+          },
+          {
+            "in": "cookie",
+            "name": "refresh_token",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Refresh Token"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Envelope_dict_"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Enrich Lead Endpoint",
         "tags": [
           "crm"
         ]
@@ -22784,6 +23789,186 @@
         ]
       }
     },
+    "/api/v1/lifecycle/campaigns/{campaign_id}/audience": {
+      "post": {
+        "operationId": "sync_campaign_audience_api_v1_lifecycle_campaigns__campaign_id__audience_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "campaign_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Campaign Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "lookalike",
+            "required": false,
+            "schema": {
+              "default": false,
+              "title": "Lookalike",
+              "type": "boolean"
+            }
+          },
+          {
+            "in": "header",
+            "name": "x-correlation-id",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Correlation-Id"
+            }
+          },
+          {
+            "in": "cookie",
+            "name": "refresh_token",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Refresh Token"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Envelope_dict_"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Sync Campaign Audience",
+        "tags": [
+          "lifecycle"
+        ]
+      }
+    },
+    "/api/v1/lifecycle/campaigns/{campaign_id}/creative": {
+      "post": {
+        "operationId": "draft_campaign_creative_api_v1_lifecycle_campaigns__campaign_id__creative_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "campaign_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Campaign Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "header",
+            "name": "x-correlation-id",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Correlation-Id"
+            }
+          },
+          {
+            "in": "cookie",
+            "name": "refresh_token",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Refresh Token"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/MeetingTranscriptIn"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Envelope_CampaignLaunchOut_"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Draft Campaign Creative",
+        "tags": [
+          "lifecycle"
+        ]
+      }
+    },
     "/api/v1/lifecycle/campaigns/{campaign_id}/launch": {
       "post": {
         "operationId": "launch_campaign_api_v1_lifecycle_campaigns__campaign_id__launch_post",
@@ -22949,6 +24134,246 @@
           }
         ],
         "summary": "Add Campaign Member",
+        "tags": [
+          "lifecycle"
+        ]
+      }
+    },
+    "/api/v1/lifecycle/campaigns/{campaign_id}/pause": {
+      "post": {
+        "operationId": "pause_campaign_api_v1_lifecycle_campaigns__campaign_id__pause_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "campaign_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Campaign Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "header",
+            "name": "x-correlation-id",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Correlation-Id"
+            }
+          },
+          {
+            "in": "cookie",
+            "name": "refresh_token",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Refresh Token"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Envelope_CampaignLaunchOut_"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Pause Campaign",
+        "tags": [
+          "lifecycle"
+        ]
+      }
+    },
+    "/api/v1/lifecycle/campaigns/{campaign_id}/sync": {
+      "post": {
+        "operationId": "sync_campaign_metrics_api_v1_lifecycle_campaigns__campaign_id__sync_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "campaign_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Campaign Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "header",
+            "name": "x-correlation-id",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Correlation-Id"
+            }
+          },
+          {
+            "in": "cookie",
+            "name": "refresh_token",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Refresh Token"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Envelope_CampaignOut_"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Sync Campaign Metrics",
+        "tags": [
+          "lifecycle"
+        ]
+      }
+    },
+    "/api/v1/lifecycle/captures/{capture_id}/refresh": {
+      "post": {
+        "operationId": "refresh_meeting_capture_api_v1_lifecycle_captures__capture_id__refresh_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "capture_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Capture Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "header",
+            "name": "x-correlation-id",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Correlation-Id"
+            }
+          },
+          {
+            "in": "cookie",
+            "name": "refresh_token",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Refresh Token"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Envelope_MeetingCaptureOut_"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Refresh Meeting Capture",
         "tags": [
           "lifecycle"
         ]
@@ -23975,6 +25400,266 @@
           }
         ],
         "summary": "Extract Meeting",
+        "tags": [
+          "lifecycle"
+        ]
+      }
+    },
+    "/api/v1/lifecycle/meetings/{meeting_id}/capture": {
+      "post": {
+        "operationId": "start_meeting_capture_api_v1_lifecycle_meetings__meeting_id__capture_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "meeting_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Meeting Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "header",
+            "name": "x-correlation-id",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Correlation-Id"
+            }
+          },
+          {
+            "in": "cookie",
+            "name": "refresh_token",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Refresh Token"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/MeetingCaptureIn"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Envelope_MeetingCaptureOut_"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Start Meeting Capture",
+        "tags": [
+          "lifecycle"
+        ]
+      }
+    },
+    "/api/v1/lifecycle/meetings/{meeting_id}/consent": {
+      "post": {
+        "operationId": "request_recording_consent_api_v1_lifecycle_meetings__meeting_id__consent_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "meeting_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Meeting Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "header",
+            "name": "x-correlation-id",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Correlation-Id"
+            }
+          },
+          {
+            "in": "cookie",
+            "name": "refresh_token",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Refresh Token"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Envelope_MeetingOut_"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Request Recording Consent",
+        "tags": [
+          "lifecycle"
+        ]
+      }
+    },
+    "/api/v1/lifecycle/meetings/{meeting_id}/transcript": {
+      "post": {
+        "operationId": "paste_meeting_transcript_api_v1_lifecycle_meetings__meeting_id__transcript_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "meeting_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Meeting Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "header",
+            "name": "x-correlation-id",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Correlation-Id"
+            }
+          },
+          {
+            "in": "cookie",
+            "name": "refresh_token",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Refresh Token"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/MeetingTranscriptIn"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Envelope_MeetingOut_"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Paste Meeting Transcript",
         "tags": [
           "lifecycle"
         ]
@@ -25587,6 +27272,334 @@
           }
         ],
         "summary": "Rescore Health",
+        "tags": [
+          "lifecycle"
+        ]
+      }
+    },
+    "/api/v1/lifecycle/voice-scripts": {
+      "get": {
+        "operationId": "list_voice_scripts_api_v1_lifecycle_voice_scripts_get",
+        "parameters": [
+          {
+            "in": "header",
+            "name": "x-correlation-id",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Correlation-Id"
+            }
+          },
+          {
+            "in": "cookie",
+            "name": "refresh_token",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Refresh Token"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Envelope_list_VoiceScriptOut__"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "List Voice Scripts",
+        "tags": [
+          "lifecycle"
+        ]
+      },
+      "post": {
+        "operationId": "create_voice_script_api_v1_lifecycle_voice_scripts_post",
+        "parameters": [
+          {
+            "in": "header",
+            "name": "x-correlation-id",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Correlation-Id"
+            }
+          },
+          {
+            "in": "cookie",
+            "name": "refresh_token",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Refresh Token"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/VoiceScriptIn"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Envelope_VoiceScriptOut_"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Create Voice Script",
+        "tags": [
+          "lifecycle"
+        ]
+      }
+    },
+    "/api/v1/lifecycle/voice-scripts/{script_id}/publish/{version_id}": {
+      "post": {
+        "operationId": "publish_voice_script_api_v1_lifecycle_voice_scripts__script_id__publish__version_id__post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "script_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Script Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "version_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Version Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "header",
+            "name": "x-correlation-id",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Correlation-Id"
+            }
+          },
+          {
+            "in": "cookie",
+            "name": "refresh_token",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Refresh Token"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Envelope_VoiceScriptOut_"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Publish Voice Script",
+        "tags": [
+          "lifecycle"
+        ]
+      }
+    },
+    "/api/v1/lifecycle/voice-scripts/{script_id}/versions": {
+      "post": {
+        "operationId": "add_voice_script_version_api_v1_lifecycle_voice_scripts__script_id__versions_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "script_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Script Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "header",
+            "name": "x-correlation-id",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Correlation-Id"
+            }
+          },
+          {
+            "in": "cookie",
+            "name": "refresh_token",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Refresh Token"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/MeetingTranscriptIn"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Envelope_VoiceScriptVersionOut_"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Add Voice Script Version",
         "tags": [
           "lifecycle"
         ]
@@ -29319,6 +31332,100 @@
         "summary": "Retry Provider Action",
         "tags": [
           "providers"
+        ]
+      }
+    },
+    "/api/v1/public/forms/{token}": {
+      "get": {
+        "operationId": "embeddable_form_api_v1_public_forms__token__get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "token",
+            "required": true,
+            "schema": {
+              "title": "Token",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "text/html": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Embeddable Form",
+        "tags": [
+          "public"
+        ]
+      }
+    },
+    "/api/v1/public/forms/{token}/capture": {
+      "post": {
+        "operationId": "public_capture_api_v1_public_forms__token__capture_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "token",
+            "required": true,
+            "schema": {
+              "title": "Token",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CaptureIn"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Envelope_CaptureResult_"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Public Capture",
+        "tags": [
+          "public"
         ]
       }
     },

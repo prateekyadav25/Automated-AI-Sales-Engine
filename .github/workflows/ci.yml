@@ -21,7 +21,7 @@ jobs:
           python-version: "3.12"
       - run: pip install -e ".[dev]"
       - run: ruff check app tests
-      - run: python -c "from alembic.config import Config; from alembic.script import ScriptDirectory; assert ScriptDirectory.from_config(Config('alembic.ini')).get_current_head()=='013'"
+      - run: python -c "from alembic.config import Config; from alembic.script import ScriptDirectory; heads=ScriptDirectory.from_config(Config('alembic.ini')).get_heads(); assert len(heads)==1, heads"
       - run: pytest
         env:
           DISCOVERY_PROVIDER: mock
@@ -117,8 +117,6 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - uses: pnpm/action-setup@v4
-        with:
-          version: 9
       - uses: actions/setup-node@v4
         with:
           node-version: "22"
@@ -132,7 +130,9 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - run: docker compose config
+      - run: |
+          if [ ! -f .env ]; then cp .env.example .env; fi
+          docker compose config
       - run: docker build -t agrayian-api:ci apps/api
       - run: docker build -t agrayian-web:ci -f apps/web/Dockerfile .
   concurrency:
@@ -218,8 +218,6 @@ jobs:
           nohup uvicorn app.main:app --host 127.0.0.1 --port 8000 > /tmp/api.log 2>&1 &
           for i in $(seq 1 30); do curl -sf http://127.0.0.1:8000/health/ready && break; sleep 1; done
       - uses: pnpm/action-setup@v4
-        with:
-          version: 9
       - uses: actions/setup-node@v4
         with:
           node-version: "22"
@@ -285,8 +283,6 @@ jobs:
           nohup uvicorn app.main:app --host 127.0.0.1 --port 8000 > /tmp/api.log 2>&1 &
           for i in $(seq 1 30); do curl -sf http://127.0.0.1:8000/health/ready && break; sleep 1; done
       - uses: pnpm/action-setup@v4
-        with:
-          version: 9
       - uses: actions/setup-node@v4
         with:
           node-version: "22"

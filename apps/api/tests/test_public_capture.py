@@ -1,9 +1,9 @@
 from fastapi.testclient import TestClient
+from sqlalchemy import select
 
 from app.db.session import get_session
 from app.models.identity import User
 from app.services.public_forms import create_form_key
-from sqlalchemy import select
 from tests.conftest import login
 
 

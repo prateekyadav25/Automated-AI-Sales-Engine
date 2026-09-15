@@ -1,13 +1,13 @@
 from decimal import Decimal
 
 from fastapi.testclient import TestClient
+from sqlalchemy import select
 
 from app.db.session import get_session
 from app.models.crm import Account, Lead, Opportunity
 from app.models.identity import User
 from app.models.lifecycle import Campaign
 from app.services.roi import campaign_attribution
-from sqlalchemy import select
 from tests.conftest import login
 
 

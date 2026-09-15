@@ -31,6 +31,17 @@ from app.models.crm import (
     Renewal,
     Task,
 )
+from app.models.funnel import (
+    AdAudience,
+    AdCreative,
+    AdSet,
+    CampaignMetricDaily,
+    MeetingCapture,
+    PublicFormKey,
+    VoiceScript,
+    VoiceScriptVersion,
+    VoiceSession,
+)
 from app.models.identity import (
     AuditLog,
     DomainEvent,
@@ -136,17 +147,6 @@ from app.models.signals import (
     SupportSnapshot,
     UsageEvent,
     UsageRollup,
-)
-from app.models.funnel import (
-    AdAudience,
-    AdCreative,
-    AdSet,
-    CampaignMetricDaily,
-    MeetingCapture,
-    PublicFormKey,
-    VoiceScript,
-    VoiceScriptVersion,
-    VoiceSession,
 )
 from app.models.workflow import WorkflowDefinition, WorkflowRun
 from app.services.ml import snapshots as _ml_snapshots  # noqa: F401
