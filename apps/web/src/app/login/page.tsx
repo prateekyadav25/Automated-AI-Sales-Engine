@@ -101,7 +101,7 @@ export default function LoginPage() {
           <p className="mt-1 text-sm text-[var(--muted)]">
             Use your workspace credentials to continue.
           </p>
-          <div className="mt-6 flex items-center gap-2 rounded-lg border border-sky-100 bg-sky-50/80 px-3 py-2 text-xs text-sky-700">
+          <div className="mt-6 flex items-center gap-2 rounded-lg border border-sky-100 bg-sky-50/80 px-3 py-2 text-xs text-sky-700 shadow-sm">
             <span className="h-2 w-2 rounded-full bg-emerald-500" />
             Secure workspace ready
           </div>
