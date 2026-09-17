@@ -64,7 +64,13 @@ async def validation_handler(_request: Request, exc: RequestValidationError) -> 
 
 
 def _live() -> dict:
-    return {"status": "ok", "service": "api"}
+    return {
+        "status": "ok",
+        "service": "api",
+        "app_name": settings.app_name,
+        "version": "0.1.0",
+        "environment": settings.environment,
+    }
 
 
 def _ready() -> dict:
@@ -75,7 +81,13 @@ def _ready() -> dict:
             revision = conn.execute(text("SELECT version_num FROM alembic_version")).scalar()
             if not revision:
                 raise HTTPException(status_code=503, detail="Database schema is not migrated")
-    return {"status": "ready"}
+    return {
+        "status": "ready",
+        "service": "api",
+        "app_name": settings.app_name,
+        "version": "0.1.0",
+        "environment": settings.environment,
+    }
 
 
 @app.get("/health")
