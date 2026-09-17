@@ -115,6 +115,11 @@ services:
       - "3000:3000"
     depends_on:
       - api
+    healthcheck:
+      test: ["CMD-SHELL", "wget -q --spider http://localhost:3000 || exit 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
 
 volumes:
   postgres_data:
