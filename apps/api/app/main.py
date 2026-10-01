@@ -109,6 +109,7 @@ def _ready() -> dict:
 
 @app.get("/health")
 def health() -> dict:
+    """Check health status."""
     return _live()
 
 
