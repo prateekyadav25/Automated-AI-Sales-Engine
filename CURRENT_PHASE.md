@@ -1,4 +1,4 @@
-# Current Phase
+# Current Project Phase
 
 **Phases 0–22 plus Autopilot batches 1–8 and the full-funnel completion slice are in product.**
 
