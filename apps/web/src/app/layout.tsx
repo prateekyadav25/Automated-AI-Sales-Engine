@@ -10,7 +10,7 @@ const sans = Manrope({
 
 export const metadata: Metadata = {
   title: "AGRAYIAN · Revenue OS",
-  description: "Revenue operating system for AGRAYIAN AI Labs",
+  description: "Revenue Operating System for AGRAYIAN AI Labs",
   icons: {
     icon: [{ url: "/icon.svg", type: "image/svg+xml" }],
   },
