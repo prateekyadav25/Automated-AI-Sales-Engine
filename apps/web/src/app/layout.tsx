@@ -29,7 +29,7 @@ export default async function RootLayout({ children }: { children: React.ReactNo
   await connection();
   const bootstrap = `window.__AGRAYIAN_API_URL=${JSON.stringify(publicApiUrl())};`;
   return (
-    <html lang="en">
+    <html lang="en-US">
       <body className={`${sans.variable} font-sans antialiased`}>
         <script dangerouslySetInnerHTML={{ __html: bootstrap }} />
         <Providers>{children}</Providers>

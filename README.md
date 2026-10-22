@@ -1,6 +1,6 @@
 # AGRAYIAN Autonomous Revenue OS
 
-Autonomous AI revenue operating system for AGRAYIAN AI LABS.
+Autonomous AI revenue operating system for AGRAYIAN AI Labs.
 
 Lifecycle: Intelligence → Acquire → Sell → Close → Succeed → Retain → Expand → Advocate → Learn
 
