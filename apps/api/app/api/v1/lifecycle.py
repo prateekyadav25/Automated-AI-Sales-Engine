@@ -3,7 +3,7 @@ from decimal import Decimal
 from typing import Annotated
 from uuid import UUID
 
-from fastapi import APIRouter, Depends
+from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
@@ -46,6 +46,7 @@ from app.schemas.lifecycle import (
     AdvocacyIn,
     AdvocacyOut,
     CampaignDetail,
+    CampaignEnquiry,
     CampaignIn,
     CampaignLaunchOut,
     CampaignMemberIn,
@@ -102,6 +103,7 @@ from app.services.ads import (
     sync_campaign,
     sync_consented_audience,
 )
+from app.services.ads_assembly import assemble_paused_meta, assembly_view, proposal_errors
 from app.services.audit import write_audit
 from app.services.customer_intelligence import rebuild_health
 from app.services.dograh_browser import browser_test_from_settings
@@ -166,6 +168,25 @@ def overview(
     return Envelope(data=LifecycleOverview.model_validate(lifecycle_pulse(db, ctx.tenant_id)))
 
 
+def _present_campaign(db: Session, row: Campaign, *, include_enquiries: bool) -> CampaignOut:
+    payload = CampaignOut.model_validate(row)
+    view = assembly_view(db, row, include_enquiries=include_enquiries)
+    payload.offer_label = str(view["offer_label"])
+    payload.live_execution_ready = False
+    payload.live_execution_note = str(view["live_execution_note"])
+    payload.activated = False
+    payload.destination_url = str(view["destination_url"])
+    payload.schedule_label = str(view["schedule_label"])
+    payload.ad_set_external_id = str(view["ad_set_external_id"])
+    payload.creative_external_id = str(view["creative_external_id"])
+    payload.ad_external_id = str(view["ad_external_id"])
+    payload.ad_set_status = str(view["ad_set_status"])
+    payload.creative_status = str(view["creative_status"])
+    payload.ad_status = str(view["ad_status"])
+    payload.enquiries = [CampaignEnquiry.model_validate(item) for item in view["enquiries"]]
+    return payload
+
+
 @router.get("/campaigns", response_model=Envelope[list[CampaignOut]])
 def list_campaigns(
     db: Annotated[Session, Depends(get_db)],
@@ -175,7 +196,7 @@ def list_campaigns(
 ) -> Envelope[list[CampaignOut]]:
     stmt = select(Campaign).where(Campaign.tenant_id == ctx.tenant_id, Campaign.deleted_at.is_(None)).order_by(Campaign.created_at.desc())
     rows, total = paginate(db, stmt, page, page_size)
-    return Envelope(data=[CampaignOut.model_validate(row) for row in rows], meta=Meta(page=page, page_size=page_size, total=total))
+    return Envelope(data=[_present_campaign(db, row, include_enquiries=False) for row in rows], meta=Meta(page=page, page_size=page_size, total=total))
 
 
 @router.post("/campaigns", response_model=Envelope[CampaignOut])
@@ -185,11 +206,37 @@ def create_campaign(
     ctx: Annotated[AuthContext, Depends(require_permission("campaigns.write"))],
 ) -> Envelope[CampaignOut]:
     row = Campaign(tenant_id=ctx.tenant_id, created_by=ctx.user.id, **body.model_dump())
+    if (row.channel or "").strip().lower() == "meta":
+        errors = proposal_errors(db, tenant_id=ctx.tenant_id, campaign=row)
+        if errors:
+            raise HTTPException(status_code=422, detail=" ".join(errors))
+        row.status = "draft"
+        row.spent = Decimal("0")
+        row.external_campaign_id = ""
+        row.provider_status = ""
+        row.impressions = 0
+        row.clicks = 0
+        row.conversions = 0
+        row.assembly_status = "draft"
+        row.assembly_blocker = "Saved proposal. A proposed budget does not authorize activation."
     db.add(row)
     write_audit(db, tenant_id=ctx.tenant_id, actor_id=ctx.user.id, action="campaign.create", entity_type="campaign", entity_id="pending", after=body.model_dump(), correlation_id=ctx.correlation_id)
     db.commit()
     db.refresh(row)
-    return Envelope(data=CampaignOut.model_validate(row))
+    return Envelope(data=_present_campaign(db, row, include_enquiries=False))
+
+
+@router.post("/campaigns/{campaign_id}/assemble", response_model=Envelope[CampaignOut])
+def assemble_campaign(
+    campaign_id: UUID,
+    db: Annotated[Session, Depends(get_db)],
+    ctx: Annotated[AuthContext, Depends(require_permission("campaigns.write"))],
+) -> Envelope[CampaignOut]:
+    campaign = get_owned(db, Campaign, ctx.tenant_id, campaign_id)
+    assemble_paused_meta(db, tenant_id=ctx.tenant_id, actor_id=ctx.user.id, campaign=campaign, provider=None)
+    db.commit()
+    db.refresh(campaign)
+    return Envelope(data=_present_campaign(db, campaign, include_enquiries=True))
 
 
 @router.post("/campaigns/{campaign_id}/launch", response_model=Envelope[CampaignLaunchOut])
@@ -220,7 +267,24 @@ def get_campaign(
 ) -> Envelope[CampaignDetail]:
     row = get_owned(db, Campaign, ctx.tenant_id, campaign_id)
     members = db.scalars(select(CampaignMember).where(CampaignMember.campaign_id == row.id, CampaignMember.deleted_at.is_(None))).all()
+    presented = _present_campaign(db, row, include_enquiries=True)
     payload = CampaignDetail.model_validate(row)
+    for name in (
+        "offer_label",
+        "live_execution_ready",
+        "live_execution_note",
+        "activated",
+        "destination_url",
+        "schedule_label",
+        "ad_set_external_id",
+        "creative_external_id",
+        "ad_external_id",
+        "ad_set_status",
+        "creative_status",
+        "ad_status",
+        "enquiries",
+    ):
+        setattr(payload, name, getattr(presented, name))
     payload.members = [CampaignMemberOut.model_validate(item) for item in members]
     return Envelope(data=payload)
 
@@ -619,7 +683,7 @@ def sync_campaign_metrics(
     sync_campaign(db, tenant_id=ctx.tenant_id, actor_id=ctx.user.id, campaign=campaign)
     db.commit()
     db.refresh(campaign)
-    return Envelope(data=CampaignOut.model_validate(campaign))
+    return Envelope(data=_present_campaign(db, campaign, include_enquiries=False))
 
 
 @router.post("/campaigns/{campaign_id}/creative", response_model=Envelope[CampaignLaunchOut])

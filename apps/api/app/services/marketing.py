@@ -29,6 +29,7 @@ from app.providers.social import (
     get_social_publisher,
     instagram_can_fetch,
 )
+from app.services.ads_assembly import paused_meta_summary
 from app.services.audit import write_audit
 from app.services.content_calendar import list_proposals
 from app.services.demo_guard import external_execution_block
@@ -916,6 +917,7 @@ def marketing_board(db: Session, tenant_id: UUID) -> dict:
             "plan_id": "",
             "proposals": [],
             "native_forms": native_form_rows(db, tenant_id),
+            "paused_meta": paused_meta_summary(db, tenant_id),
             "enquiries": [],
             "acknowledgement": {"not_prepared": 0, "pending": 0, "approved": 0},
             "outcomes": {
@@ -952,6 +954,7 @@ def marketing_board(db: Session, tenant_id: UUID) -> dict:
         "plan_id": str(plan.id),
         "proposals": list_proposals(db, tenant_id, plan.id),
         "native_forms": native_form_rows(db, tenant_id),
+        "paused_meta": paused_meta_summary(db, tenant_id),
         "products": products,
         "research_runs": plan.research_runs,
         "research_limit": plan.research_limit,

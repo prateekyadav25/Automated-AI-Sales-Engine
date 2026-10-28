@@ -7,6 +7,7 @@ from sqlalchemy.orm import Session
 
 from app.models.acquisition import DedupeReview, InboundCapture
 from app.models.crm import Account, Contact, Lead
+from app.models.funnel import PaidAd
 from app.models.lifecycle import Campaign
 from app.models.operating_plan import CreativeVersion, OperatingPlan
 from app.services.assessment import FREE_MAIL_DOMAINS
@@ -70,14 +71,41 @@ def _apply_capture_publication(capture: InboundCapture, version: CreativeVersion
     capture.social_post_id = version.social_post_id
 
 
-def _attributed_campaign_id(db: Session, tenant_id: UUID, version: CreativeVersion | None, payload: dict) -> UUID | None:
+def _paid_ad(db: Session, tenant_id: UUID, payload: dict) -> PaidAd | None:
+    token = str(payload.get("ad") or "").strip()
+    if not token or len(token) > 64:
+        return None
+    return db.scalar(
+        select(PaidAd).where(
+            PaidAd.tenant_id == tenant_id,
+            PaidAd.tracking_token == token,
+            PaidAd.deleted_at.is_(None),
+        )
+    )
+
+
+def _resolved_attribution(
+    db: Session,
+    tenant_id: UUID,
+    payload: dict,
+) -> tuple[CreativeVersion | None, UUID | None, str]:
+    """Browser campaign and ad ids are ignored. A tracking token must belong to this tenant."""
+    supplied_ad = str(payload.get("ad") or "").strip()
+    if supplied_ad:
+        paid = _paid_ad(db, tenant_id, payload)
+        if paid is None:
+            return None, None, ""
+        version = db.get(CreativeVersion, paid.creative_version_id) if paid.creative_version_id else None
+        if version is None or version.tenant_id != tenant_id or version.deleted_at is not None:
+            version = None
+        return version, paid.campaign_id, paid.external_id or ""
+    version = _publication(db, tenant_id, payload)
+    campaign_id = None
     if version is not None:
         plan = db.get(OperatingPlan, version.plan_id)
         if plan is not None and plan.tenant_id == tenant_id:
-            owned = _owned_campaign_id(db, tenant_id, plan.campaign_id)
-            if owned is not None:
-                return owned
-    return _owned_campaign_id(db, tenant_id, payload.get("campaign_id"))
+            campaign_id = _owned_campaign_id(db, tenant_id, plan.campaign_id)
+    return version, campaign_id, ""
 
 
 def _apply_first_touch(lead: Lead, version: CreativeVersion | None, campaign_id: UUID | None) -> None:
@@ -139,10 +167,11 @@ def hold_interest(
         status="review",
         captured_at=datetime.now(UTC),
         campaign_id=None,
-        ad_id=str(payload.get("ad_id") or payload.get("ad_name") or ""),
+        ad_id="",
     )
-    version = _publication(db, tenant_id, payload)
-    capture.campaign_id = _attributed_campaign_id(db, tenant_id, version, payload)
+    version, campaign_id, ad_external = _resolved_attribution(db, tenant_id, payload)
+    capture.campaign_id = campaign_id
+    capture.ad_id = ad_external
     _apply_capture_publication(capture, version)
     db.add(capture)
     db.flush()
@@ -250,8 +279,7 @@ def capture_inbound(
 
     reviews: list[DedupeReview] = []
     created_lead = False
-    version = _publication(db, tenant_id, payload)
-    campaign_id = _attributed_campaign_id(db, tenant_id, version, payload)
+    version, campaign_id, ad_external = _resolved_attribution(db, tenant_id, payload)
     if lead is None:
         lead = Lead(
             tenant_id=tenant_id,
@@ -270,7 +298,7 @@ def capture_inbound(
             utm_medium=payload.get("utm_medium") or "",
             utm_campaign=str(version.plan_id) if version is not None else (payload.get("utm_campaign") or ""),
             campaign_id=campaign_id,
-            ad_id=str(payload.get("ad_id") or payload.get("ad_name") or ""),
+            ad_id=ad_external,
             status="new",
             consent_email=bool(payload.get("consent_email")),
             opt_out=False,
@@ -316,10 +344,8 @@ def capture_inbound(
         _fill_blank(lead, "utm_source", str(payload.get("utm_source") or ""))
         _fill_blank(lead, "utm_medium", str(payload.get("utm_medium") or ""))
         _fill_blank(lead, "utm_campaign", str(payload.get("utm_campaign") or ""))
-        _fill_blank(lead, "ad_id", str(payload.get("ad_id") or payload.get("ad_name") or ""))
         if payload.get("consent_email") and not lead.opt_out:
             lead.consent_email = True
-        _apply_first_touch(lead, version, campaign_id)
 
     if payload.get("company_name"):
         fuzzy = db.scalars(
@@ -373,7 +399,7 @@ def capture_inbound(
         status="accepted" if created_lead else "duplicate_review",
         captured_at=datetime.now(UTC),
         campaign_id=campaign_id,
-        ad_id=str(payload.get("ad_id") or payload.get("ad_name") or ""),
+        ad_id=ad_external,
     )
     _apply_capture_publication(capture, version)
     db.add(capture)

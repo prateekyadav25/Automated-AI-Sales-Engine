@@ -6,7 +6,13 @@ The running demonstration stays `prepared`. None of these milestones authorize a
 
 ## Status on 2026-10-28
 
-**Meta native lead-form ingestion is complete as a fixture path, and the local application is on Alembic `040`.** Organic creative production, discovery follow-through, outbound drafting, and organic acquisition remain complete as fixture paths. The next milestone to implement is paused paid campaign assembly and attribution. LinkedIn Lead Sync, Google lead forms, comments, direct messages, Meet, voice, commercial activation, and SEO remain required and are not started by this slice.
+**Paused Meta website-destination assembly is complete as a fixture path, and the local application is on Alembic `041`.** Native lead-form ingestion, organic creative production, discovery follow-through, outbound drafting, and organic acquisition remain complete as fixture paths. LinkedIn assembly, native lead-form campaign creation, activation, and paid-metrics read-back stay open. The next milestone to implement is Google Meet booking, before voice handoff. Commercial activation, retention, broader social performance, and SEO remain on the roadmap and are not started by this slice.
+
+A scripted Meta client stores a paused campaign, ad set, creative, and ad for one website capture form. The capture token attributes the enquiry. A proposed budget does not activate the campaign. No live advertising call was made. Fixture ids are not a live ad account.
+
+## Status on 2026-10-28, lead forms
+
+**Meta native lead-form ingestion is complete as a fixture path, and the local application was on Alembic `040`.** Organic creative production, discovery follow-through, outbound drafting, and organic acquisition remain complete as fixture paths. The milestone after that status was paused paid campaign assembly. It is the section above. LinkedIn Lead Sync, Google lead forms, comments, direct messages, Meet, voice, commercial activation, and SEO were not started by that slice.
 
 A verified Meta `leadgen` notification is stored before acknowledgement. Lead details are retrieved through the worker and tested with fake Graph responses. The workspace and operating plan come from a local mapping. A prepared demonstration does not open a live Graph client. No Page subscription was registered.
 
@@ -99,7 +105,7 @@ Checks:
 ### Remaining gaps
 
 - A live Apify search, a live enrichment vendor, and a live model were not used. The discovery path records unsupported research instead of inventing it.
-- Paused paid campaign children are not built. The spend gate is.
+- Meta website-destination children are fixture-verified and stay paused. LinkedIn assembly, native lead-form campaign creation, activation, and paid-metrics read-back are not. The spend gate remains.
 - Meet is unchanged.
 - A DEMO tenant with no demonstration scope cannot run billable discovery, and it cannot call the LinkedIn or Meta publisher. A mock publisher remains available. Nothing is currently due. The prepared demonstration was not authorized.
 - A public host, MinIO, and a live publish authorization are still required before a real post.
@@ -108,7 +114,7 @@ Checks:
 
 Customer-visible value is an enquiry that names the right offer and lands in the sales journey the product already runs. Milestone 1 connects the operating plan, the due schedule, the mock publication, the capture form, and the acknowledgement through one frozen product context. Milestone 4 now uses that same context for every sequence step. Paid campaign children still do not.
 
-Later paid work should reuse the same capture and the same offer text. Building a new campaign structure before the form remembers where the person came from would create another disconnected button.
+Later paid work reuses the same capture and the same product context. The Meta website path now does that in fixtures. LinkedIn assembly does not.
 
 Gemini stays the configured model. A sequence draft now receives the step, the frozen product, the lead, and eligible stored research. On failure it stores a labeled fallback instead of the template. The acknowledgement still does not call the model. Discovery can now store a person and carry the selected product into that draft. It still does not call Apify during the fixture proof, and it does not invent research when the model is mock or unconfigured.
 
@@ -167,9 +173,11 @@ After the fixture is green, and only with explicit authorization: one LinkedIn, 
 
 ## Milestone 2 — One paused paid campaign becomes the same enquiry
 
-Not started, except for the spend gate below. Build the campaign children the launch path currently skips, point them at the same form, and prove a submission is attributed. Activation and spend stay refused.
+**Meta website traffic is complete in fixtures on 2026-10-28, at Alembic `041`.** The supported objective is website traffic. The supported destination is the existing capture form. The supported placement is Facebook feed. LinkedIn assembly was not implemented and was not forced into Meta's campaign, ad set, creative, and ad tree. A native lead form is not created or launched. Activation and paid-metrics read-back stay refused.
 
-The fail-closed spend check is already in `budget_block_reason`. A daily or monthly limit that is zero, missing, invalid, or exhausted returns `No ad spend is authorized. A zero, missing, or invalid limit cannot activate a campaign.` or the exhausted-limit string. That does not assemble an ad set, a creative, or an ad.
+The product name comes from the shared context frozen on the plan and the creative. The fixture uses a catalogue row other than GOV, so the acknowledgement is not a hardcoded GOV sentence. The capture link carries a server-issued tracking token. A campaign id or ad id submitted by the browser is not trusted.
+
+The fail-closed spend check remains in `budget_block_reason`. A daily or monthly limit that is zero, missing, invalid, or exhausted returns `No ad spend is authorized. A zero, missing, or invalid limit cannot activate a campaign.` or the exhausted-limit string. A positive proposed budget does not pass that check.
 
 ### Acceptance journey
 
@@ -182,10 +190,11 @@ The fail-closed spend check is already in `budget_block_reason`. A daily or mont
 
 ### Engineering
 
-- Still to do: call the existing `create_ad_set`, `create_creative`, and `create_ad` from the campaign assembly path before any activate call. Keep activate behind the current approval and the demo guard.
+- Done for Meta website traffic: `ads_assembly.assemble_paused_meta` calls the existing campaign, ad set, creative, and ad methods. Every supported delivery status is sent as paused. Activate and `execute_ads_spend` are not on this path. A partial tree is kept. An unknown create is not repeated.
+- Still open: LinkedIn assembly, any objective other than website traffic, a native lead-form destination, live image upload, and paid-metrics read-back.
 - Done: activation fails closed when either the daily or the monthly limit is zero, missing, invalid, or exhausted.
-- Stamp ad identifiers onto the capture the form already supports.
-- Leave `campaign.launched` as an event. `lead.created` remains the sales trigger.
+- The capture form stores the tracking token. Provider campaign and ad ids are copied only after the assembly stored them.
+- `campaign.launched` stays an event. `lead.created` remains the sales trigger. A form submission does not create an opportunity.
 
 ### Configuration
 
@@ -193,9 +202,9 @@ Set Meta to sandbox for any local live HTTP experiment. Leave activation unautho
 
 ### Completion evidence
 
-- Fixture test: paused structure, attributed lead, acknowledgement names `GOV`, no `CONFIRMED` ads action, no spend decimal written.
-- Done: zero, missing, invalid, and exhausted limits refuse activation with a stable error string. The paused campaign structure and its attributed lead are still open.
-- Real-provider evidence is explicitly out of this milestone. Sandbox campaign create, if the user later allows one HTTP call, is recorded as sandbox and is not spend.
+- Fixture test: `apps/api/tests/test_meta_campaign_assembly.py`. The scripted client records paused parent-child ids. A consented enquiry is attributed by the token. A duplicate delivery and a later person stay separate. A cross-tenant token and a forged id are rejected. The acknowledgement names the frozen product and does not send. Spend stays zero. A prepared scope and an expired scope do not open the client.
+- Done: zero, missing, invalid, and exhausted limits refuse activation with a stable error string.
+- These fixture ids are not real-provider evidence. A later authorized live check needs an explicit decision to call Meta, an ads token that is neither the page-posting token nor the lead-retrieval token, a public capture URL, a real Page id, an uploaded image, a sandbox-or-spend choice, and a read-back of the paused objects. `v21.0` in this client does not prove that check.
 
 ## Milestone 3 — The existing booking stores a Meet link
 
@@ -328,7 +337,7 @@ Acceptance that was proved with fake Graph responses: a verified notification is
 
 ### Complete paid campaign assembly and attribution
 
-This is the remainder of Milestone 2. Acceptance: the fixture assembles a paused campaign, ad set, creative, and ad aimed at the existing capture form. A submission stores the campaign and ad ids. Zero or missing spend still cannot activate. No spend decimal is written.
+**Meta website traffic is complete in fixtures on 2026-10-28.** The fixture assembles a paused campaign, ad set, creative, and ad aimed at the existing capture form. A submission stores the internal campaign and the provider ad id only through the tracking token. Zero, missing, invalid, and exhausted limits still cannot activate. No spend decimal is written. LinkedIn assembly, native lead-form campaign creation, activation, and paid-metrics read-back remain open. The next milestone is Google Meet booking, before voice handoff.
 
 ### Google Meet creation
 
@@ -367,4 +376,4 @@ Acceptance: a fixture keyword and page recommendation are stored against the sel
 
 ## Completion of this plan
 
-Milestones 1 and 4, discovery follow-through, organic creative read-back, and Meta native lead-form ingestion now pass in fixtures. The post, the lead, and the acknowledgement share the selected product. A content proposal can become one mock publication and a stored LinkedIn statistics reading without a live call. The sequence draft freezes that product and labels the facts behind the email. A discovered person keeps the selected plan and reaches that draft only when assessment and channel permission allow it. A Meta lead form can become one acknowledgement without a live Graph call and without an outbound sequence. No Apify, social, or model provider was contacted to prove this. The next milestone is paused paid campaign assembly and attribution. Meet, voice, commercial activation, and SEO stay listed above with their own acceptance journeys. None of them inherits a live-provider claim from an older row in the database. The sales engine is not finished.
+Milestones 1, 2 for Meta website traffic, and 4, plus discovery follow-through, organic creative read-back, and Meta native lead-form ingestion, now pass in fixtures. The post, the paused ad, the lead, and the acknowledgement share the selected product. A content proposal can become one mock publication and a stored LinkedIn statistics reading without a live call. The sequence draft freezes that product and labels the facts behind the email. A discovered person keeps the selected plan and reaches that draft only when assessment and channel permission allow it. A Meta lead form can become one acknowledgement without a live Graph call and without an outbound sequence. A paused Meta website campaign can become one attributed enquiry without a live advertising call and without activation. LinkedIn assembly is still open. No Apify, social, ads, or model provider was contacted to prove this. The next milestone is Google Meet booking, before voice handoff. Commercial activation, retention, broader social performance, and SEO stay listed above. None of them inherits a live-provider claim from an older row in the database. The sales engine is not finished.

@@ -1,8 +1,53 @@
 # Current capability audit
 
-## Current status — 2026-10-28, Meta native lead-form ingestion
+## Current status — 2026-10-28, paused Meta campaign assembly
 
-This is the current status. The organic section below, the discovery section, the outbound section, the executive assessment, the baseline table, and the capability matrix are earlier. Where they disagree with this section, this section is the one to use.
+This is the current status. The lead-form section below, the organic section, the discovery section, the outbound section, the executive assessment, the baseline table, and the capability matrix are earlier. Where they disagree with this section, this section is the one to use.
+
+One Meta proposal can be assembled as a paused website-traffic campaign aimed at the existing capture form. The proposal stores the selected operating plan, the frozen product context, the audience, geography, Facebook feed placement, dates, time zone, proposed budget, copy, headline, call to action, asset, and destination. Saving it does not authorize spend. Assembly is complete only when the campaign, ad set, creative, and ad each have a stored provider id and an explicit paused status. A campaign shell is partial.
+
+The Marketing API host used by the existing ads client is `https://graph.facebook.com/v21.0`. Live ad-account permission, image upload, and delivery were not verified. A token that can post to a Page, or a token that can read a lead, does not prove this advertising path.
+
+LinkedIn is not given Meta's object tree. Its assembly remains incomplete. `PreparedAdsProvider` cannot report a completed live-capable campaign. Other objectives and a native lead-form destination are explicit failures and make no provider call. Native lead-form intake from the previous milestone remains. This milestone does not create or launch those campaigns.
+
+A later failure keeps the objects already confirmed and the exact blocker. Replay continues from those objects. An empty success body stays unresolved and is not created again. Provider objects are not deleted as a rollback. Tests use a scripted client. The live assemble route does not open one.
+
+The capture link carries a tracking token. That token maps the tenant, plan, frozen product, internal campaign and ad, provider ids only after they were stored, and the creative version. A campaign id or ad id typed into the browser is ignored. A cross-tenant token is ignored. The first enquiry keeps first touch. A later submission from the same person is another enquiry. A different person is another lead. Consent, assessment, and acknowledgement are unchanged. A form submission does not create an opportunity or a sequence.
+
+Activation is a separate path. Assembly does not call it. Zero, missing, invalid, and exhausted limits still refuse it. A positive proposed budget does not permit it. Sandbox refusal remains. A prepared scope, an expired status, and an authorized scope past its expiry block external work. Expiration does not make a blocked action executable.
+
+The command view and the campaign page show the proposal, the creative text, the four assembly checks, the blocker, the not-activated state, and enquiry links. A localhost destination or a local asset says live execution is not ready. That note does not stop the fixture. Spend, impressions, clicks, and conversions are not shown unless a provider sync time exists. None exists for this path.
+
+### Running locally
+
+| Item | Value |
+|---|---|
+| Database | Alembic `041`, applied after a backup at `040` |
+| Backup | `.local-backups/agrayian-before-041-2026-10-28.dump`, custom format, gitignored |
+| Restore | Stop api, worker, and beat. `pg_restore --clean --if-exists` the dump into `agrayian` inside the Postgres container. The restored schema is `040`. Upgrade before starting images that contain `041` |
+| Disposable proof | A restored copy was upgraded `040` → `041`. `paid_ads` and the campaign proposal columns were present. The prepared scope and its expiry were unchanged. The copy was dropped |
+| Scope | One row, `prepared`, expiry `2026-10-29 18:03:28.181796+00`. Not authorized |
+| Holds | 3 approvals and 9 enrollments remained `held`. Approvals remained 3 held, 5 pending, and 10 rejected |
+| Leads | 33 active, 43 total. The 10 soft-deleted rows from 2026-10-10 were not restored |
+| Paid ads | 0 rows. No campaign was sent to Meta |
+| Images | api, web, worker, and beat rebuilt after the upgrade. Worker and beat were stopped during it |
+| Browser | The command view shows an empty paused Meta section and the existing native-form section. The new-campaign drawer shows the Meta proposal fields. An existing LinkedIn draft shows waiting assembly checks, not activated, and no recorded spend. Nothing was saved, assembled, launched, or synced |
+
+After the image restart, the mailbox poll read Gmail history and stored nothing new. Due publish, native lead retrieval, and the outbox returned nothing to release. No Graph advertising call, Apify call, publish, send, booking, or dial was started.
+
+### What this section supersedes
+
+| Capability | Current state |
+|---|---|
+| Paused Meta website campaign | Fixture-verified through a scripted client. Not a live ad account |
+| LinkedIn campaign assembly | Unsupported. Meta's structure was not applied |
+| Native lead-form campaigns | Intake remains. Creation and launch are not part of this assembly |
+| Paid metrics | Not read back. The page does not invent spend, impressions, clicks, or conversions |
+| Activation | Still refused by limits, sandbox, and the prepared demonstration. A proposed budget is not a grant |
+
+## Earlier status — 2026-10-28, Meta native lead-form ingestion
+
+This section was current before paused Meta assembly. The section above replaces it where they disagree.
 
 Meta Page `leadgen` notifications can be verified and stored before the HTTP acknowledgement. The stored lead id is retrieved later by `retrieve_native_lead_forms`. Tests pass a fake Graph client. The supported Graph version is v21.0, the same version already used for Meta page publishing. Official lead-detail examples also show v25.0 and v26.0. This adapter does not call those versions and does not call `has_lead_access`.
 

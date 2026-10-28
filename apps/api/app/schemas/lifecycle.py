@@ -27,12 +27,47 @@ class CampaignIn(APIModel):
     ctr: Decimal | None = None
     cpc: Decimal | None = None
     cpl: Decimal | None = None
+    operating_plan_id: UUID | None = None
+    creative_version_id: UUID | None = None
+    audience: str = ""
+    geography: str = ""
+    placements: str = ""
+    timezone: str = ""
+    currency: str = ""
+    headline: str = ""
+    body: str = ""
+    call_to_action: str = ""
+    asset_ref: str = ""
+    destination: str = ""
+
+
+class CampaignEnquiry(APIModel):
+    capture_id: str
+    lead_id: str = ""
+    status: str = ""
+    first_touch: bool = False
 
 
 class CampaignOut(CampaignIn):
     id: UUID
     tenant_id: UUID
     created_at: datetime
+    last_synced_at: datetime | None = None
+    assembly_status: str = ""
+    assembly_blocker: str = ""
+    offer_label: str = ""
+    live_execution_ready: bool = False
+    live_execution_note: str = ""
+    activated: bool = False
+    destination_url: str = ""
+    schedule_label: str = ""
+    ad_set_external_id: str = ""
+    creative_external_id: str = ""
+    ad_external_id: str = ""
+    ad_set_status: str = ""
+    creative_status: str = ""
+    ad_status: str = ""
+    enquiries: list[CampaignEnquiry] = Field(default_factory=list)
 
 
 class CampaignMemberIn(APIModel):

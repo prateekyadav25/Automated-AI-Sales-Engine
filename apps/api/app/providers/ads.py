@@ -1,3 +1,6 @@
+from __future__ import annotations
+
+import json
 import time
 from dataclasses import dataclass
 from decimal import Decimal, InvalidOperation
@@ -10,6 +13,11 @@ from sqlalchemy.orm import Session
 from app.core.config import get_settings
 from app.services.provider_ops import classify_http
 from app.services.provider_resolve import resolve_channel
+
+# Marketing API version this ads client already posts. A page-posting token
+# or a lead-retrieval token does not prove this path. Live ad-account
+# permission, image upload, and delivery have not been verified.
+META_ADS_GRAPH = "https://graph.facebook.com/v21.0"
 
 LINKEDIN_OBJECTIVES = {
     "pipeline": "LEAD_GENERATION",
@@ -38,6 +46,40 @@ def meta_refusal(prefix: str, response: httpx.Response) -> str:
     except ValueError:
         message = ""
     return f"{prefix} ({response.status_code}). {message[:180]}".strip()
+
+
+def meta_created(response: httpx.Response, *, label: str) -> AdsCampaignResult:
+    """A 2xx body without an id is unresolved. It is not a successful object and it is not a refusal to retry blindly."""
+    if response.status_code >= 400:
+        return AdsCampaignResult(
+            ok=False,
+            provider="meta-ads",
+            is_mock=False,
+            reason=meta_refusal(f"Meta {label} refused", response),
+            status_code=response.status_code,
+            failure_class=classify_http(response.status_code),
+        )
+    data = response.json() if response.content else {}
+    if not isinstance(data, dict):
+        data = {}
+    external_id = "" if data.get("unknown") is True else str(data.get("id") or "")
+    if not external_id:
+        return AdsCampaignResult(
+            ok=False,
+            provider="meta-ads",
+            is_mock=False,
+            external_id="",
+            provider_status="unknown",
+            failure_class="UNKNOWN",
+            reason=f"Meta did not confirm a {label} id. The create was not repeated.",
+        )
+    return AdsCampaignResult(
+        ok=True,
+        provider="meta-ads",
+        is_mock=False,
+        external_id=external_id,
+        provider_status="PAUSED",
+    )
 
 
 STATUS_MAP = {
@@ -603,7 +645,7 @@ class MetaAdsProvider:
         requested = int(budget * 100)
         minimum = 100
         response = client.get(
-            f"https://graph.facebook.com/v21.0/act_{self._account}",
+            f"{META_ADS_GRAPH}/act_{self._account}",
             params={"access_token": self._token, "fields": "min_daily_budget"},
         )
         if response.status_code < 400:
@@ -612,41 +654,35 @@ class MetaAdsProvider:
                 minimum = int(raw)
         return str(max(requested, minimum))
 
-    def create_campaign(self, *, name: str, objective: str, budget: Decimal) -> AdsCampaignResult:
+    def create_campaign(self, *, name: str, objective: str, budget: Decimal, include_budget: bool = True) -> AdsCampaignResult:
         owns = self._client is None
         client = self._client or httpx.Client(timeout=30.0)
         mapped = META_OBJECTIVES.get(objective.strip().lower(), "OUTCOME_TRAFFIC")
+        payload = {
+            "name": name,
+            "objective": mapped,
+            "status": "PAUSED",
+            "special_ad_categories": "[]",
+        }
+        if include_budget:
+            payload["daily_budget"] = self._daily_budget_amount(client, budget)
         try:
             response = client.post(
-                f"https://graph.facebook.com/v21.0/act_{self._account}/campaigns",
+                f"{META_ADS_GRAPH}/act_{self._account}/campaigns",
                 params={"access_token": self._token},
-                data={
-                    "name": name,
-                    "objective": mapped,
-                    "status": "PAUSED",
-                    "special_ad_categories": "[]",
-                    "daily_budget": self._daily_budget_amount(client, budget),
-                },
+                data=payload,
             )
-            if response.status_code >= 400:
+            created = meta_created(response, label="campaign")
+            if not created.ok and created.failure_class != "UNKNOWN" and response.status_code >= 400:
                 return AdsCampaignResult(
                     ok=False,
                     provider="meta-ads",
                     is_mock=False,
                     reason=meta_refusal("Meta Marketing API refused launch", response) + " No invented spend.",
                     status_code=response.status_code,
-                    failure_class=classify_http(response.status_code),
+                    failure_class=created.failure_class,
                 )
-            data = response.json() if response.content else {}
-            external_id = str(data.get("id") or "")
-            return AdsCampaignResult(
-                ok=bool(external_id),
-                provider="meta-ads",
-                is_mock=False,
-                external_id=external_id,
-                provider_status="PAUSED",
-                reason="" if external_id else "Meta returned no campaign id.",
-            )
+            return created
         except httpx.HTTPError:
             return AdsCampaignResult(
                 ok=False, provider="meta-ads", is_mock=False, reason="Meta network error. No invented spend.", failure_class="TRANSIENT"
@@ -662,7 +698,7 @@ class MetaAdsProvider:
         client = self._client or httpx.Client(timeout=30.0)
         try:
             response = client.post(
-                f"https://graph.facebook.com/v21.0/{external_id}",
+                f"{META_ADS_GRAPH}/{external_id}",
                 params={"access_token": self._token},
                 data={"status": "PAUSED"},
             )
@@ -705,7 +741,7 @@ class MetaAdsProvider:
         client = self._client or httpx.Client(timeout=30.0)
         try:
             campaign = client.get(
-                f"https://graph.facebook.com/v21.0/{external_id}",
+                f"{META_ADS_GRAPH}/{external_id}",
                 params={"access_token": self._token, "fields": "status,effective_status"},
             )
             status = ""
@@ -713,7 +749,7 @@ class MetaAdsProvider:
                 body = campaign.json() or {}
                 status = normalize_ad_status(str(body.get("effective_status") or body.get("status") or ""))
             insights = client.get(
-                f"https://graph.facebook.com/v21.0/{external_id}/insights",
+                f"{META_ADS_GRAPH}/{external_id}/insights",
                 params={"access_token": self._token, "fields": "spend,impressions,clicks,actions"},
             )
             if insights.status_code >= 400:
@@ -744,60 +780,82 @@ class MetaAdsProvider:
             if owns:
                 client.close()
 
-    def create_ad_set(self, *, campaign_external_id: str, name: str, budget: Decimal) -> AdsCampaignResult:
+    def create_ad_set(
+        self,
+        *,
+        campaign_external_id: str,
+        name: str,
+        budget: Decimal,
+        countries: list[str] | None = None,
+        optimization_goal: str = "REACH",
+        destination_type: str = "",
+        placements: list[str] | None = None,
+        include_budget: bool = True,
+    ) -> AdsCampaignResult:
         owns = self._client is None
         client = self._client or httpx.Client(timeout=30.0)
+        targeting: dict[str, object] = {"geo_locations": {"countries": countries or ["IN"]}}
+        if placements == ["facebook_feed"]:
+            targeting["publisher_platforms"] = ["facebook"]
+            targeting["facebook_positions"] = ["feed"]
+        payload = {
+            "name": name,
+            "campaign_id": campaign_external_id,
+            "billing_event": "IMPRESSIONS",
+            "optimization_goal": optimization_goal,
+            "status": "PAUSED",
+            "targeting": json.dumps(targeting),
+        }
+        if destination_type:
+            payload["destination_type"] = destination_type
+        if include_budget:
+            payload["daily_budget"] = self._daily_budget_amount(client, budget)
         try:
             response = client.post(
-                f"https://graph.facebook.com/v21.0/act_{self._account}/adsets",
+                f"{META_ADS_GRAPH}/act_{self._account}/adsets",
                 params={"access_token": self._token},
-                data={
-                    "name": name,
-                    "campaign_id": campaign_external_id,
-                    "daily_budget": self._daily_budget_amount(client, budget),
-                    "billing_event": "IMPRESSIONS",
-                    "optimization_goal": "REACH",
-                    "status": "PAUSED",
-                    "targeting": '{"geo_locations":{"countries":["IN"]}}',
-                },
+                data=payload,
             )
-            if response.status_code >= 400:
-                return AdsCampaignResult(
-                    ok=False,
-                    provider="meta-ads",
-                    is_mock=False,
-                    reason=f"Meta ad set refused ({response.status_code}).",
-                    status_code=response.status_code,
-                    failure_class=classify_http(response.status_code),
-                )
-            external_id = str((response.json() or {}).get("id") or "")
-            return AdsCampaignResult(ok=bool(external_id), provider="meta-ads", is_mock=False, external_id=external_id, provider_status="PAUSED")
+            return meta_created(response, label="ad set")
         except httpx.HTTPError:
             return AdsCampaignResult(ok=False, provider="meta-ads", is_mock=False, reason="Meta network error.", failure_class="TRANSIENT")
         finally:
             if owns:
                 client.close()
 
-    def create_creative(self, *, name: str, headline: str, body: str) -> AdsCampaignResult:
+    def create_creative(
+        self,
+        *,
+        name: str,
+        headline: str,
+        body: str,
+        link: str = "",
+        call_to_action: str = "",
+        page_id: str = "",
+    ) -> AdsCampaignResult:
         owns = self._client is None
         client = self._client or httpx.Client(timeout=30.0)
+        if link:
+            spec = json.dumps(
+                {
+                    "page_id": page_id,
+                    "link_data": {
+                        "message": body,
+                        "link": link,
+                        "name": headline,
+                        "call_to_action": {"type": call_to_action or "LEARN_MORE", "value": {"link": link}},
+                    },
+                }
+            )
+        else:
+            spec = "{}"
         try:
             response = client.post(
-                f"https://graph.facebook.com/v21.0/act_{self._account}/adcreatives",
+                f"{META_ADS_GRAPH}/act_{self._account}/adcreatives",
                 params={"access_token": self._token},
-                data={"name": name, "title": headline, "body": body, "object_story_spec": "{}"},
+                data={"name": name, "title": headline, "body": body, "object_story_spec": spec},
             )
-            if response.status_code >= 400:
-                return AdsCampaignResult(
-                    ok=False,
-                    provider="meta-ads",
-                    is_mock=False,
-                    reason=f"Meta creative refused ({response.status_code}).",
-                    status_code=response.status_code,
-                    failure_class=classify_http(response.status_code),
-                )
-            external_id = str((response.json() or {}).get("id") or "")
-            return AdsCampaignResult(ok=bool(external_id), provider="meta-ads", is_mock=False, external_id=external_id, provider_status="DRAFT")
+            return meta_created(response, label="creative")
         except httpx.HTTPError:
             return AdsCampaignResult(ok=False, provider="meta-ads", is_mock=False, reason="Meta network error.", failure_class="TRANSIENT")
         finally:
@@ -809,21 +867,16 @@ class MetaAdsProvider:
         client = self._client or httpx.Client(timeout=30.0)
         try:
             response = client.post(
-                f"https://graph.facebook.com/v21.0/act_{self._account}/ads",
+                f"{META_ADS_GRAPH}/act_{self._account}/ads",
                 params={"access_token": self._token},
-                data={"name": name, "adset_id": ad_set_external_id, "creative": f'{{"creative_id":"{creative_external_id}"}}', "status": "PAUSED"},
+                data={
+                    "name": name,
+                    "adset_id": ad_set_external_id,
+                    "creative": json.dumps({"creative_id": creative_external_id}),
+                    "status": "PAUSED",
+                },
             )
-            if response.status_code >= 400:
-                return AdsCampaignResult(
-                    ok=False,
-                    provider="meta-ads",
-                    is_mock=False,
-                    reason=f"Meta ad refused ({response.status_code}).",
-                    status_code=response.status_code,
-                    failure_class=classify_http(response.status_code),
-                )
-            external_id = str((response.json() or {}).get("id") or "")
-            return AdsCampaignResult(ok=bool(external_id), provider="meta-ads", is_mock=False, external_id=external_id, provider_status="PAUSED")
+            return meta_created(response, label="ad")
         except httpx.HTTPError:
             return AdsCampaignResult(ok=False, provider="meta-ads", is_mock=False, reason="Meta network error.", failure_class="TRANSIENT")
         finally:
@@ -845,7 +898,7 @@ class MetaAdsProvider:
         client = self._client or httpx.Client(timeout=30.0)
         try:
             response = client.post(
-                f"https://graph.facebook.com/v21.0/{external_id}",
+                f"{META_ADS_GRAPH}/{external_id}",
                 params={"access_token": self._token},
                 data={"status": "ACTIVE"},
             )
@@ -875,7 +928,7 @@ class MetaAdsProvider:
                 "customer_file_source": "USER_PROVIDED_ONLY",
             }
             response = client.post(
-                f"https://graph.facebook.com/v21.0/act_{self._account}/customaudiences",
+                f"{META_ADS_GRAPH}/act_{self._account}/customaudiences",
                 params={"access_token": self._token},
                 data=payload,
             )
@@ -891,7 +944,7 @@ class MetaAdsProvider:
             external_id = str((response.json() or {}).get("id") or "")
             if external_id and identifiers:
                 client.post(
-                    f"https://graph.facebook.com/v21.0/{external_id}/users",
+                    f"{META_ADS_GRAPH}/{external_id}/users",
                     params={"access_token": self._token},
                     json={"payload": {"schema": ["EMAIL"], "data": [[item] for item in identifiers[:10000]]}},
                 )

@@ -27,6 +27,7 @@ class CaptureIn(APIModel):
     request_note: str = ""
     campaign_id: UUID | None = None
     ad_id: str = ""
+    ad: str = ""
     publication: str = ""
 
 

@@ -323,6 +323,8 @@ def _capture_detail(db: Session, receipt: LeadFormReceipt, binding: LeadFormBind
     if lead is None:
         _review(receipt, "The enquiry was kept and no lead was created.")
         return
+    if lead_exists is None and receipt.attribution == "ad" and receipt.ad_id and not (lead.ad_id or "").strip():
+        lead.ad_id = receipt.ad_id
     if lead.operating_plan_id is None:
         lead.operating_plan_id = binding.operating_plan_id
     if not (lead.provider_ref or "").strip():

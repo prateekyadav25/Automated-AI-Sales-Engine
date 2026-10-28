@@ -89,6 +89,24 @@ class AdCreative(Base, TenantOwnedMixin):
     last_error: Mapped[str] = mapped_column(Text, default="", nullable=False)
 
 
+class PaidAd(Base, TenantOwnedMixin):
+    """One Meta ad under a paused ad set. The tracking token is the only attribution key."""
+
+    __tablename__ = "paid_ads"
+
+    campaign_id: Mapped[UUID] = mapped_column(ForeignKey("campaigns.id"), index=True, nullable=False)
+    ad_set_id: Mapped[UUID | None] = mapped_column(ForeignKey("ad_sets.id"), nullable=True)
+    ad_creative_id: Mapped[UUID | None] = mapped_column(ForeignKey("ad_creatives.id"), nullable=True)
+    creative_version_id: Mapped[UUID | None] = mapped_column(ForeignKey("creative_versions.id"), nullable=True)
+    name: Mapped[str] = mapped_column(String(160), default="", nullable=False)
+    provider: Mapped[str] = mapped_column(String(40), default="", nullable=False)
+    external_id: Mapped[str] = mapped_column(String(200), default="", nullable=False)
+    status: Mapped[str] = mapped_column(String(40), default="draft", nullable=False)
+    tracking_token: Mapped[str] = mapped_column(String(64), default="", index=True, nullable=False)
+    destination_url: Mapped[str] = mapped_column(Text, default="", nullable=False)
+    last_error: Mapped[str] = mapped_column(Text, default="", nullable=False)
+
+
 class AdAudience(Base, TenantOwnedMixin):
     __tablename__ = "ad_audiences"
 

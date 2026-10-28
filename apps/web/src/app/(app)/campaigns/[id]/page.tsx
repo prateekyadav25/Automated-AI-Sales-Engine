@@ -23,6 +23,8 @@ export default function CampaignWorkspacePage() {
   if (query.isLoading) return <LoadingState label="Opening the campaign" />;
   if (query.isError || !query.data) return <ErrorState message="This campaign is not in the tenant." />;
   const row = query.data;
+  const spendRecorded = Boolean(row.last_synced_at);
+  const previewIsRemote = (row.asset_ref || "").startsWith("https://") && !(row.asset_ref || "").includes("localhost");
   return (
     <div>
       <PageHeader
@@ -34,30 +36,40 @@ export default function CampaignWorkspacePage() {
       />
       <Stats
         items={[
-          { name: "Approved budget", value: money(row.budget), note: "Monthly ceiling from the plan" },
-          { name: "Recorded spend", value: money(row.spent), note: "Separate from product price" },
-          { name: "Qualified outcomes", value: String(row.conversions ?? 0), note: row.ctr ? `CTR ${row.ctr}` : "CTR unavailable until a live sync" },
-          { name: "Clicks", value: String(row.clicks ?? 0), note: row.provider_status || "Provider status unavailable" },
+          { name: "Proposed budget", value: `${row.currency || ""} ${money(row.budget)}`.trim(), note: "Not authorization to spend" },
+          { name: "Recorded spend", value: spendRecorded ? money(row.spent) : "Not recorded", note: "No paid ledger has been read" },
+          { name: "Impressions", value: spendRecorded ? String(row.impressions ?? 0) : "Not read back", note: "Paid metrics are a separate check" },
+          { name: "Activation", value: row.activated || row.status === "launched" ? row.status : "Not activated", note: row.assembly_status || "No assembly" },
         ]}
       />
       <div className="ds-grid wide">
         <Panel title="Campaign plan">
+          <Line label="Product" value={row.offer_label || "No frozen product context"} />
           <Line label="Objective" value={row.objective || "Not recorded"} />
-          <Line label="Channel" value={labelize(row.channel)} />
-          <Line label="Offer" value="Bound to the approved campaign version" />
-          <Line label="Owner" value="Accountable owner comes from the tenant" />
-          <Line label="Authorization" value={row.external_campaign_id || row.id.slice(0, 8)} />
+          <Line label="Audience" value={row.audience || "Not recorded"} />
+          <Line label="Geography" value={row.geography || "Not recorded"} />
+          <Line label="Dates" value={row.schedule_label || "Not recorded"} />
+          <Line label="Destination" value={row.destination_url || row.destination || "Not recorded"} />
+          <Line label="Activation" value="Not activated" />
           <hr className="rule" />
-          <h3>Asset and launch checklist</h3>
+          <h3>Creative</h3>
+          <p>{row.headline || "No headline"}</p>
+          <p>{row.body || "No copy"}</p>
+          <p>{row.call_to_action || "No call to action"}</p>
+          {previewIsRemote ? <img src={row.asset_ref} alt={row.headline || "Creative"} /> : <p>{row.asset_ref || "No asset"}</p>}
+          <p>{row.live_execution_note || "Live execution is not ready."}</p>
+          <hr className="rule" />
+          <h3>Assembly</h3>
           <Checks
             items={[
-              { label: "Audience and offer recorded", ok: Boolean(row.objective) },
-              { label: "Budget is greater than zero", ok: Number(row.budget) > 0 },
-              { label: "Capture source and routing verified", ok: false },
-              { label: "Follow-up template activated", ok: row.status === "launched" },
-              { label: "Provider result observed", ok: Boolean(row.provider_status) },
+              { label: "Campaign paused", ok: Boolean(row.external_campaign_id) && row.provider_status === "PAUSED" && row.assembly_status === "paused" },
+              { label: "Ad set paused", ok: row.ad_set_status === "paused" && Boolean(row.ad_set_external_id) },
+              { label: "Creative stored", ok: row.creative_status === "paused" && Boolean(row.creative_external_id) },
+              { label: "Ad paused", ok: row.ad_status === "paused" && Boolean(row.ad_external_id) },
+              { label: "Not activated", ok: row.status !== "launched" && row.activated !== true },
             ]}
           />
+          {row.assembly_blocker ? <p>{row.assembly_blocker}</p> : null}
           <div className="ds-flex" style={{ marginTop: 17 }}>
             <Go href="/content">Open content studio</Go>
             <Go href="/calendar">View calendar</Go>
@@ -66,19 +78,25 @@ export default function CampaignWorkspacePage() {
         </Panel>
         <Panel title="Budget and execution boundary">
           <div className="between">
-            <span className="muted small">Spend against approved ceiling</span>
-            <StatusPill tone={Number(row.spent) > Number(row.budget) && Number(row.budget) > 0 ? "blocked" : "success"}>
-              {Number(row.budget) > 0 ? "Within recorded budget" : "Budget unavailable"}
-            </StatusPill>
+            <span className="muted small">Activation</span>
+            <StatusPill tone="blocked">Not activated</StatusPill>
           </div>
-          <div className="progress" style={{ margin: "16px 0" }}>
-            <i style={{ width: Number(row.budget) > 0 ? `${Math.min(100, Math.round((Number(row.spent) / Number(row.budget)) * 100))}%` : "0%" }} />
-          </div>
-          <Line label="Impressions" value={String(row.impressions ?? "—")} />
+          <Line label="Proposed budget" value={`${row.currency || ""} ${money(row.budget)}`.trim()} />
+          <Line label="Recorded spend" value={spendRecorded ? money(row.spent) : "Not recorded"} />
+          <Line label="Impressions" value={spendRecorded ? String(row.impressions ?? 0) : "Not read back"} />
+          <Line label="Clicks" value={spendRecorded ? String(row.clicks ?? 0) : "Not read back"} />
+          <Line label="Conversions" value={spendRecorded ? String(row.conversions ?? 0) : "Not read back"} />
+          <h3>Attributed enquiries</h3>
+          {(row.enquiries || []).length === 0 ? <p>No attributed enquiry is stored.</p> : (row.enquiries || []).map((enquiry) => (
+            <p key={enquiry.capture_id}>
+              {enquiry.first_touch ? "First enquiry" : "Later enquiry"} · {enquiry.status}
+              {enquiry.lead_id ? <Go href={`/leads/${enquiry.lead_id}`}>Open journey</Go> : " · no lead"}
+            </p>
+          ))}
           <Line label="Provider" value={row.provider || "Not connected"} />
           <Line label="New channel" value="Manager approval required" />
           <Line label="Budget increase" value="Manager approval required" />
-          <Line label="Activation" value="Approved asset plus a working capture path" />
+          <Line label="Activation" value="Not authorized" />
           <hr className="rule" />
           <Go href="/policies">Inspect grant</Go>
         </Panel>

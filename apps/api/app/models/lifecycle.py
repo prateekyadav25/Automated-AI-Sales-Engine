@@ -31,6 +31,21 @@ class Campaign(Base, TenantOwnedMixin):
     ctr: Mapped[Decimal | None] = mapped_column(Numeric(18, 6), nullable=True)
     cpc: Mapped[Decimal | None] = mapped_column(Numeric(18, 4), nullable=True)
     cpl: Mapped[Decimal | None] = mapped_column(Numeric(18, 4), nullable=True)
+    operating_plan_id: Mapped[UUID | None] = mapped_column(ForeignKey("operating_plans.id"), nullable=True)
+    creative_version_id: Mapped[UUID | None] = mapped_column(ForeignKey("creative_versions.id"), nullable=True)
+    audience: Mapped[str] = mapped_column(Text, default="", nullable=False)
+    geography: Mapped[str] = mapped_column(String(8), default="", nullable=False)
+    placements: Mapped[str] = mapped_column(Text, default="", nullable=False)
+    timezone: Mapped[str] = mapped_column(String(64), default="", nullable=False)
+    currency: Mapped[str] = mapped_column(String(8), default="", nullable=False)
+    headline: Mapped[str] = mapped_column(String(200), default="", nullable=False)
+    body: Mapped[str] = mapped_column(Text, default="", nullable=False)
+    call_to_action: Mapped[str] = mapped_column(String(40), default="", nullable=False)
+    asset_ref: Mapped[str] = mapped_column(String(500), default="", nullable=False)
+    destination: Mapped[str] = mapped_column(String(40), default="", nullable=False)
+    assembly_status: Mapped[str] = mapped_column(String(32), default="", nullable=False)
+    assembly_blocker: Mapped[str] = mapped_column(Text, default="", nullable=False)
+    context_json: Mapped[str] = mapped_column(Text, default="", nullable=False)
 
 
 class CampaignMember(Base, TenantOwnedMixin):

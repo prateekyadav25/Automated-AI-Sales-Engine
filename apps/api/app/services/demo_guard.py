@@ -23,6 +23,7 @@ from app.services.external_hold import external_action
 from app.services.public_forms import form_key_url
 
 PREPARED_BLOCK = "The controlled demonstration is prepared and has not been authorized to execute."
+EXPIRED_BLOCK = "The demonstration scope has expired. Nothing was sent."
 REVIEW_BLOCK = "The demonstration changed after authorization and must be reviewed again."
 DEMO_DISCOVERY_BLOCK = "A DEMO workspace cannot run paid discovery without an authorized scope."
 DISCOVERY_OUTSIDE = "Paid discovery is outside the authorized scope."
@@ -182,9 +183,11 @@ def discovery_execution_block(db: Session, tenant_id: UUID, provider: object) ->
         return ""
     if not _billable_discovery(provider):
         return ""
-    scope = open_demo_scope(db, tenant_id)
+    scope = scope_for_execution(db, tenant_id)
     if scope is None:
         return DEMO_DISCOVERY_BLOCK
+    if _scope_expired(scope):
+        return EXPIRED_BLOCK
     if scope.status != "authorized":
         return PREPARED_BLOCK
     changed = _material_change(db, scope)
@@ -208,9 +211,11 @@ def organic_metrics_block(db: Session, tenant_id: UUID) -> str:
     mode = ((tenant.operating_mode if tenant is not None else "") or "DEMO").strip().upper()
     if mode != "DEMO":
         return ""
-    scope = open_demo_scope(db, tenant_id)
+    scope = scope_for_execution(db, tenant_id)
     if scope is None:
         return DEMO_METRICS_BLOCK
+    if _scope_expired(scope):
+        return EXPIRED_BLOCK
     if scope.status != "authorized":
         return PREPARED_BLOCK
     changed = _material_change(db, scope)
@@ -234,9 +239,11 @@ def lead_retrieval_block(db: Session, tenant_id: UUID) -> str:
     mode = ((tenant.operating_mode if tenant is not None else "") or "DEMO").strip().upper()
     if mode != "DEMO":
         return ""
-    scope = open_demo_scope(db, tenant_id)
+    scope = scope_for_execution(db, tenant_id)
     if scope is None:
         return DEMO_LEAD_BLOCK
+    if _scope_expired(scope):
+        return EXPIRED_BLOCK
     if scope.status != "authorized":
         return PREPARED_BLOCK
     changed = _material_change(db, scope)
@@ -248,6 +255,45 @@ def lead_retrieval_block(db: Session, tenant_id: UUID) -> str:
     allowed = _allowed(scope)
     if allowed is None or int(allowed.get("lead.retrieve") or 0) <= 0:
         return LEAD_OUTSIDE
+    return ""
+
+
+def _scope_expired(scope: DemoScope) -> bool:
+    if scope.status == "expired":
+        return True
+    expires = _aware(scope.expires_at)
+    return expires is not None and expires < datetime.now(UTC)
+
+
+def scope_for_execution(db: Session, tenant_id: UUID) -> DemoScope | None:
+    """The latest demonstration scope, including one that has expired.
+
+    An expired row must stay visible to the gate. Treating it as a missing
+    scope would make previously blocked external work executable.
+    """
+    return db.scalar(
+        select(DemoScope)
+        .where(
+            DemoScope.tenant_id == tenant_id,
+            DemoScope.deleted_at.is_(None),
+            DemoScope.status.in_(["prepared", "authorized", "expired"]),
+        )
+        .order_by(DemoScope.created_at.desc())
+    )
+
+
+def ads_assembly_block(db: Session, tenant_id: UUID) -> str:
+    """A missing, prepared, or expired scope does not open Meta campaign creation.
+
+    This does not change the scope and does not authorize spend.
+    """
+    scope = scope_for_execution(db, tenant_id)
+    if scope is not None and _scope_expired(scope):
+        return EXPIRED_BLOCK
+    if scope is not None and scope.status == "prepared":
+        return PREPARED_BLOCK
+    if _operating_mode(db, tenant_id) == "DEMO":
+        return "Ads stay outside this demonstration. No campaign was sent to Meta."
     return ""
 
 
@@ -280,11 +326,13 @@ def external_execution_block(
 ) -> str:
     if not external_action(action):
         return ""
-    scope = open_demo_scope(db, tenant_id)
+    scope = scope_for_execution(db, tenant_id)
     if scope is None:
         if real_effect and action == "social.publish" and _operating_mode(db, tenant_id) == "DEMO":
             return DEMO_PUBLISH_BLOCK
         return ""
+    if _scope_expired(scope):
+        return EXPIRED_BLOCK
     if scope.status == "prepared":
         return PREPARED_BLOCK
     changed = _material_change(db, scope)
@@ -297,9 +345,6 @@ def external_execution_block(
         return "Sequence outreach is outside this demonstration."
     if allowed is not None and action not in allowed:
         return "That action is outside the controlled demonstration."
-    expires = _aware(scope.expires_at)
-    if expires is not None and expires < datetime.now(UTC):
-        return "The demonstration scope has expired. Nothing was sent."
     if allowed is None:
         used = int(
             db.scalar(

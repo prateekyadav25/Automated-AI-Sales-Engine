@@ -38,7 +38,7 @@ def test_public_form_capture_is_key_scoped(client: TestClient) -> None:
     lead = accepted.json()["data"]["lead"]
     assert lead["email"] == "priya.public@example.com"
     assert lead["utm_medium"] == "paid"
-    assert lead["ad_id"] == "ad-22"
+    assert lead["ad_id"] == ""
     assert "dispatch" in lead["notes"]
     auth = client.get("/api/v1/acquisition/form-keys", headers=headers)
     assert auth.status_code == 200

@@ -237,6 +237,13 @@ export type Customer = {
   churn_reason?: string;
 };
 
+export type CampaignEnquiry = {
+  capture_id: string;
+  lead_id: string;
+  status: string;
+  first_touch: boolean;
+};
+
 export type Campaign = {
   id: string;
   name: string;
@@ -245,6 +252,8 @@ export type Campaign = {
   objective: string;
   budget: string;
   spent: string;
+  start_date?: string | null;
+  end_date?: string | null;
   external_campaign_id?: string;
   provider?: string;
   provider_status?: string;
@@ -254,6 +263,34 @@ export type Campaign = {
   ctr?: string | null;
   cpc?: string | null;
   cpl?: string | null;
+  last_synced_at?: string | null;
+  operating_plan_id?: string | null;
+  creative_version_id?: string | null;
+  audience?: string;
+  geography?: string;
+  placements?: string;
+  timezone?: string;
+  currency?: string;
+  headline?: string;
+  body?: string;
+  call_to_action?: string;
+  asset_ref?: string;
+  destination?: string;
+  assembly_status?: string;
+  assembly_blocker?: string;
+  offer_label?: string;
+  live_execution_ready?: boolean;
+  live_execution_note?: string;
+  activated?: boolean;
+  destination_url?: string;
+  schedule_label?: string;
+  ad_set_external_id?: string;
+  creative_external_id?: string;
+  ad_external_id?: string;
+  ad_set_status?: string;
+  creative_status?: string;
+  ad_status?: string;
+  enquiries?: CampaignEnquiry[];
 };
 
 export type DiscoveryRun = {

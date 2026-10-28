@@ -48,7 +48,7 @@ def embeddable_form(token: str, request: Request, db: Annotated[Session, Depends
         "utm_source": query.get("utm_source") or query.get("channel") or "",
         "utm_medium": query.get("utm_medium") or "social",
         "utm_campaign": query.get("utm_campaign") or query.get("campaign") or "",
-        "ad_id": query.get("ad_id") or "",
+        "ad": query.get("ad") or "",
         "publication": query.get("publication") or "",
     }
     hidden_html = "".join(

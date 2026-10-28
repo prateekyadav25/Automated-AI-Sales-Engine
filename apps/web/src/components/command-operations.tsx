@@ -143,6 +143,35 @@ type Operations = {
     plan_id?: string;
     proposals?: ContentProposal[];
     native_forms?: NativeForm[];
+    paused_meta?: {
+      present: boolean;
+      note?: string;
+      campaign_id?: string;
+      name?: string;
+      product?: string;
+      objective?: string;
+      audience?: string;
+      geography?: string;
+      schedule?: string;
+      destination?: string;
+      destination_url?: string;
+      proposed_budget?: string;
+      currency?: string;
+      headline?: string;
+      body?: string;
+      call_to_action?: string;
+      asset_ref?: string;
+      assembly_status?: string;
+      blocker?: string;
+      activated?: boolean;
+      live_execution_ready?: boolean;
+      live_execution_note?: string;
+      ad_set_status?: string;
+      creative_status?: string;
+      ad_status?: string;
+      enquiries?: { capture_id: string; lead_id: string; status: string; first_touch: boolean }[];
+      native_lead_form_campaigns?: string;
+    };
     enquiries?: PlanEnquiry[];
     acknowledgement?: { not_prepared: number; pending: number; approved: number };
     outcomes: {
@@ -502,6 +531,31 @@ export function CommandOperations() {
           {" "}{data.marketing?.outcomes?.recommendation?.limitation || ""}
           {" "}{data.marketing?.outcomes?.recommendation?.proposed_change || ""}
         </p>
+        <h3>Paused Meta campaign</h3>
+        <p className="muted">A saved proposal is not activation. Native lead-form campaigns are a separate intake and are not launched here. Paid impressions and spend are not estimated.</p>
+        {!data.marketing?.paused_meta?.present ? (
+          <p className="muted">{data.marketing?.paused_meta?.note || "No paused Meta campaign is stored."}</p>
+        ) : (
+          <div className="line-item">
+            <span>{data.marketing.paused_meta.product || "Product not frozen"} · {data.marketing.paused_meta.objective || "No objective"}</span>
+            <span>{data.marketing.paused_meta.audience || "No audience"} · {data.marketing.paused_meta.geography || "No geography"} · {data.marketing.paused_meta.schedule || "No dates"}</span>
+            <span>Destination {data.marketing.paused_meta.destination || "unset"} · proposed {data.marketing.paused_meta.currency} {data.marketing.paused_meta.proposed_budget}</span>
+            <span>Not activated. Assembly {data.marketing.paused_meta.assembly_status || "not started"}.</span>
+            <span>Ad set {data.marketing.paused_meta.ad_set_status || "missing"} · creative {data.marketing.paused_meta.creative_status || "missing"} · ad {data.marketing.paused_meta.ad_status || "missing"}</span>
+            {data.marketing.paused_meta.blocker ? <span>{data.marketing.paused_meta.blocker}</span> : null}
+            <span>{data.marketing.paused_meta.live_execution_note}</span>
+            <span>{data.marketing.paused_meta.headline}</span>
+            <span>{data.marketing.paused_meta.body}</span>
+            <span>{data.marketing.paused_meta.asset_ref}</span>
+            {(data.marketing.paused_meta.enquiries || []).map((enquiry) => (
+              <span key={enquiry.capture_id}>
+                {enquiry.first_touch ? "First enquiry" : "Later enquiry"} {enquiry.status}
+                {enquiry.lead_id ? <a href={`/leads/${enquiry.lead_id}`}> Open journey</a> : " · no lead"}
+              </span>
+            ))}
+            <span>{data.marketing.paused_meta.native_lead_form_campaigns}</span>
+          </div>
+        )}
         <h3>Native lead forms</h3>
         <p className="muted">Meta native lead forms only. LinkedIn Lead Sync, Google lead forms, comments, and direct messages are not ingested here.</p>
         {(data.marketing?.native_forms || []).length === 0 ? <p className="muted">No Meta lead form notification is stored.</p> : data.marketing?.native_forms?.map((formRow) => (
