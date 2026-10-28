@@ -487,6 +487,15 @@ export type Conversation = {
   messages?: EmailMessage[];
 };
 
+export type MeetingSlot = {
+  start: string;
+  end: string;
+  owner_timezone: string;
+  attendee_timezone: string;
+  owner_local: string;
+  attendee_local: string;
+};
+
 export type Meeting = {
   id: string;
   title: string;
@@ -504,6 +513,28 @@ export type Meeting = {
   recording_consent?: boolean;
   transcript?: string;
   insights_json?: string;
+  lead_id?: string | null;
+  purpose?: string;
+  product_name?: string;
+  offer_label?: string;
+  owner_name?: string;
+  calendar_id?: string;
+  owner_timezone?: string;
+  attendee_timezone?: string;
+  slots?: MeetingSlot[];
+  selected_slot?: MeetingSlot | null;
+  booking_authorized?: boolean;
+  invite_authorized?: boolean;
+  conference_status?: string;
+  conference_id?: string;
+  join_url?: string;
+  fixture_join_url?: string;
+  fixture?: boolean;
+  blocker?: string;
+  last_synced_at?: string | null;
+  live_execution_ready?: boolean;
+  attendance?: string;
+  next_action?: string;
   captures?: { id: string; provider: string; status: string; last_error: string; meeting_url: string }[];
 };
 

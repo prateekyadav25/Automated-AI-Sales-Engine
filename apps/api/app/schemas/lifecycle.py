@@ -195,6 +195,15 @@ class MeetingIn(APIModel):
     recording_consent: bool = False
 
 
+class MeetingSlot(APIModel):
+    start: str = ""
+    end: str = ""
+    owner_timezone: str = ""
+    attendee_timezone: str = ""
+    owner_local: str = ""
+    attendee_local: str = ""
+
+
 class MeetingOut(MeetingIn):
     id: UUID
     provider: str
@@ -212,6 +221,28 @@ class MeetingOut(MeetingIn):
     recording_consent: bool = False
     transcript: str = ""
     insights_json: str = "{}"
+    purpose: str = ""
+    product_name: str = ""
+    offer_label: str = ""
+    owner_name: str = ""
+    calendar_id: str = ""
+    owner_timezone: str = ""
+    attendee_timezone: str = ""
+    slots: list[MeetingSlot] = Field(default_factory=list)
+    selected_slot: MeetingSlot | None = None
+    booking_authorized: bool = False
+    invite_authorized: bool = False
+    conference_status: str = ""
+    conference_id: str = ""
+    join_url: str = ""
+    fixture_join_url: str = ""
+    fixture: bool = False
+    blocker: str = ""
+    availability_retrieved_at: datetime | None = None
+    last_synced_at: datetime | None = None
+    live_execution_ready: bool = False
+    attendance: str = "Attendance is not recorded."
+    next_action: str = ""
     captures: list["MeetingCaptureOut"] = Field(default_factory=list)
 
 

@@ -7,12 +7,13 @@ from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from app.ai.runtime import meeting_prep
+from app.core.config import get_settings
 from app.models.ai import AIApproval, AIRecommendation
 from app.models.crm import Account, Lead, Opportunity
 from app.models.execution import JourneyLink
 from app.models.identity import User
 from app.models.lifecycle import MeetingRecord
-from app.providers.calendar import BusyPeriod, get_calendar_provider
+from app.providers.calendar import NO_LIVE_CALENDAR, BusyPeriod, get_calendar_provider
 from app.services.audit import emit_event
 from app.services.automation_state import upsert_state
 from app.services.autopilot_settings import get_or_create_settings
@@ -73,7 +74,16 @@ def propose_slots(
     now = datetime.now(UTC)
     window_end = now + timedelta(days=7)
     provider = get_calendar_provider(db, tenant_id)
-    busy = provider.get_availability(calendar_id="primary", start=now, end=window_end)
+    reader = getattr(provider, "read_availability", None)
+    if reader is not None:
+        reading = reader(calendar_id="primary", start=now, end=window_end)
+        if not reading.ok:
+            return []
+        busy = reading.busy
+    elif not provider.health().connected:
+        return []
+    else:
+        busy = provider.get_availability(calendar_id="primary", start=now, end=window_end)
     slots: list[dict] = []
     cursor = now.astimezone(zone).replace(minute=0, second=0, microsecond=0) + timedelta(hours=1)
     while len(slots) < count and cursor < window_end.astimezone(zone):
@@ -136,6 +146,8 @@ def book_meeting(
     blocked = external_execution_block(db, tenant_id=tenant_id, action="calendar.book", recipient=lead.email or "")
     if blocked:
         return blocked
+    if (get_settings().calendar_provider or "").strip().lower() == "google":
+        return NO_LIVE_CALENDAR
     provider = get_calendar_provider(db, tenant_id)
     health = provider.health()
     if not health.connected:

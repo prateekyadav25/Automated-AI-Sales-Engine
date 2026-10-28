@@ -18,6 +18,7 @@ from app.services.email_send import execute_email_send
 from app.services.entity_mapping import confirm_mapping
 from app.services.expansion import mint_opportunity
 from app.services.external_hold import approval_execution_block
+from app.services.meet_booking import execute_meet_booking, execute_meet_cancel, execute_meet_reschedule
 from app.services.meeting_capture import grant_recording_consent
 from app.services.renewal import execute_renewal_commercial
 from app.services.voice import execute_voice_dial
@@ -138,18 +139,30 @@ def _send(db: Session, *, tenant_id: UUID, actor_id: UUID, row: AIApproval, payl
     return execute_email_send(db, tenant_id=tenant_id, actor_id=actor_id, approval=row, payload_patch=payload_patch)
 
 
+def _meet_message(result: dict) -> str:
+    return str(result.get("blocker") or result.get("status") or "Meet booking was not completed.")
+
+
 def _calendar_book(db: Session, *, tenant_id: UUID, actor_id: UUID, row: AIApproval, payload_patch: dict | None = None) -> str:
     payload = {**_payload(row), **(payload_patch or {})}
+    if payload.get("operation_token"):
+        return _meet_message(execute_meet_booking(db, tenant_id=tenant_id, actor_id=actor_id, approval=row, provider=None))
     return book_meeting(db, tenant_id=tenant_id, actor_id=actor_id, approval=row, payload=payload)
 
 
 def _calendar_reschedule(db: Session, *, tenant_id: UUID, actor_id: UUID, row: AIApproval, payload_patch: dict | None = None) -> str:
     payload = {**_payload(row), **(payload_patch or {})}
+    if payload.get("operation_token"):
+        return _meet_message(
+            execute_meet_reschedule(db, tenant_id=tenant_id, actor_id=actor_id, approval=row, provider=None)
+        )
     return reschedule_meeting(db, tenant_id=tenant_id, actor_id=actor_id, approval=row, payload=payload)
 
 
 def _calendar_cancel(db: Session, *, tenant_id: UUID, actor_id: UUID, row: AIApproval, payload_patch: dict | None = None) -> str:
     payload = {**_payload(row), **(payload_patch or {})}
+    if payload.get("operation_token"):
+        return _meet_message(execute_meet_cancel(db, tenant_id=tenant_id, actor_id=actor_id, approval=row, provider=None))
     return cancel_meeting(db, tenant_id=tenant_id, actor_id=actor_id, approval=row, payload=payload)
 
 

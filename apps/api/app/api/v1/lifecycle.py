@@ -67,6 +67,7 @@ from app.schemas.lifecycle import (
     MeetingExtractIn,
     MeetingIn,
     MeetingOut,
+    MeetingSlot,
     MeetingTranscriptIn,
     MilestoneOut,
     ModelCardOut,
@@ -119,6 +120,7 @@ from app.services.lifecycle import (
     score_deal,
     score_health,
 )
+from app.services.meet_booking import meeting_booking_view
 from app.services.meeting_capture import (
     ingest_manual_transcript,
     queue_recording_consent,
@@ -513,6 +515,30 @@ def extract_meeting(
 
 def _meeting_out(db: Session, row: MeetingRecord) -> MeetingOut:
     payload = MeetingOut.model_validate(row)
+    view = meeting_booking_view(db, row)
+    payload.purpose = view["purpose"]
+    payload.product_name = view["product_name"]
+    payload.offer_label = view["offer_label"]
+    payload.owner_name = view["owner_name"]
+    payload.calendar_id = view["calendar_id"]
+    payload.calendar_account = view["calendar_account"]
+    payload.owner_timezone = view["owner_timezone"]
+    payload.attendee_timezone = view["attendee_timezone"]
+    payload.slots = [MeetingSlot.model_validate(item) for item in view["slots"]]
+    payload.selected_slot = MeetingSlot.model_validate(view["selected_slot"]) if view["selected_slot"] else None
+    payload.booking_authorized = view["booking_authorized"]
+    payload.invite_authorized = view["invite_authorized"]
+    payload.conference_status = view["conference_status"]
+    payload.conference_id = view["conference_id"]
+    payload.join_url = view["join_url"]
+    payload.fixture_join_url = view["fixture_join_url"]
+    payload.fixture = view["fixture"]
+    payload.blocker = view["blocker"]
+    payload.availability_retrieved_at = view["availability_retrieved_at"]
+    payload.last_synced_at = view["last_synced_at"]
+    payload.live_execution_ready = False
+    payload.attendance = view["attendance"]
+    payload.next_action = view["next_action"]
     captures = db.scalars(
         select(MeetingCapture).where(
             MeetingCapture.meeting_record_id == row.id,
@@ -1115,7 +1141,7 @@ def account_lifecycle(
             renewal.account_name = account.name
     return Envelope(
         data=AccountLifecycleOut(
-            meetings=[MeetingOut.model_validate(row) for row in meetings],
+            meetings=[_meeting_out(db, row) for row in meetings],
             quotes=[_quote_out(db, row) for row in quotes],
             insights=[_insight_out(db, ctx.tenant_id, row) for row in insights],
             whitespace=[_whitespace_out(db, ctx.tenant_id, row) for row in whitespace],

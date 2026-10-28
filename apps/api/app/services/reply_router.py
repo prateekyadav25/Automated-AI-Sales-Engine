@@ -409,26 +409,24 @@ def route_reply(
             run_id=run_id,
         )
         return "reply_queued"
-    if category in {"POSITIVE_INTEREST", "MEETING_REQUEST"}:
-        meeting_requested = category == "MEETING_REQUEST"
-        if meeting_requested or qualification.get("meeting_eligible"):
-            _cancel_pending_sends(db, tenant_id=tenant_id, lead_id=lead.id, action_types={"sequence.email.send"})
-            _stop_enrollments(db, tenant_id=tenant_id, lead_id=lead.id)
-        if qualification.get("qualified") or meeting_requested or qualification.get("meeting_eligible"):
-            queue_meeting_proposal(db, tenant_id=tenant_id, actor_id=actor_id, lead=lead, run_id=run_id)
-            upsert_state(
-                db,
-                tenant_id=tenant_id,
-                actor_id=actor_id,
-                entity_type="lead",
-                entity_id=str(lead.id),
-                state="OUTREACH_APPROVAL_PENDING",
-                last_action="meeting_proposed",
-                next_action="approve_meeting_proposal",
-                blocked_reason="",
-                run_id=run_id,
-            )
-            return "meeting_proposed"
+    if category == "MEETING_REQUEST":
+        _cancel_pending_sends(db, tenant_id=tenant_id, lead_id=lead.id, action_types={"sequence.email.send"})
+        _stop_enrollments(db, tenant_id=tenant_id, lead_id=lead.id)
+        queue_meeting_proposal(db, tenant_id=tenant_id, actor_id=actor_id, lead=lead, run_id=run_id)
+        upsert_state(
+            db,
+            tenant_id=tenant_id,
+            actor_id=actor_id,
+            entity_type="lead",
+            entity_id=str(lead.id),
+            state="OUTREACH_APPROVAL_PENDING",
+            last_action="meeting_proposed",
+            next_action="approve_meeting_proposal",
+            blocked_reason="",
+            run_id=run_id,
+        )
+        return "meeting_proposed"
+    if category == "POSITIVE_INTEREST":
         if qualification.get("response_eligible"):
             upsert_state(
                 db,

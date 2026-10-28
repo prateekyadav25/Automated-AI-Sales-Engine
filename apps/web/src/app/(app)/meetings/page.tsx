@@ -1,6 +1,7 @@
 "use client";
 
 import { DataTable } from "@/components/data-table";
+import { MeetingBooking } from "@/components/meeting-booking";
 import { PageHeader } from "@/components/page-header";
 import { DeniedState, EmptyState, ErrorState, LoadingState } from "@/components/states";
 import { Badge, Button, Drawer, Field, FormActions, Input, Textarea } from "@/components/ui";
@@ -112,7 +113,8 @@ export default function MeetingsPage() {
             { key: "consent", header: "Record", cell: (row) => row.recording_consent ? <Badge>Consented</Badge> : "—" },
             { key: "capture", header: "Bot", cell: (row) => row.captures?.[0]?.status || "—" },
             { key: "when", header: "When", cell: (row) => row.start_at ? new Date(row.start_at).toLocaleString() : "—" },
-            { key: "provider", header: "Provider", cell: (row) => row.is_mock ? "Mock" : (row.provider || "human") },
+            { key: "provider", header: "Provider", cell: (row) => row.fixture ? "Fixture" : row.is_mock ? "Mock" : (row.provider || "human") },
+            { key: "conference", header: "Meet", cell: (row) => row.conference_status || "Not created" },
             { key: "summary", header: "Summary", cell: (row) => row.summary || "—" },
           ]}
         />
@@ -136,6 +138,7 @@ export default function MeetingsPage() {
       <Drawer open={Boolean(selected)} title={selected?.title || "Meeting"} onClose={() => setSelected(null)}>
         {selected ? (
           <div className="space-y-4">
+            <MeetingBooking meeting={selected} />
             <p className="text-sm text-[var(--muted)]">{selected.summary || "No summary yet."}</p>
             <p className="text-xs uppercase tracking-[0.16em] text-brand">{selected.recording_consent ? "Recording consent recorded" : "Recording consent missing"}</p>
             {selected.transcript ? <pre className="max-h-40 overflow-auto whitespace-pre-wrap text-xs">{selected.transcript}</pre> : null}

@@ -1,6 +1,7 @@
 "use client";
 
 import { Checks, Go, initials, Line, Panel } from "@/components/ds";
+import { MeetingBooking } from "@/components/meeting-booking";
 import { PageHeader } from "@/components/page-header";
 import { DeniedState, ErrorState, LoadingState } from "@/components/states";
 import { AutomationTrace } from "@/components/automation-trace";
@@ -9,7 +10,7 @@ import { Badge, Button, CheckField, Drawer, Field, FormActions, Input, Score, Se
 import { useAuth } from "@/lib/auth";
 import { LEAD_STATUSES } from "@/lib/constants";
 import { fullName, labelize } from "@/lib/format";
-import type { Lead } from "@/lib/types";
+import type { Lead, Meeting } from "@/lib/types";
 import { ApiError, api } from "@agrayian/sdk";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useParams } from "next/navigation";
@@ -52,6 +53,11 @@ export default function LeadDetailPage() {
     queryKey: ["lead-assessment", params.id],
     queryFn: async () => (await api<Assessment>(`/api/v1/leads/${params.id}/assessment`)).data,
     enabled: can("leads.read"),
+  });
+  const meetings = useQuery({
+    queryKey: ["meetings"],
+    queryFn: async () => (await api<Meeting[]>("/api/v1/lifecycle/meetings")).data ?? [],
+    enabled: can("meetings.read"),
   });
   const form = useForm<Lead>();
 
@@ -240,7 +246,13 @@ export default function LeadDetailPage() {
             ]}
           />
           <hr className="rule" />
-          <span className="small muted">The meeting outcome controls the opportunity handoff.</span>
+          <span className="small muted">The meeting outcome controls the opportunity handoff. A booking does not record attendance.</span>
+          {(meetings.data ?? []).filter((item) => item.lead_id === lead.id).map((item) => (
+            <div key={item.id} style={{ marginTop: 16 }}>
+              <MeetingBooking meeting={item} />
+              <Go href={`/meetings/${item.id}`}>Open meeting</Go>
+            </div>
+          ))}
           <div style={{ marginTop: 16 }}>
             <Go href="/meetings" primary>Record meeting outcome</Go>
           </div>

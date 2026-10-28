@@ -1,8 +1,49 @@
 # Current capability audit
 
-## Current status — 2026-10-28, paused Meta campaign assembly
+## Current status — 2026-10-28, Google Meet booking
 
-This is the current status. The lead-form section below, the organic section, the discovery section, the outbound section, the executive assessment, the baseline table, and the capability matrix are earlier. Where they disagree with this section, this section is the one to use.
+This is the current status. The paused Meta section below, the lead-form section, the organic section, the discovery section, the outbound section, the executive assessment, the baseline table, and the capability matrix are earlier. Where they disagree with this section, this section is the one to use.
+
+An explicit meeting request can become a fixture Google Meet booking on the existing lead and journey. A qualified status does not request the meeting. A proposed slot does not reserve it. An approved email does not book it. The proposal and the operation bind the tenant, the lead and its enquiry, the lead's operating plan, the frozen product, the assigned owner, that owner's one connected Google calendar, the intended attendees, and the purpose. Another client's calendar and a deployment-wide token are not used.
+
+The Calendar API is v3. Creating a Meet conference requires `conferenceDataVersion=1`. The client event id is how an unknown insert is reconciled. A conference `requestId` does not prevent a second event. The event id, conference id, and join URL stay distinct and are stored only from the provider response. Pending or failed conference creation is not a completed booking and does not cause another event. `sendUpdates=none` is explicit and is not proof that Google sent no mail. `calendar.events` does not prove free/busy. A Gmail or ads token does not prove this path.
+
+Owner working hours, duration, buffers, notice, horizon, conflicts, and both time zones are applied. Invalid and ambiguous local times are not guessed. Availability is read again immediately before create. A missing or failed read stays unavailable.
+
+Prepared, missing, and expired demonstration scopes make no calendar call, including when a fixture client is passed. The worker executes the same booking function without a client, so a replay cannot open Google. Duplicate requests share one intent. A confirmed provider id is kept. An unknown create is read back before another insert. Reschedule and cancel reuse the stored event and ignore a stale job. Attendance, a won deal, and revenue are not inferred. No opportunity or outbound enrollment is created.
+
+The meetings list, meeting page, and lead page can show the booking fields. A fixture join link is labeled separately from a provider join link. The local meetings list currently has no active row, because the three stored meetings are soft-deleted, so the browser check showed the empty state and no join link.
+
+### Running locally
+
+| Item | Value |
+|---|---|
+| Database | Alembic `042`, applied after a backup at `041` |
+| Backup | `.local-backups/agrayian-before-042-2026-10-28.dump`, custom format, gitignored |
+| Restore | Stop api, worker, and beat. `pg_restore --clean --if-exists` the dump into `agrayian` inside the Postgres container. The restored schema is `041`. Upgrade before starting images that contain `042` |
+| Disposable proof | A restored copy was upgraded `041` → `042`. The meeting booking columns were present. The prepared scope, holds, leads, and three meetings were unchanged. The copy was dropped |
+| Scope | One row, `prepared`, expiry `2026-10-29 18:03:28.181796+00`. Not authorized |
+| Holds | 3 approvals and 9 enrollments remained `held`. Approvals remained 3 held, 5 pending, and 10 rejected |
+| Leads | 33 active, 43 total. The 10 soft-deleted rows from 2026-10-10 were not restored |
+| Meetings | 3 rows, all soft-deleted. No Google Calendar event id was stored |
+| Images | api, web, worker, and beat rebuilt after the upgrade. Those three services were stopped during it |
+| Browser | `/meetings` shows the existing empty state. No join link is shown. Log, extract, consent, and a lead page were not used |
+
+After the image restart, the mailbox poll read Gmail history at `startHistoryId=4134`, received HTTP 200, and stored nothing new. No calendar create, invitation, email, publish, discovery, call, or spend was started.
+
+### What this section supersedes
+
+| Capability | Current state |
+|---|---|
+| Google Meet booking | Fixture-verified through a scripted Calendar client. Not a live event |
+| Live calendar create | Refused. The worker has no Google client on this path |
+| Attendance and revenue | Not inferred from a booking or its end time |
+| Voice handoff | Next milestone. Not started |
+| Commercial activation, retention, broader social performance, paid activation, SEO | Still on the roadmap |
+
+## Earlier status — 2026-10-28, paused Meta campaign assembly
+
+This section was current before Google Meet booking. The section above replaces it where they disagree.
 
 One Meta proposal can be assembled as a paused website-traffic campaign aimed at the existing capture form. The proposal stores the selected operating plan, the frozen product context, the audience, geography, Facebook feed placement, dates, time zone, proposed budget, copy, headline, call to action, asset, and destination. Saving it does not authorize spend. Assembly is complete only when the campaign, ad set, creative, and ad each have a stored provider id and an explicit paused status. A campaign shell is partial.
 

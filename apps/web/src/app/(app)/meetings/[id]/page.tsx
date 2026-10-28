@@ -1,5 +1,6 @@
 "use client";
 
+import { MeetingBooking } from "@/components/meeting-booking";
 import { PageHeader } from "@/components/page-header";
 import { DeniedState, ErrorState, LoadingState } from "@/components/states";
 import { Button, Field, Textarea } from "@/components/ui";
@@ -42,10 +43,13 @@ export default function MeetingOutcomePage() {
       <PageHeader
         eyebrow="Sales"
         title={meeting.title}
-        subtitle="A meeting becomes an opportunity only when it is marked qualified. The summary is the evidence."
+        subtitle="A booking is not attendance. A meeting becomes an opportunity only when it is marked qualified. The summary is the evidence."
         nextHref="/pipeline"
         nextLabel="Pipeline"
       />
+      <div className="panel mb-4 p-5 text-sm">
+        <MeetingBooking meeting={meeting} />
+      </div>
       <div className="panel mb-4 p-5 text-sm text-[var(--muted)]">
         <p>{meeting.summary || "No recap recorded."}</p>
         <p className="mt-2">{meeting.next_steps || "No next step recorded."}</p>

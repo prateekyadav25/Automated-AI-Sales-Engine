@@ -6,7 +6,13 @@ The running demonstration stays `prepared`. None of these milestones authorize a
 
 ## Status on 2026-10-28
 
-**Paused Meta website-destination assembly is complete as a fixture path, and the local application is on Alembic `041`.** Native lead-form ingestion, organic creative production, discovery follow-through, outbound drafting, and organic acquisition remain complete as fixture paths. LinkedIn assembly, native lead-form campaign creation, activation, and paid-metrics read-back stay open. The next milestone to implement is Google Meet booking, before voice handoff. Commercial activation, retention, broader social performance, and SEO remain on the roadmap and are not started by this slice.
+**Google Meet booking is complete as a fixture path, and the local application is on Alembic `042`.** Paused Meta website assembly, native lead-form ingestion, organic creative production, discovery follow-through, outbound drafting, and organic acquisition remain complete as fixture paths. LinkedIn assembly, native lead-form campaign creation, activation, and paid-metrics read-back stay open. The next milestone to implement is voice handoff. Commercial activation, retention, broader social performance, paid activation and reporting, and SEO remain on the roadmap and are not started by this slice.
+
+A scripted Calendar client stores one event and one Meet conference for an authorized slot. A qualified lead, a proposed slot, and an approved email do not book. No live Calendar call was made. Fixture ids and fixture join URLs are not a live meeting.
+
+## Status on 2026-10-28, paused Meta assembly
+
+**Paused Meta website-destination assembly is complete as a fixture path, and the local application was on Alembic `041`.** Native lead-form ingestion, organic creative production, discovery follow-through, outbound drafting, and organic acquisition remain complete as fixture paths. LinkedIn assembly, native lead-form campaign creation, activation, and paid-metrics read-back stay open. The milestone after that status was Google Meet booking. It is the section above. Commercial activation, retention, broader social performance, and SEO remain on the roadmap and were not started by that slice.
 
 A scripted Meta client stores a paused campaign, ad set, creative, and ad for one website capture form. The capture token attributes the enquiry. A proposed budget does not activate the campaign. No live advertising call was made. Fixture ids are not a live ad account.
 
@@ -208,7 +214,11 @@ Set Meta to sandbox for any local live HTTP experiment. Leave activation unautho
 
 ## Milestone 3 — The existing booking stores a Meet link
 
-Extend `GoogleCalendarProvider.create_event`. Do not add a second calendar integration.
+**Complete in fixtures on 2026-10-28, and running locally at Alembic `042`.** The path uses the existing calendar adapter, meeting record, approval, and journey link. It does not add a second calendar integration. A live create, free/busy read, and Meet delivery were not called.
+
+The supported contract is Calendar API v3. `conferenceDataVersion=1` is required. The client event id reconciles an unknown insert. A conference `requestId` does not dedupe a second event. Event id, conference id, and join URL are stored only from the response. `sendUpdates` is explicit. A Gmail token is not a calendar grant. `calendar.events` does not prove free/busy.
+
+A later live check needs an explicit decision to book, an authorized unexpired scope that allows `calendar.book` for the intended recipient, a Google connection for the assigned owner with `calendar.events` plus `calendar.readonly` or `calendar.freebusy`, a real target calendar id, and a read-back of the event id, conference id, and join URL. Invitations need a separate authorization. `sendUpdates=none` does not prove that Google sent no mail. The current demonstration is `prepared` and blocks that check.
 
 ### Acceptance journey
 
@@ -337,11 +347,11 @@ Acceptance that was proved with fake Graph responses: a verified notification is
 
 ### Complete paid campaign assembly and attribution
 
-**Meta website traffic is complete in fixtures on 2026-10-28.** The fixture assembles a paused campaign, ad set, creative, and ad aimed at the existing capture form. A submission stores the internal campaign and the provider ad id only through the tracking token. Zero, missing, invalid, and exhausted limits still cannot activate. No spend decimal is written. LinkedIn assembly, native lead-form campaign creation, activation, and paid-metrics read-back remain open. The next milestone is Google Meet booking, before voice handoff.
+**Meta website traffic is complete in fixtures on 2026-10-28.** The fixture assembles a paused campaign, ad set, creative, and ad aimed at the existing capture form. A submission stores the internal campaign and the provider ad id only through the tracking token. Zero, missing, invalid, and exhausted limits still cannot activate. No spend decimal is written. LinkedIn assembly, native lead-form campaign creation, activation, and paid-metrics read-back remain open. The milestone after that status was Google Meet booking. It is complete in fixtures. The next milestone is voice handoff.
 
 ### Google Meet creation
 
-This is Milestone 3. Acceptance: the existing calendar create asks for conference data, stores a returned Meet URL, and stores a pending state when Google has not returned one. It does not invent a URL. The prepared demonstration still blocks `calendar.book`. The test uses a fake HTTP client.
+**Complete in fixtures on 2026-10-28.** The scripted client creates one event with a Meet conference, stores the returned ids and join URL, and links the lead journey. Pending and failed conferences keep the event. An unknown create is read back and is not inserted again. A qualified lead, a missing booking grant, a revoked calendar, a cross-tenant calendar, a conflicting slot, daylight-saving gaps, a stale reschedule, and prepared, missing, and expired scopes make no live call. The next milestone is voice handoff.
 
 ### Voice calls, outcomes, and sales handoff
 
@@ -376,4 +386,4 @@ Acceptance: a fixture keyword and page recommendation are stored against the sel
 
 ## Completion of this plan
 
-Milestones 1, 2 for Meta website traffic, and 4, plus discovery follow-through, organic creative read-back, and Meta native lead-form ingestion, now pass in fixtures. The post, the paused ad, the lead, and the acknowledgement share the selected product. A content proposal can become one mock publication and a stored LinkedIn statistics reading without a live call. The sequence draft freezes that product and labels the facts behind the email. A discovered person keeps the selected plan and reaches that draft only when assessment and channel permission allow it. A Meta lead form can become one acknowledgement without a live Graph call and without an outbound sequence. A paused Meta website campaign can become one attributed enquiry without a live advertising call and without activation. LinkedIn assembly is still open. No Apify, social, ads, or model provider was contacted to prove this. The next milestone is Google Meet booking, before voice handoff. Commercial activation, retention, broader social performance, and SEO stay listed above. None of them inherits a live-provider claim from an older row in the database. The sales engine is not finished.
+Milestones 1, 2 for Meta website traffic, and 4, plus discovery follow-through, organic creative read-back, and Meta native lead-form ingestion, now pass in fixtures. The post, the paused ad, the lead, and the acknowledgement share the selected product. A content proposal can become one mock publication and a stored LinkedIn statistics reading without a live call. The sequence draft freezes that product and labels the facts behind the email. A discovered person keeps the selected plan and reaches that draft only when assessment and channel permission allow it. A Meta lead form can become one acknowledgement without a live Graph call and without an outbound sequence. A paused Meta website campaign can become one attributed enquiry without a live advertising call and without activation. LinkedIn assembly is still open. No Apify, social, ads, or model provider was contacted to prove this. Google Meet booking now passes in fixtures as well. A requested and authorized slot can become one fixture event and conference without a live Calendar call. The next milestone is voice handoff. Commercial activation, retention, broader social performance, paid activation and reporting, and SEO stay listed above. None of them inherits a live-provider claim from an older row in the database. The sales engine is not finished.
