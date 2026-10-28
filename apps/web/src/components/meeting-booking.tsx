@@ -9,6 +9,8 @@ export function MeetingBooking({ meeting }: { meeting: Meeting }) {
   return (
     <div>
       <Line label="Purpose" value={meeting.purpose || "Not recorded"} />
+      <Line label="Lead" value={meeting.lead_name || "No lead is stored"} />
+      <Line label="Enquiry" value={meeting.enquiry_note || "No enquiry is stored"} />
       <Line label="Product" value={meeting.product_name || "No frozen product"} />
       <Line label="Offer" value={meeting.offer_label || "No offer is stored"} />
       <Line label="Owner" value={meeting.owner_name || "Unassigned"} />

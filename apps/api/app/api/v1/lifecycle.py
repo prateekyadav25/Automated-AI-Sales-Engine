@@ -90,6 +90,7 @@ from app.schemas.lifecycle import (
     SuccessRow,
     VoiceDialIn,
     VoiceDialOut,
+    VoiceHandoffOut,
     VoiceScriptIn,
     VoiceScriptOut,
     VoiceScriptVersionOut,
@@ -130,6 +131,7 @@ from app.services.meeting_capture import (
 from app.services.outcomes import mark_renewed
 from app.services.query import get_owned, paginate
 from app.services.voice import extract_meeting_notes, queue_voice_dial
+from app.services.voice_handoff import voice_for_conversation
 from app.services.voice_scripts import add_version, create_script, current_published_body, list_scripts, publish_version
 
 router = APIRouter(prefix="/lifecycle", tags=["lifecycle"])
@@ -407,6 +409,8 @@ def _conversation_out(db: Session, row: Conversation) -> ConversationOut:
         .order_by(EmailMessage.created_at.asc())
     ).all()
     payload.messages = [EmailMessageOut.model_validate(item) for item in messages]
+    voice = voice_for_conversation(db, row)
+    payload.voice = VoiceHandoffOut.model_validate(voice) if voice else None
     return payload
 
 
@@ -517,6 +521,8 @@ def _meeting_out(db: Session, row: MeetingRecord) -> MeetingOut:
     payload = MeetingOut.model_validate(row)
     view = meeting_booking_view(db, row)
     payload.purpose = view["purpose"]
+    payload.lead_name = view["lead_name"]
+    payload.enquiry_note = view["enquiry_note"]
     payload.product_name = view["product_name"]
     payload.offer_label = view["offer_label"]
     payload.owner_name = view["owner_name"]

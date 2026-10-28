@@ -173,6 +173,36 @@ class EmailMessageOut(APIModel):
     created_at: datetime
 
 
+class VoiceHandoffOut(APIModel):
+    session_id: str = ""
+    purpose: str = ""
+    product_name: str = ""
+    permission_source: str = ""
+    permission_channel: str = ""
+    permission_scope: str = ""
+    permission_at: str = ""
+    execution_authorized: bool = False
+    owner_name: str = ""
+    recipient: str = ""
+    caller_identity: str = ""
+    window_start: str = ""
+    window_end: str = ""
+    status: str = ""
+    attempt_count: int = 0
+    provider_call_id: str = ""
+    fixture: bool = True
+    outcome: str = ""
+    last_event: str = ""
+    blocker: str = ""
+    recording: str = "Not authorized"
+    transcript: str = "No transcript is stored."
+    handoff_task_id: str = ""
+    meeting_id: str = ""
+    transfer: str = "Not requested"
+    live_execution_ready: bool = False
+    next_action: str = ""
+
+
 class ConversationOut(ConversationIn):
     id: UUID
     status: str
@@ -183,6 +213,7 @@ class ConversationOut(ConversationIn):
     provider_thread_id: str = ""
     call_status: str = ""
     messages: list[EmailMessageOut] = Field(default_factory=list)
+    voice: VoiceHandoffOut | None = None
 
 
 class MeetingIn(APIModel):
@@ -222,6 +253,8 @@ class MeetingOut(MeetingIn):
     transcript: str = ""
     insights_json: str = "{}"
     purpose: str = ""
+    lead_name: str = ""
+    enquiry_note: str = ""
     product_name: str = ""
     offer_label: str = ""
     owner_name: str = ""

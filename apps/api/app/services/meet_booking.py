@@ -406,8 +406,20 @@ def meeting_booking_view(db: Session, row: MeetingRecord) -> dict:
         owner = None
     fixture = bool(row.is_mock) or row.provider == "mock-calendar"
     join_url = row.join_url or ""
+    lead = db.get(Lead, row.lead_id) if row.lead_id is not None else None
+    if lead is None or lead.tenant_id != row.tenant_id or lead.deleted_at is not None:
+        lead_name = ""
+    else:
+        lead_name = f"{lead.first_name} {lead.last_name}".strip()
+    capture = db.get(InboundCapture, row.capture_id) if row.capture_id is not None else None
+    if capture is None or capture.tenant_id != row.tenant_id or capture.deleted_at is not None or capture.lead_id != row.lead_id:
+        enquiry_note = ""
+    else:
+        enquiry_note = (capture.request_note or "").strip()
     return {
         "purpose": row.purpose or "",
+        "lead_name": lead_name,
+        "enquiry_note": enquiry_note,
         "product_name": str(context.get("customer_facing_name") or ""),
         "offer_label": str(sources.get("catalogue_name") or ""),
         "owner_name": owner.name if owner is not None else "",

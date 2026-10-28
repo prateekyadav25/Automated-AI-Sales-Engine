@@ -22,6 +22,7 @@ from app.services.meet_booking import execute_meet_booking, execute_meet_cancel,
 from app.services.meeting_capture import grant_recording_consent
 from app.services.renewal import execute_renewal_commercial
 from app.services.voice import execute_voice_dial
+from app.services.voice_handoff import execute_voice_handoff
 from app.services.whatsapp_send import execute_whatsapp_send
 
 Handler = Callable[..., str]
@@ -53,6 +54,12 @@ def _ads_creative(db: Session, *, tenant_id: UUID, actor_id: UUID, row: AIApprov
 def _voice_dial(db: Session, *, tenant_id: UUID, actor_id: UUID, row: AIApproval, payload_patch: dict | None = None) -> str:
     _ = payload_patch
     return execute_voice_dial(db, tenant_id=tenant_id, actor_id=actor_id, approval=row)
+
+
+def _voice_handoff(db: Session, *, tenant_id: UUID, actor_id: UUID, row: AIApproval, payload_patch: dict | None = None) -> str:
+    _ = payload_patch
+    result = execute_voice_handoff(db, tenant_id=tenant_id, actor_id=actor_id, approval=row, client=None)
+    return str(result.get("blocker") or result.get("status") or "The call was not placed.")
 
 
 def _meeting_record(db: Session, *, tenant_id: UUID, actor_id: UUID, row: AIApproval, payload_patch: dict | None = None) -> str:
@@ -201,6 +208,7 @@ HANDLERS: dict[str, Handler] = {
     "ads.creative": _ads_creative,
     "meeting.record": _meeting_record,
     "voice.dial": _voice_dial,
+    "voice.handoff": _voice_handoff,
     "expansion.opportunity.create": _expansion,
     "renewal.commercial": _renewal,
     "calendar.create": _calendar_book,

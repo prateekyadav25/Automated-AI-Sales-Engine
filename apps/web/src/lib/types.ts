@@ -485,6 +485,37 @@ export type Conversation = {
   lead_id?: string | null;
   provider_thread_id?: string;
   messages?: EmailMessage[];
+  voice?: VoiceHandoff | null;
+};
+
+export type VoiceHandoff = {
+  session_id: string;
+  purpose: string;
+  product_name: string;
+  permission_source: string;
+  permission_channel: string;
+  permission_scope: string;
+  permission_at: string;
+  execution_authorized: boolean;
+  owner_name: string;
+  recipient: string;
+  caller_identity: string;
+  window_start: string;
+  window_end: string;
+  status: string;
+  attempt_count: number;
+  provider_call_id: string;
+  fixture: boolean;
+  outcome: string;
+  last_event: string;
+  blocker: string;
+  recording: string;
+  transcript: string;
+  handoff_task_id: string;
+  meeting_id: string;
+  transfer: string;
+  live_execution_ready: boolean;
+  next_action: string;
 };
 
 export type MeetingSlot = {
@@ -515,6 +546,8 @@ export type Meeting = {
   insights_json?: string;
   lead_id?: string | null;
   purpose?: string;
+  lead_name?: string;
+  enquiry_note?: string;
   product_name?: string;
   offer_label?: string;
   owner_name?: string;

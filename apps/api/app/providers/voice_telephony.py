@@ -287,3 +287,37 @@ def telephony_status_callback(provider: str, routing_token: str) -> str:
     settings = get_settings()
     base = (settings.public_api_base_url or "http://localhost:8000").rstrip("/")
     return urljoin(f"{base}/", f"api/v1/webhooks/{provider}/{routing_token}")
+
+
+NO_LIVE_VOICE = "This attempt does not open a live Twilio client. No call was placed."
+
+# Twilio Programmable Voice, Calls resource, API 2010-04-01.
+# https://www.twilio.com/docs/voice/api/call-resource
+# Create has no documented idempotency key. An unknown create is not repeated.
+# StatusCallback is not registered by this client. Recording and <Dial> are omitted.
+TWILIO_CALLS_API = "https://api.twilio.com/2010-04-01"
+
+
+class TwilioCallClient:
+    """Injected HTTP only. A missing hook does not construct httpx."""
+
+    def __init__(self, *, account_sid: str, auth_token: str, http_post, http_get) -> None:
+        self.account_sid = account_sid
+        self.auth_token = auth_token
+        self._post = http_post
+        self._get = http_get
+
+    def create_call(self, *, to_number: str, from_number: str, twiml: str) -> tuple[int, dict]:
+        url = f"{TWILIO_CALLS_API}/Accounts/{self.account_sid}/Calls.json"
+        status, payload = self._post(url, {"To": to_number, "From": from_number, "Twiml": twiml})
+        return status, payload if isinstance(payload, dict) else {}
+
+    def read_call(self, call_sid: str) -> tuple[int, dict]:
+        url = f"{TWILIO_CALLS_API}/Accounts/{self.account_sid}/Calls/{call_sid}.json"
+        status, payload = self._get(url)
+        return status, payload if isinstance(payload, dict) else {}
+
+    def cancel_call(self, call_sid: str) -> tuple[int, dict]:
+        url = f"{TWILIO_CALLS_API}/Accounts/{self.account_sid}/Calls/{call_sid}.json"
+        status, payload = self._post(url, {"Status": "canceled"})
+        return status, payload if isinstance(payload, dict) else {}

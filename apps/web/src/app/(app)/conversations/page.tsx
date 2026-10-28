@@ -1,6 +1,7 @@
 "use client";
 
 import { DataTable } from "@/components/data-table";
+import { VoiceHandoffPanel } from "@/components/voice-handoff";
 import { PageHeader } from "@/components/page-header";
 import { DeniedState, EmptyState, ErrorState, LoadingState } from "@/components/states";
 import { Badge, Button, CheckField, Drawer, Field, FormActions, Input, Select, Textarea } from "@/components/ui";
@@ -88,6 +89,7 @@ export default function ConversationsPage() {
             ]}
           />
           <Drawer open={Boolean(selected)} title={selected?.subject || "Thread"} onClose={() => setSelected(null)}>
+            {selected?.voice ? <VoiceHandoffPanel voice={selected.voice} /> : null}
             {(selected?.messages ?? []).length === 0 ? (
               <p className="text-sm text-[var(--muted)]">{selected?.transcript || selected?.summary || "No email messages on this thread."}</p>
             ) : (

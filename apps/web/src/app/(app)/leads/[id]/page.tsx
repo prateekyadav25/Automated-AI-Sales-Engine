@@ -2,6 +2,7 @@
 
 import { Checks, Go, initials, Line, Panel } from "@/components/ds";
 import { MeetingBooking } from "@/components/meeting-booking";
+import { VoiceHandoffPanel } from "@/components/voice-handoff";
 import { PageHeader } from "@/components/page-header";
 import { DeniedState, ErrorState, LoadingState } from "@/components/states";
 import { AutomationTrace } from "@/components/automation-trace";
@@ -10,7 +11,7 @@ import { Badge, Button, CheckField, Drawer, Field, FormActions, Input, Score, Se
 import { useAuth } from "@/lib/auth";
 import { LEAD_STATUSES } from "@/lib/constants";
 import { fullName, labelize } from "@/lib/format";
-import type { Lead, Meeting } from "@/lib/types";
+import type { Conversation, Lead, Meeting } from "@/lib/types";
 import { ApiError, api } from "@agrayian/sdk";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useParams } from "next/navigation";
@@ -58,6 +59,11 @@ export default function LeadDetailPage() {
     queryKey: ["meetings"],
     queryFn: async () => (await api<Meeting[]>("/api/v1/lifecycle/meetings")).data ?? [],
     enabled: can("meetings.read"),
+  });
+  const conversations = useQuery({
+    queryKey: ["conversations"],
+    queryFn: async () => (await api<Conversation[]>("/api/v1/lifecycle/conversations")).data ?? [],
+    enabled: can("conversations.read"),
   });
   const form = useForm<Lead>();
 
@@ -247,6 +253,13 @@ export default function LeadDetailPage() {
           />
           <hr className="rule" />
           <span className="small muted">The meeting outcome controls the opportunity handoff. A booking does not record attendance.</span>
+          {(conversations.data ?? []).flatMap((item) => (
+            item.lead_id === lead.id && item.voice ? [
+              <div key={item.id} style={{ marginTop: 16 }}>
+                <VoiceHandoffPanel voice={item.voice} />
+              </div>,
+            ] : []
+          ))}
           {(meetings.data ?? []).filter((item) => item.lead_id === lead.id).map((item) => (
             <div key={item.id} style={{ marginTop: 16 }}>
               <MeetingBooking meeting={item} />

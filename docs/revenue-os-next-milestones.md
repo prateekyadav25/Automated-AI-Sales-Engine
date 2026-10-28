@@ -347,15 +347,15 @@ Acceptance that was proved with fake Graph responses: a verified notification is
 
 ### Complete paid campaign assembly and attribution
 
-**Meta website traffic is complete in fixtures on 2026-10-28.** The fixture assembles a paused campaign, ad set, creative, and ad aimed at the existing capture form. A submission stores the internal campaign and the provider ad id only through the tracking token. Zero, missing, invalid, and exhausted limits still cannot activate. No spend decimal is written. LinkedIn assembly, native lead-form campaign creation, activation, and paid-metrics read-back remain open. The milestone after that status was Google Meet booking. It is complete in fixtures. The next milestone is voice handoff.
+**Meta website traffic is complete in fixtures on 2026-10-28.** The fixture assembles a paused campaign, ad set, creative, and ad aimed at the existing capture form. A submission stores the internal campaign and the provider ad id only through the tracking token. Zero, missing, invalid, and exhausted limits still cannot activate. No spend decimal is written. LinkedIn assembly, native lead-form campaign creation, activation, and paid-metrics read-back remain open. Google Meet booking and permissioned voice handoff are complete in fixtures. The next milestone is commercial activation and the close-won lifecycle.
 
 ### Google Meet creation
 
-**Complete in fixtures on 2026-10-28.** The scripted client creates one event with a Meet conference, stores the returned ids and join URL, and links the lead journey. Pending and failed conferences keep the event. An unknown create is read back and is not inserted again. A qualified lead, a missing booking grant, a revoked calendar, a cross-tenant calendar, a conflicting slot, daylight-saving gaps, a stale reschedule, and prepared, missing, and expired scopes make no live call. The next milestone is voice handoff.
+**Complete in fixtures on 2026-10-28.** The scripted client creates one event with a Meet conference, stores the returned ids and join URL, and links the lead journey. Pending and failed conferences keep the event. An unknown create is read back and is not inserted again. A qualified lead, a missing booking grant, a revoked calendar, a cross-tenant calendar, a conflicting slot, daylight-saving gaps, a stale reschedule, and prepared, missing, and expired scopes make no live call. A temporary fixture later opened the filled booking panel in the browser. That panel is not a live Google event.
 
 ### Voice calls, outcomes, and sales handoff
 
-Acceptance: an approved fixture dial uses the mock voice provider, stores the outcome, and creates a follow-up task or a sales handoff only from that stored outcome. A failed dial does not invent a transcript. No live Twilio, Exotel, Vapi, or Dograh call is placed.
+**Complete in fixtures on 2026-10-28, and running locally at Alembic `043`.** The path is one Twilio Calls API `2010-04-01` callback. A callback request or a recorded voice permission binds the owner, product, caller, and recipient. An authorized attempt uses a fake HTTP client. Verified status events are stored. Busy and no-answer do not redial. A human request creates one task. An explicit meeting request creates a Meet proposal and does not book it. A transcript cannot grant permission or spend. Recording, a transfer bridge, Exotel, Vapi, and Dograh are not part of this path. No live call was placed. The next milestone is commercial activation and the close-won lifecycle.
 
 ### Product-linked commercial activation, onboarding, and retention
 

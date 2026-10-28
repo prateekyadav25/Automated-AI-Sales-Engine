@@ -1,5 +1,45 @@
 # Current capability audit
 
+## Current status — 2026-10-28, permissioned voice handoff
+
+This is the current status. The Meet section below, the paused Meta section, the lead-form section, the organic section, the discovery section, the outbound section, the executive assessment, the baseline table, and the capability matrix are earlier. Where they disagree with this section, this section is the one to use.
+
+An explicit callback request, or a recorded call permission with source, time, channel, purpose, and scope, can become one fixture Twilio call on the existing lead and journey. A qualified lead, a phone number, email consent, and a saved task do not authorize it. The attempt binds the tenant, lead, enquiry, operating plan, frozen product, assigned owner, that owner's Twilio connection, caller identity, validated E.164 recipient, purpose, and permission evidence. Execution authorization is checked again immediately before the provider call.
+
+The provider is Twilio Programmable Voice, Calls API `2010-04-01`. Create sends `To`, `From`, and inline `Twiml`. It does not send `Record` or `StatusCallback`. Official create docs do not document an idempotency key, so an unknown create is not repeated. A stored Call SID is the reconcile key. Callbacks are HMAC-SHA1 over the URL and sorted form fields, using the connection token. `SequenceNumber` orders `CallStatus`. A tenant id in the callback is ignored. `completed` is only a terminal call status. Recording, transcription, and a `<Dial>` bridge are unsupported. Exotel, Vapi, and Dograh are not this path.
+
+Prepared, missing, and expired demonstration scopes make no call, including when a fixture client is passed. The worker executes the same function without a client. Duplicate requests share one session. Busy, no-answer, failure, and cancellation do not create another attempt. A stale job does not revive a cancelled task. A human request creates one task and does not claim a completed transfer. An explicit meeting request creates a proposal and does not book it. Transcript instructions cannot grant permission, change tenant, or authorize spend.
+
+The conversations drawer and the lead page can show the call fields. Fixture call ids are labeled. The lead page was not opened because assessment commits. Temporary meeting rows were used to open the filled Meet panel, then deleted. Those rows are not a live Google booking.
+
+### Running locally
+
+| Item | Value |
+|---|---|
+| Database | Alembic `043`, applied after a backup at `042` |
+| Backup | `.local-backups/agrayian-before-043-2026-10-28.dump`, custom format, gitignored |
+| Restore | Stop api, worker, and beat. `pg_restore --clean --if-exists` the dump into `agrayian` inside the Postgres container. The restored schema is `042`. Upgrade before starting images that contain `043` |
+| Disposable proof | A restored copy was upgraded `042` → `043`. The voice-session columns were present. The prepared scope, holds, leads, and three meetings were unchanged. The copy was dropped |
+| Scope | One row, `prepared`, expiry `2026-10-29 18:03:28.181796+00`. Not authorized |
+| Holds | 3 approvals and 9 enrollments remained `held`. Approvals remained 3 held, 5 pending, and 10 rejected |
+| Leads | 33 active, 43 total. The 10 soft-deleted rows from 2026-10-10 were not restored |
+| Meetings | 3 rows, all soft-deleted. No Google Calendar event id was stored |
+| Calls | No live Twilio call id was stored. Temporary fixture rows were deleted after the browser check |
+| Images | api, web, worker, and beat rebuilt after the upgrade. Those three services were stopped during it |
+| Browser | Temporary Meet rows showed the filled booking panel, including pending, failed, fixture join link, and cancellation. The fixture voice drawer showed the callback fields. Both sets of rows were deleted. Request dial, log, extract, and a lead page were not used |
+
+After the image restart, inbox backlog returned 0. No Gmail history request, Twilio call, recording, booking, email, publish, discovery, or spend was observed in that restart log.
+
+### What this section supersedes
+
+| Capability | Current state |
+|---|---|
+| Permissioned voice handoff | Fixture-verified through a scripted Twilio client. Not a live call |
+| Live Twilio, Exotel, Vapi, and Dograh calls | Refused. The worker has no live client on this path |
+| Recording, transcription, and live transfer | Not implemented. A requested transfer is a task |
+| Completed call | A terminal status only. Not a qualification or a sale |
+| Google Meet booking | Fixture-verified. The filled panel was browser-checked with temporary rows that were removed. Not a live event |
+
 ## Current status — 2026-10-28, Google Meet booking
 
 This is the current status. The paused Meta section below, the lead-form section, the organic section, the discovery section, the outbound section, the executive assessment, the baseline table, and the capability matrix are earlier. Where they disagree with this section, this section is the one to use.
