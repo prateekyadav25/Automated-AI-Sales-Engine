@@ -4,6 +4,12 @@ This plan follows the audit in `docs/current-capability-audit.md`. It connects t
 
 The running demonstration stays `prepared`. None of these milestones authorize a send, a post, a call, a booking, or ad spend. Live provider checks are a separate evidence step after the fixture journey is green.
 
+## Status on 2026-10-28, close-won
+
+**Evidence-backed close-won is complete as a fixture path, and the local application is on Alembic `044`.** Voice handoff, Google Meet booking, paused Meta website assembly, native lead-form ingestion, organic creative production, discovery follow-through, outbound drafting, and organic acquisition remain complete as fixture paths. LinkedIn assembly, native lead-form campaign creation, activation, and paid-metrics read-back stay open. The next milestone is customer onboarding follow-through and retention. Broader social performance, paid activation and reporting, SEO, and the remaining live-integration verification stay on the roadmap. The sales engine is not finished.
+
+An accepted quote version can be closed by an authorized operator. Acceptance alone does not create the customer. The purchase and the onboarding task copy that quote version. A later catalogue change does not rewrite it. No quote was sent, no payment was collected, and no service was provisioned. Fixture amounts stay out of the real commercial totals.
+
 ## Status on 2026-10-28
 
 **Google Meet booking is complete as a fixture path, and the local application is on Alembic `042`.** Paused Meta website assembly, native lead-form ingestion, organic creative production, discovery follow-through, outbound drafting, and organic acquisition remain complete as fixture paths. LinkedIn assembly, native lead-form campaign creation, activation, and paid-metrics read-back stay open. The next milestone to implement is voice handoff. Commercial activation, retention, broader social performance, paid activation and reporting, and SEO remain on the roadmap and are not started by this slice.
@@ -359,7 +365,7 @@ Acceptance that was proved with fake Graph responses: a verified notification is
 
 ### Product-linked commercial activation, onboarding, and retention
 
-This extends Milestone 5. Acceptance: close-won copies the quoted product onto the customer and the onboarding task. A later health or renewal signal references that product. Quote acceptance alone still does not create the customer. No customer email is sent.
+**Close-won is complete in fixtures on 2026-10-28, and running locally at Alembic `044`.** Acceptance: the operator decision copies the quoted product onto the customer and one onboarding task. Quote acceptance alone does not create the customer. No customer email is sent. Payment, a contract, and provisioning are not recorded. The remaining work is onboarding follow-through and retention: a later health or renewal signal should reference the purchased product. That follow-through is not started.
 
 ### SEO research, publishing integration, and measurement
 
@@ -378,7 +384,7 @@ Acceptance: a fixture keyword and page recommendation are stored against the sel
 - Dograh completion webhooks, the browser widget as a CRM dialer, Exotel/Twilio/Vapi live calls, and public voice callbacks.
 - Recall joining a meeting by itself. Milestone 3 only stores a URL.
 - Gmail Pub/Sub, live WhatsApp, and live support or finance vendor HTTP.
-- Turning quote acceptance into close-won, auto-creating expansion opportunities, or emailing customers from the reconcile beat.
+- Auto-creating expansion opportunities, or emailing customers from the reconcile beat. Quote acceptance is recorded and does not close the deal. The operator close-won decision is fixture-tested.
 - Training or promoting an ML model. `ML_ALLOW_CHAMPION` stays false.
 - Lifting the score gate for unconsented discovery leads, or treating the six local discovery rows that already have `consent_email` as provider consent. Their flag origin is unverified.
 - Resuming out-of-office and nurture enrollments, and researching an alternate contact after a wrong-person reply. Those labels can be a later journey once outbound copy is honest.
@@ -386,4 +392,4 @@ Acceptance: a fixture keyword and page recommendation are stored against the sel
 
 ## Completion of this plan
 
-Milestones 1, 2 for Meta website traffic, and 4, plus discovery follow-through, organic creative read-back, and Meta native lead-form ingestion, now pass in fixtures. The post, the paused ad, the lead, and the acknowledgement share the selected product. A content proposal can become one mock publication and a stored LinkedIn statistics reading without a live call. The sequence draft freezes that product and labels the facts behind the email. A discovered person keeps the selected plan and reaches that draft only when assessment and channel permission allow it. A Meta lead form can become one acknowledgement without a live Graph call and without an outbound sequence. A paused Meta website campaign can become one attributed enquiry without a live advertising call and without activation. LinkedIn assembly is still open. No Apify, social, ads, or model provider was contacted to prove this. Google Meet booking now passes in fixtures as well. A requested and authorized slot can become one fixture event and conference without a live Calendar call. The next milestone is voice handoff. Commercial activation, retention, broader social performance, paid activation and reporting, and SEO stay listed above. None of them inherits a live-provider claim from an older row in the database. The sales engine is not finished.
+Milestones 1, 2 for Meta website traffic, and 4, plus discovery follow-through, organic creative read-back, and Meta native lead-form ingestion, now pass in fixtures. The post, the paused ad, the lead, and the acknowledgement share the selected product. A content proposal can become one mock publication and a stored LinkedIn statistics reading without a live call. The sequence draft freezes that product and labels the facts behind the email. A discovered person keeps the selected plan and reaches that draft only when assessment and channel permission allow it. A Meta lead form can become one acknowledgement without a live Graph call and without an outbound sequence. A paused Meta website campaign can become one attributed enquiry without a live advertising call and without activation. LinkedIn assembly is still open. No Apify, social, ads, or model provider was contacted to prove this. Google Meet booking and permissioned voice handoff now pass in fixtures as well. A requested and authorized slot can become one fixture event and conference without a live Calendar call. An authorized callback can become one fixture Twilio call without a live call. Evidence-backed close-won now passes in fixtures: an accepted quote does not create the customer, and an operator decision copies that quote onto one onboarding task. The next milestone is customer onboarding follow-through and retention. Broader social performance, paid activation and reporting, SEO, and the remaining live-integration verification stay listed above. None of them inherits a live-provider claim from an older row in the database. The sales engine is not finished.

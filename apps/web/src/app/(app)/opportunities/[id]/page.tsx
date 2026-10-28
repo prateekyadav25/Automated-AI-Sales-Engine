@@ -8,7 +8,8 @@ import { Badge, Button, Drawer, Field, FormActions, Input, Select, Textarea } fr
 import { useAuth } from "@/lib/auth";
 import { OPP_STAGES } from "@/lib/constants";
 import { labelize, money } from "@/lib/format";
-import type { Opportunity } from "@/lib/types";
+import { CommercialClosePanel } from "@/components/commercial-close";
+import type { CommercialClose, Opportunity } from "@/lib/types";
 import { api } from "@agrayian/sdk";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import Link from "next/link";
@@ -59,9 +60,21 @@ export default function OpportunityDetailPage() {
       setOpen(false);
     },
   });
+  const commercial = useQuery({
+    queryKey: ["opportunity-commercial", params.id],
+    queryFn: async () => (await api<CommercialClose>(`/api/v1/opportunities/${params.id}/commercial`)).data,
+    enabled: can("opportunities.read"),
+  });
   const closeWon = useMutation({
-    mutationFn: () => api(`/api/v1/opportunities/${params.id}/close-won`, { method: "POST" }),
-    onSuccess: () => void client.invalidateQueries({ queryKey: ["opportunity", params.id] }),
+    mutationFn: () =>
+      api(`/api/v1/opportunities/${params.id}/close-won`, {
+        method: "POST",
+        body: JSON.stringify({ quote_id: commercial.data?.quote_id, note: "Operator decision" }),
+      }),
+    onSuccess: () => {
+      void client.invalidateQueries({ queryKey: ["opportunity", params.id] });
+      void client.invalidateQueries({ queryKey: ["opportunity-commercial", params.id] });
+    },
   });
   const closeLost = useMutation({
     mutationFn: (reason: string) =>
@@ -114,7 +127,9 @@ export default function OpportunityDetailPage() {
             ) : null}
             {can("opportunities.close") && opp.stage !== "closed_won" && opp.stage !== "closed_lost" ? (
               <>
-                <Button onClick={() => closeWon.mutate()}>Close won</Button>
+                <Button onClick={() => closeWon.mutate()} disabled={!commercial.data?.ready || closeWon.isPending}>
+                  Close won
+                </Button>
                 <Select value={lossReason} onChange={(event) => setLossReason(event.target.value)} aria-label="Loss reason">
                   {LOSS_REASONS.map((item) => (
                     <option key={item} value={item}>
@@ -135,10 +150,12 @@ export default function OpportunityDetailPage() {
         body="Commercial authorization and delivery readiness must precede acceptance. Approval is not delivery."
       />
       <div className="phase-nav">
-        {["Qualification", "Discovery", "Solution", "Proposal", "Negotiation", "Accepted"].map((phase) => {
+        {["Qualification", "Discovery", "Solution", "Proposal", "Negotiation", "Won"].map((phase) => {
           const current =
             opp.stage === "closed_won"
-              ? "Accepted"
+              ? "Won"
+              : commercial.data?.quote_status === "accepted"
+                ? "Negotiation"
               : opp.stage === "discovery" || opp.stage === "demo"
                 ? "Discovery"
                 : opp.stage === "proposal"
@@ -153,6 +170,8 @@ export default function OpportunityDetailPage() {
           );
         })}
       </div>
+      {closeWon.isError ? <p className="tag bad">{(closeWon.error as Error).message}</p> : null}
+      {commercial.data ? <CommercialClosePanel view={commercial.data} /> : null}
       <div className="ds-grid wide">
         <Panel title={opp.name}>
           <div className="between">
@@ -233,7 +252,7 @@ export default function OpportunityDetailPage() {
           <div className="grid grid-cols-2 gap-3">
             <Field label="Stage">
               <Select {...form.register("stage")}>
-                {OPP_STAGES.map((item) => <option key={item} value={item}>{labelize(item)}</option>)}
+                {OPP_STAGES.filter((item) => item !== "closed_won" || opp.stage === "closed_won").map((item) => <option key={item} value={item}>{labelize(item)}</option>)}
               </Select>
             </Field>
             <Field label="Amount"><Input {...form.register("amount")} /></Field>

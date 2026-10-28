@@ -212,6 +212,22 @@ class Quote(Base, TenantOwnedMixin):
     terms: Mapped[str] = mapped_column(Text, default="", nullable=False)
     sent_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
     accepted_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    currency: Mapped[str] = mapped_column(String(8), default="", nullable=False)
+    customer_facing_name: Mapped[str] = mapped_column(Text, default="", nullable=False)
+    offer_label: Mapped[str] = mapped_column(Text, default="", nullable=False)
+    sku: Mapped[str] = mapped_column(String(40), default="", nullable=False)
+    scope_text: Mapped[str] = mapped_column(Text, default="", nullable=False)
+    billing_cadence: Mapped[str] = mapped_column(String(40), default="", nullable=False)
+    service_start: Mapped[date | None] = mapped_column(Date, nullable=True)
+    service_end: Mapped[date | None] = mapped_column(Date, nullable=True)
+    valid_until: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    operating_plan_id: Mapped[UUID | None] = mapped_column(nullable=True)
+    contact_id: Mapped[UUID | None] = mapped_column(nullable=True)
+    parent_quote_id: Mapped[UUID | None] = mapped_column(nullable=True)
+    superseded_by_id: Mapped[UUID | None] = mapped_column(nullable=True)
+    context_version: Mapped[str] = mapped_column(String(40), default="", nullable=False)
+    context_json: Mapped[str] = mapped_column(Text, default="", nullable=False)
+    fixture: Mapped[bool] = mapped_column(Boolean, default=False, nullable=False)
 
 
 class QuoteLine(Base, TenantOwnedMixin):
@@ -222,6 +238,47 @@ class QuoteLine(Base, TenantOwnedMixin):
     quantity: Mapped[int] = mapped_column(Integer, default=1, nullable=False)
     unit_price: Mapped[Decimal] = mapped_column(Numeric(18, 2), default=0, nullable=False)
     line_total: Mapped[Decimal] = mapped_column(Numeric(18, 2), default=0, nullable=False)
+    customer_facing_name: Mapped[str] = mapped_column(Text, default="", nullable=False)
+    offer_label: Mapped[str] = mapped_column(Text, default="", nullable=False)
+    sku: Mapped[str] = mapped_column(String(40), default="", nullable=False)
+
+
+class QuoteAcceptance(Base, TenantOwnedMixin):
+    __tablename__ = "quote_acceptances"
+    __table_args__ = (UniqueConstraint("tenant_id", "quote_id", name="uq_quote_acceptance"),)
+
+    quote_id: Mapped[UUID] = mapped_column(ForeignKey("quotes.id"), index=True, nullable=False)
+    contact_id: Mapped[UUID | None] = mapped_column(nullable=True)
+    relationship: Mapped[str] = mapped_column(String(80), default="", nullable=False)
+    accepted_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    source: Mapped[str] = mapped_column(String(40), default="manual", nullable=False)
+    evidence: Mapped[str] = mapped_column(Text, default="", nullable=False)
+    review_state: Mapped[str] = mapped_column(String(40), default="recorded", nullable=False)
+    fixture: Mapped[bool] = mapped_column(Boolean, default=False, nullable=False)
+
+
+class DealPurchase(Base, TenantOwnedMixin):
+    __tablename__ = "deal_purchases"
+    __table_args__ = (UniqueConstraint("tenant_id", "opportunity_id", name="uq_deal_purchase_opportunity"),)
+
+    opportunity_id: Mapped[UUID] = mapped_column(ForeignKey("opportunities.id"), index=True, nullable=False)
+    quote_id: Mapped[UUID] = mapped_column(ForeignKey("quotes.id"), nullable=False)
+    customer_id: Mapped[UUID | None] = mapped_column(ForeignKey("customers.id"), nullable=True)
+    account_id: Mapped[UUID] = mapped_column(ForeignKey("accounts.id"), nullable=False)
+    onboarding_plan_id: Mapped[UUID | None] = mapped_column(nullable=True)
+    task_id: Mapped[UUID | None] = mapped_column(nullable=True)
+    currency: Mapped[str] = mapped_column(String(8), default="", nullable=False)
+    amount: Mapped[Decimal] = mapped_column(Numeric(18, 2), default=0, nullable=False)
+    snapshot_json: Mapped[str] = mapped_column(Text, default="", nullable=False)
+    decided_by: Mapped[UUID | None] = mapped_column(nullable=True)
+    decided_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    evidence_note: Mapped[str] = mapped_column(Text, default="", nullable=False)
+    status: Mapped[str] = mapped_column(String(20), default="won", nullable=False)
+    payment_status: Mapped[str] = mapped_column(String(20), default="", nullable=False)
+    fixture: Mapped[bool] = mapped_column(Boolean, default=False, nullable=False)
+    reversal_reason: Mapped[str] = mapped_column(Text, default="", nullable=False)
+    reversed_by: Mapped[UUID | None] = mapped_column(nullable=True)
+    reversed_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
 
 
 class ForecastSnapshot(Base, TenantOwnedMixin):
@@ -241,8 +298,12 @@ class OnboardingPlan(Base, TenantOwnedMixin):
     __tablename__ = "onboarding_plans"
 
     customer_id: Mapped[UUID] = mapped_column(ForeignKey("customers.id"), index=True, nullable=False)
+    opportunity_id: Mapped[UUID | None] = mapped_column(nullable=True)
+    quote_id: Mapped[UUID | None] = mapped_column(nullable=True)
     status: Mapped[str] = mapped_column(String(20), default="planned", nullable=False)
     objective: Mapped[str] = mapped_column(Text, default="", nullable=False)
+    next_action: Mapped[str] = mapped_column(Text, default="", nullable=False)
+    blocker: Mapped[str] = mapped_column(Text, default="", nullable=False)
 
 
 class OnboardingMilestone(Base, TenantOwnedMixin):

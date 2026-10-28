@@ -6,7 +6,7 @@ import { DeniedState, EmptyState, ErrorState, LoadingState } from "@/components/
 import { Badge, Button, Select } from "@/components/ui";
 import { useAuth } from "@/lib/auth";
 import { labelize, money, when } from "@/lib/format";
-import type { Customer360 } from "@/lib/types";
+import type { Customer360, PurchaseRecord } from "@/lib/types";
 import { api } from "@agrayian/sdk";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useState } from "react";
@@ -107,6 +107,32 @@ export default function Customer360Page() {
             <p className="mt-1 text-xs text-[var(--muted)]">{card.at ? `Last event ${when(card.at)}` : "No live event yet"}</p>
           </div>
         ))}
+      </div>
+      <div className="mb-6 panel p-5" data-testid="customer-purchases">
+        <p className="text-sm font-semibold text-navy">Purchased scope</p>
+        <p className="mt-1 text-xs text-[var(--muted)]">Each deal keeps its own quote snapshot. Onboarding is not activation, payment, or a completed setup.</p>
+        {(row.purchases ?? []).length === 0 ? (
+          <p className="mt-4 text-sm text-[var(--muted)]">No close-won purchase is recorded for this customer.</p>
+        ) : (
+          <ul className="mt-4 space-y-3 text-sm">
+            {(row.purchases ?? []).map((item: PurchaseRecord) => (
+              <li key={item.id} className="border-t border-[var(--line)] pt-3">
+                <p className="font-medium">{item.customer_facing_name || "Product not recorded"} · {item.currency} {item.amount}</p>
+                <p className="text-xs text-[var(--muted)]">
+                  {item.status} · SKU {item.sku || "not recorded"} · offer {item.offer_label || "not recorded"} · payment {item.payment_status || "not recorded"} · owner {item.owner_name || "not recorded"}
+                </p>
+                <p className="text-xs text-[var(--muted)]">
+                  Scope {item.scope_text || "not recorded"} · onboarding {item.onboarding_status || "not opened"} · next {item.onboarding_next_action || "not recorded"}
+                </p>
+                <p className="mt-1 text-xs">
+                  <Link href={`/opportunities/${item.opportunity_id}`} className="text-brand">Opportunity</Link>
+                  {" · "}
+                  <Link href={`/commercial/quotes/${item.quote_id}`} className="text-brand">Quote version {item.quote_version ?? "—"}</Link>
+                </p>
+              </li>
+            ))}
+          </ul>
+        )}
       </div>
       <div className="grid gap-4 xl:grid-cols-2">
         <div data-testid="customer-automation">

@@ -28,6 +28,7 @@ from app.models.lifecycle import (
 )
 from app.models.market import CompetitiveSignal
 from app.models.workflow import WorkflowRun
+from app.services.commercial_close import apply_quote_terms, freeze_quote_commercial
 from app.services.crm import add_activity
 from app.services.market import clamp
 from app.services.outbound_draft import ProductConfigurationError, prepare_sequence_draft, resolve_product_binding
@@ -430,6 +431,13 @@ def create_quote(
     discount_pct: int,
     tax_pct: int,
     lines: list[dict],
+    terms: str = "",
+    scope_text: str = "",
+    billing_cadence: str = "",
+    service_start=None,
+    service_end=None,
+    valid_until=None,
+    offer_label: str = "",
 ) -> Quote:
     quote = Quote(
         tenant_id=tenant_id,
@@ -457,7 +465,18 @@ def create_quote(
             )
         )
     db.flush()
+    apply_quote_terms(
+        quote,
+        terms=terms,
+        scope_text=scope_text,
+        billing_cadence=billing_cadence,
+        service_start=service_start,
+        service_end=service_end,
+        valid_until=valid_until,
+        offer_label=offer_label,
+    )
     recompute_quote(db, quote)
+    freeze_quote_commercial(db, quote)
     if quote.approval_required:
         db.add(
             AIApproval(

@@ -153,6 +153,7 @@ class Customer360Out(APIModel):
     timeline: list[TimelineItemOut] = Field(default_factory=list)
     time_to_value: TimeToValueOut = Field(default_factory=TimeToValueOut)
     growth_plan: dict = Field(default_factory=dict)
+    purchases: list[dict] = Field(default_factory=list)
 
 
 class PostSaleAttentionOut(APIModel):

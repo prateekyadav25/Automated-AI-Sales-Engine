@@ -31,6 +31,7 @@ from app.schemas.post_sale import (
     UsageSnapshotOut,
 )
 from app.services.autopilot_status import entity_trace
+from app.services.commercial_close import purchases_for_customer
 from app.services.expansion import growth_plan
 from app.services.onboarding import time_to_value
 
@@ -182,6 +183,7 @@ def build_customer_360(db: Session, *, tenant_id: UUID, customer: Customer) -> C
         timeline=timeline,
         time_to_value=TimeToValueOut(**ttv),
         growth_plan=growth_plan(db, tenant_id=tenant_id, customer=customer),
+        purchases=purchases_for_customer(db, tenant_id=tenant_id, customer_id=customer.id),
     )
 
 

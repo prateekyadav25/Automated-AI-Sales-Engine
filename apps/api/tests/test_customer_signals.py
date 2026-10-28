@@ -16,6 +16,7 @@ from app.models.lifecycle import HealthScore
 from app.models.post_sale import Contract, ContractLine, CustomerRisk, ExpansionRecommendation
 from app.models.signals import UsageEvent, UsageRollup
 from app.services.advocacy import evaluate_advocacy
+from app.services.crm import close_won
 from app.services.customer_health import recalculate
 from app.services.webhook_routes import demo_routing_token
 from tests.conftest import login
@@ -48,10 +49,20 @@ def _close(client: TestClient, headers: dict, name: str, domain: str = "") -> di
         headers=headers,
         json={"account_id": account["id"], "name": f"{name} Deal", "stage": "commit", "amount": "90000", "probability": 90},
     ).json()["data"]
-    won = client.post(f"/api/v1/opportunities/{opp['id']}/close-won", headers=headers)
-    assert won.status_code == 200, won.text
-    customer = won.json()["data"]
-    return {"account": account, "customer": customer}
+    user = client.get("/api/v1/auth/me", headers=headers).json()["data"]["user"]
+    db = get_session()
+    try:
+        _opp, customer, _renewal = close_won(
+            db,
+            tenant_id=UUID(user["tenant_id"]),
+            actor_id=UUID(user["id"]),
+            opportunity_id=UUID(opp["id"]),
+        )
+        db.commit()
+        customer_id = str(customer.id)
+    finally:
+        db.close()
+    return {"account": account, "customer": {"id": customer_id}}
 
 
 def test_usage_live_event_and_duplicate(client: TestClient) -> None:

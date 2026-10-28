@@ -107,6 +107,7 @@ export type Task = {
   source: string;
   entity_type: string;
   entity_id: string;
+  owner_name?: string;
 };
 
 export type Activity = {
@@ -599,6 +600,94 @@ export type Quote = {
   subtotal: string;
   total: string;
   approval_required: boolean;
+  version?: number;
+  terms?: string;
+  currency?: string;
+  customer_facing_name?: string;
+  offer_label?: string;
+  sku?: string;
+  scope_text?: string;
+  billing_cadence?: string;
+  service_start?: string | null;
+  service_end?: string | null;
+  valid_until?: string | null;
+  parent_quote_id?: string | null;
+  superseded_by_id?: string | null;
+  context_version?: string;
+  fixture?: boolean;
+  lines?: { id: string; quantity: number; unit_price: string; line_total: string; customer_facing_name?: string; offer_label?: string; sku?: string }[];
+};
+
+export type CommercialClose = {
+  opportunity_id: string;
+  account_id: string;
+  stage: string;
+  quote_id: string | null;
+  quote_version: number | null;
+  quote_status: string;
+  currency: string;
+  subtotal: string;
+  total: string;
+  discount_pct: number | null;
+  tax_pct: number | null;
+  customer_facing_name: string;
+  offer_label: string;
+  sku: string;
+  scope_text: string;
+  terms: string;
+  billing_cadence: string;
+  service_start: string | null;
+  service_end: string | null;
+  valid_until: string | null;
+  acceptance_source: string;
+  acceptance_review: string;
+  acceptance_relationship: string;
+  acceptance_evidence: string;
+  provider_verified: boolean;
+  blockers: string[];
+  ready: boolean;
+  won: boolean;
+  purchase_status: string;
+  payment_status: string;
+  customer_id: string | null;
+  customer_status: string;
+  activated: boolean;
+  onboarding_plan_id: string | null;
+  onboarding_status: string;
+  onboarding_next_action: string;
+  onboarding_blocker: string;
+  task_id: string | null;
+  task_status: string;
+  owner_id: string | null;
+  owner_name: string;
+  missing_information: string[];
+  fixture: boolean;
+  external_block: string;
+  external_released: boolean;
+  decided_at: string | null;
+  reversal_reason: string;
+  note: string;
+};
+
+export type PurchaseRecord = {
+  id: string;
+  opportunity_id: string;
+  quote_id: string;
+  quote_version: number | null;
+  status: string;
+  currency: string;
+  amount: string;
+  payment_status: string;
+  customer_facing_name: string;
+  sku: string;
+  offer_label: string;
+  scope_text: string;
+  onboarding_status: string;
+  onboarding_next_action: string;
+  task_status: string;
+  owner_name?: string;
+  fixture: boolean;
+  activated: boolean;
 };
 
 export type Forecast = {
@@ -758,6 +847,7 @@ export type Customer360 = {
     days_to_first_value: number | null;
     days_to_onboarding_complete: number | null;
   };
+  purchases?: PurchaseRecord[];
 };
 
 export type Referral = {

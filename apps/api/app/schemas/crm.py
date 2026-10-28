@@ -175,6 +175,7 @@ class TaskOut(TaskIn):
     id: UUID
     tenant_id: UUID
     created_at: datetime
+    owner_name: str = ""
 
 
 class ActivityOut(APIModel):

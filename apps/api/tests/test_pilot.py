@@ -1,5 +1,9 @@
+from uuid import UUID
+
 from fastapi.testclient import TestClient
 
+from app.db.session import get_session
+from app.services.crm import close_won
 from tests.conftest import login
 
 
@@ -53,7 +57,19 @@ def test_close_lost_and_churn_outcomes(client: TestClient) -> None:
         headers=headers,
         json={"account_id": won_account["id"], "name": "Churn Deal", "stage": "commit", "amount": "10000"},
     ).json()["data"]
-    customer = client.post(f"/api/v1/opportunities/{won_opp['id']}/close-won", headers=headers).json()["data"]
+    user = client.get("/api/v1/auth/me", headers=headers).json()["data"]["user"]
+    db = get_session()
+    try:
+        _opp, customer_row, _renewal = close_won(
+            db,
+            tenant_id=UUID(user["tenant_id"]),
+            actor_id=UUID(user["id"]),
+            opportunity_id=UUID(won_opp["id"]),
+        )
+        db.commit()
+        customer = {"id": str(customer_row.id)}
+    finally:
+        db.close()
     churned = client.post(f"/api/v1/customers/{customer['id']}/churn", headers=headers, json={"reason": "adoption"})
     assert churned.status_code == 200, churned.text
     assert churned.json()["data"]["status"] == "churned"

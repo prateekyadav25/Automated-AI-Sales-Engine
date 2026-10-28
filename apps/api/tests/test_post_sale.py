@@ -11,7 +11,24 @@ from app.models.identity import User
 from app.models.lifecycle import AdvocacyAsset, HealthScore, OnboardingMilestone, OnboardingPlan
 from app.models.post_sale import Contract, CustomerRisk, ExpansionRecommendation, HandoffPackage
 from app.services.advocacy import evaluate_advocacy
+from app.services.crm import close_won
 from tests.conftest import login
+
+
+def _legacy_close(client: TestClient, headers: dict, opp_id: str) -> dict:
+    user = client.get("/api/v1/auth/me", headers=headers).json()["data"]["user"]
+    db = get_session()
+    try:
+        _opp, customer, _renewal = close_won(
+            db,
+            tenant_id=UUID(user["tenant_id"]),
+            actor_id=UUID(user["id"]),
+            opportunity_id=UUID(opp_id),
+        )
+        db.commit()
+        return {"id": str(customer.id), "opportunity_id": str(customer.opportunity_id)}
+    finally:
+        db.close()
 
 
 def _enable(client: TestClient, headers: dict) -> None:
@@ -54,9 +71,8 @@ def _close_new(client: TestClient, headers: dict, name: str) -> tuple[dict, dict
     )
     assert created.status_code == 200, created.text
     opp = created.json()["data"]
-    won = client.post(f"/api/v1/opportunities/{opp['id']}/close-won", headers=headers)
-    assert won.status_code == 200, won.text
-    return account, opp, won.json()["data"]
+    customer = _legacy_close(client, headers, opp["id"])
+    return account, opp, customer
 
 
 def _counts(customer_id: str) -> dict[str, int]:
@@ -92,8 +108,8 @@ def test_journey_1_close_won_activation_is_idempotent(client: TestClient) -> Non
     assert body["health_version"] == "rules-v2"
     assert "usage" in (body.get("unavailable_components") or "")
     before = _counts(customer["id"])
-    again = client.post(f"/api/v1/opportunities/{opp['id']}/close-won", headers=headers)
-    assert again.status_code == 200
+    again = _legacy_close(client, headers, opp["id"])
+    assert again["id"] == customer["id"]
     after = _counts(customer["id"])
     assert after == before
     customers = client.get("/api/v1/customers", headers=headers).json()["data"]
@@ -274,7 +290,7 @@ def test_journey_7_retry_does_not_duplicate_post_sale(client: TestClient) -> Non
     _cycle(client, headers)
     _cycle(client, headers)
     snapshot = _counts(customer["id"])
-    client.post(f"/api/v1/opportunities/{opp['id']}/close-won", headers=headers)
+    _legacy_close(client, headers, opp["id"])
     _cycle(client, headers)
     _cycle(client, headers)
     assert _counts(customer["id"]) == snapshot

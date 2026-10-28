@@ -1,5 +1,54 @@
 # Current capability audit
 
+## Current status — 2026-10-28, evidence-backed close-won
+
+This is the current status. The voice section below, the Meet section, the paused Meta section, the lead-form section, the organic section, the discovery section, the outbound section, the executive assessment, the baseline table, and the capability matrix are earlier. Where they disagree with this section, this section is the one to use.
+
+A qualified opportunity can become a versioned quote, a recorded acceptance, an explicit close-won decision, a customer relationship, and one onboarding task for the purchased product. Those events stay separate. An enquiry, a meeting, a generated quote, an accepted quote, and a numerical score do not close the deal. Acceptance does not create the customer or the onboarding task.
+
+The accepted quote version is the commercial snapshot. It keeps the tenant, opportunity, account, contact, product, customer-facing name, offer, internal SKU, scope, quantity, terms, currency, amounts, cadence, service dates, validity, and approved product context when those were supplied. Missing tax, discount, fees, and payment status stay missing. An edit of an issued or accepted quote creates a new version. A later product or plan edit does not rewrite the accepted offer.
+
+Acceptance records the person, the relationship to the buyer, the time, the source, the evidence, and the review state. `manual` and `fixture` are distinct from a provider-verified acceptance. No signature provider is connected, so a provider source is refused. An uploaded document or a model-extracted statement stays in review. Superseded, expired, conflicting, and incomplete acceptance block the decision.
+
+Close-won uses `opportunities.close`. It requires the same tenant and opportunity, that quote version, a complete acceptance, and the operator decision. The worker handler for `commercial.close_won` does not convert the deal. The purchase stores who decided, when, the evidence, and the quoted product. Payment is not a prerequisite. An unpaid deal is not shown as paid. A second purchase by the same customer keeps its own opportunity, snapshot, and onboarding task. Names and domains are not merged. The write is one database transaction with the existing outbox. A failed write rolls back. A replay does not duplicate the customer, purchase, or task.
+
+Onboarding is one open plan and one task. It shows the customer, opportunity, winning quote, frozen product, scope, terms, owner, missing customer information, the setup task, the blocker, and the next action. Agreed dates appear only when the quote has them. Creating the task does not mean the customer paid, signed, was provisioned, received the service, or finished onboarding. No external service is activated.
+
+A correction records the reason and the actor, returns the opportunity to `commit`, and leaves the customer, snapshot, and onboarding history in place. It does not refund or cancel an external service. Historical opportunities were not backfilled.
+
+The ledger keeps open pipeline, quoted amount, accepted quote amount, and closed-won commercial value separate. Invoiced and collected stay empty. Currencies are not added together. Fixture results on a DEMO tenant stay out of the real totals. First-touch attribution is unchanged.
+
+The opportunity, quote, customer, and task pages show the snapshot, the acceptance, the blockers, the decision, the links, the owner, and the next action. Accepted, won, onboarding, and active stay separate.
+
+### Running locally
+
+| Item | Value |
+|---|---|
+| Database | Alembic `044`, applied after a backup at `043` |
+| Backup | `.local-backups/agrayian-before-044-2026-10-28.dump`, custom format, gitignored |
+| Restore | Stop api, worker, and beat. `pg_restore --clean --if-exists` the dump into `agrayian` inside the Postgres container. The restored schema is `043`. Upgrade before starting images that contain `044` |
+| Disposable proof | A restored copy was upgraded `043` → `044`. `quote_acceptances` and `deal_purchases` were present. The prepared scope, holds, leads, and three meetings were unchanged. The copy was dropped |
+| Scope | One row, `prepared`, expiry `2026-10-29 18:03:28.181796+00`. Not authorized |
+| Holds | 3 approvals and 9 enrollments remained `held`. Approvals remained 3 held, 5 pending, and 10 rejected |
+| Leads | 33 active, 43 total. The 10 soft-deleted rows from 2026-10-10 were not restored |
+| Meetings | 3 rows, all soft-deleted. No meeting was restored or booked |
+| Commercial | Temporary fixture rows were deleted after the browser check. No purchase, fixture account, or new customer remains. The historical draft quote and the soft-deleted contract were not changed |
+| Images | api, web, worker, and beat rebuilt after the upgrade. Those services were stopped during it |
+| Browser | The fixture opportunity, quote, customer, and onboarding task showed the frozen USD 250001.00 snapshot, fixture acceptance, owner, missing billing email, unrecorded payment, the prepared-scope block, and the links between those records. Close won, Accept, Send, churn, and a real lead were not used |
+
+After the image restart, inbox backlog returned 0 and failed-send retry returned 0. The existing mailbox poll read Gmail history at `startHistoryId=4134` and returned HTTP 200. No quote send, payment, provisioning, Twilio call, booking, publish, discovery, or spend was started by this work.
+
+### What this section supersedes
+
+| Capability | Current state |
+|---|---|
+| Evidence-backed close-won | Fixture-verified and browser-checked with temporary rows that were removed. Not a live signature, payment, or provisioning |
+| Quote acceptance | Recorded evidence. It does not create a customer or an onboarding task |
+| Closed-won value | The accepted quote amount, by currency. It is not collected cash or recognized revenue |
+| Onboarding task | Open work for the purchased snapshot. It is not an active service |
+| Permissioned voice handoff | Fixture-verified. Not a live call |
+| Google Meet booking | Fixture-verified. Not a live event |
+
 ## Current status — 2026-10-28, permissioned voice handoff
 
 This is the current status. The Meet section below, the paused Meta section, the lead-form section, the organic section, the discovery section, the outbound section, the executive assessment, the baseline table, and the capability matrix are earlier. Where they disagree with this section, this section is the one to use.

@@ -5,10 +5,10 @@ import { DeniedState, ErrorState, LoadingState } from "@/components/states";
 import { Button } from "@/components/ui";
 import { StatusPill } from "@/components/workspace-ui";
 import { useAuth } from "@/lib/auth";
-import { money } from "@/lib/format";
-import type { Quote } from "@/lib/types";
+import type { CommercialClose, Quote } from "@/lib/types";
 import { api } from "@agrayian/sdk";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import Link from "next/link";
 import { useParams } from "next/navigation";
 
 function tone(status: string): "success" | "review" | "info" | "neutral" {
@@ -27,6 +27,11 @@ export default function QuotePage() {
     queryFn: async () => (await api<Quote>(`/api/v1/lifecycle/quotes/${params.id}`)).data,
     enabled: can("commercial.read"),
   });
+  const commercial = useQuery({
+    queryKey: ["opportunity-commercial", query.data?.opportunity_id],
+    queryFn: async () => (await api<CommercialClose>(`/api/v1/opportunities/${query.data?.opportunity_id}/commercial`)).data,
+    enabled: can("opportunities.read") && Boolean(query.data?.opportunity_id),
+  });
   const accept = useMutation({
     mutationFn: () => api(`/api/v1/workflow/quotes/${params.id}/accept`, { method: "POST", body: JSON.stringify({ note: "" }) }),
     onSuccess: () => void client.invalidateQueries({ queryKey: ["quote", params.id] }),
@@ -40,7 +45,7 @@ export default function QuotePage() {
       <PageHeader
         eyebrow="Commercial"
         title={`Quote ${quote.id.slice(0, 8)}`}
-        subtitle="Approval, sent, and accepted stay separate. Editing terms after approval returns the quote to draft and makes the prior authorization stale."
+        subtitle="An issued or accepted version stays unchanged. Editing it creates a new draft. Acceptance is not close-won."
         nextHref="/commercial/proposal"
         nextLabel="Proposal"
         actions={
@@ -72,12 +77,17 @@ export default function QuotePage() {
               <h2>Quote</h2>
               <p className="muted" style={{ marginTop: 10 }}>Prepared for this tenant opportunity.</p>
               <div style={{ marginTop: 20 }}>
-                <div className="line-item"><span>Subtotal</span><span className="num">{money(quote.subtotal)}</span></div>
-                <div className="line-item"><span>Discount</span><span className="num">{quote.discount_pct}%</span></div>
-                <div className="line-item"><span>Tax</span><span className="num">{quote.tax_pct}%</span></div>
-                <div className="line-item"><span>Total</span><span className="num">{money(quote.total)}</span></div>
+                <div className="line-item"><span>Product</span><span>{quote.customer_facing_name || "Not recorded"}</span></div>
+                <div className="line-item"><span>Offer</span><span>{quote.offer_label || "Not recorded"}</span></div>
+                <div className="line-item"><span>SKU</span><span>{quote.sku || "Not recorded"}</span></div>
+                <div className="line-item"><span>Version</span><span>{quote.version ?? "—"}</span></div>
+                <div className="line-item"><span>Scope</span><span>{quote.scope_text || "Not recorded"}</span></div>
+                <div className="line-item"><span>Subtotal</span><span className="num">{quote.currency ? `${quote.currency} ${quote.subtotal}` : quote.subtotal}</span></div>
+                <div className="line-item"><span>Discount</span><span className="num">{quote.discount_pct ? `${quote.discount_pct}%` : "Not recorded"}</span></div>
+                <div className="line-item"><span>Tax</span><span className="num">{quote.tax_pct ? `${quote.tax_pct}%` : "Not recorded"}</span></div>
+                <div className="line-item"><span>Total</span><span className="num">{quote.currency ? `${quote.currency} ${quote.total}` : quote.total}</span></div>
               </div>
-              <p className="small muted" style={{ marginTop: 22 }}>Line items stay on the quote version. This paper shows the recorded totals.</p>
+              <p className="small muted" style={{ marginTop: 22 }}>This version stays as quoted. A later catalogue edit does not change it. Acceptance is not close-won.</p>
             </div>
           </div>
         </section>
@@ -87,6 +97,10 @@ export default function QuotePage() {
             <div className="line-item"><span>Authorization</span><span>{quote.status}</span></div>
             <div className="line-item"><span>Approval required</span><span>{quote.approval_required ? "Yes" : "No"}</span></div>
             <div className="line-item"><span>Delivery</span><span>Separate from approval</span></div>
+            <div className="line-item"><span>Acceptance</span><span>{commercial.data?.quote_id === quote.id ? commercial.data.acceptance_source || "Not recorded" : "See this version"}</span></div>
+            <div className="line-item"><span>Close-won</span><span>{commercial.data?.won && commercial.data.quote_id === quote.id ? "Won" : "Not won"}</span></div>
+            <div className="line-item"><span>Payment</span><span>{commercial.data?.payment_status || "Not recorded"}</span></div>
+            <p className="small" style={{ marginTop: 16 }}><Link href={`/opportunities/${quote.opportunity_id}`}>Open opportunity</Link></p>
           </div>
         </section>
       </div>

@@ -8,6 +8,7 @@ import { labelize, when } from "@/lib/format";
 import type { Task } from "@/lib/types";
 import { api } from "@agrayian/sdk";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import Link from "next/link";
 import { useParams } from "next/navigation";
 
 export default function TaskDetailPage() {
@@ -57,8 +58,9 @@ export default function TaskDetailPage() {
       <div className="panel max-w-2xl p-5">
         <ul className="space-y-3 text-sm">
           <li className="flex justify-between"><span className="text-[var(--muted)]">Status</span><Badge tone={task.status === "done" ? "ok" : "gold"}>{labelize(task.status)}</Badge></li>
+          <li className="flex justify-between"><span className="text-[var(--muted)]">Owner</span>{task.owner_name || "Not recorded"}</li>
           <li className="flex justify-between"><span className="text-[var(--muted)]">Due</span>{when(task.due_at)}</li>
-          <li className="flex justify-between"><span className="text-[var(--muted)]">Linked</span>{task.entity_type ? `${task.entity_type} ${task.entity_id.slice(0, 8)}` : "—"}</li>
+          <li className="flex justify-between"><span className="text-[var(--muted)]">Linked</span>{task.entity_type === "opportunity" ? <Link href={`/opportunities/${task.entity_id}`}>Opportunity</Link> : task.entity_type ? `${task.entity_type} ${task.entity_id.slice(0, 8)}` : "—"}</li>
         </ul>
         <p className="mt-5 text-sm leading-6 text-[var(--muted)]">{task.description || "No description."}</p>
       </div>

@@ -1,6 +1,5 @@
 """Governed revenue workflow: decisions, launch, grants, and commercial evidence."""
 
-from datetime import UTC, datetime
 from decimal import Decimal
 from typing import Annotated
 from uuid import UUID
@@ -16,8 +15,8 @@ from app.models.execution import AuthorizationGrant, StageEvidence, UserInvitati
 from app.models.identity import DomainEvent
 from app.models.lifecycle import MeetingRecord, Quote, Sequence
 from app.schemas.common import Envelope, Meta
-from app.services.audit import write_audit
 from app.services.autopilot_settings import get_or_create_settings
+from app.services.commercial_close import CommercialCloseError, record_acceptance, review_acceptance
 from app.services.crm import STAGE_PROBABILITY
 from app.services.event_delivery import replay_event
 from app.services.journey_engine import record_sales_qualification, sequence_is_runnable, stage_block_reason
@@ -81,6 +80,14 @@ class StageAdvanceIn(BaseModel):
 
 
 class QuoteAcceptIn(BaseModel):
+    note: str = ""
+    contact_id: UUID | None = None
+    relationship: str = ""
+    source: str = "manual"
+    evidence: str = ""
+
+
+class AcceptanceReviewIn(BaseModel):
     note: str = ""
 
 
@@ -216,6 +223,8 @@ def advance_stage(
     ctx: Annotated[AuthContext, Depends(require_permission("opportunities.write"))],
 ) -> Envelope[dict]:
     opportunity = get_owned(db, Opportunity, ctx.tenant_id, opportunity_id)
+    if body.stage == "closed_won":
+        raise HTTPException(status_code=409, detail="Close-won is a separate decision and needs an accepted quote.")
     reason = stage_block_reason(db, tenant_id=ctx.tenant_id, opportunity=opportunity, target=body.stage)
     if reason:
         raise HTTPException(status_code=409, detail=reason)
@@ -246,21 +255,47 @@ def accept_quote(
     ctx: Annotated[AuthContext, Depends(require_permission("commercial.write"))],
 ) -> Envelope[dict]:
     quote = get_owned(db, Quote, ctx.tenant_id, quote_id)
-    if quote.status != "approved":
-        raise HTTPException(status_code=409, detail="Only an approved quote version can be accepted.")
-    quote.status = "accepted"
-    quote.accepted_at = datetime.now(UTC)
-    write_audit(
-        db,
-        tenant_id=ctx.tenant_id,
-        actor_id=ctx.user.id,
-        action="quote.accepted",
-        entity_type="quote",
-        entity_id=str(quote.id),
-        after={"version": quote.version, "note": body.note},
-    )
+    try:
+        acceptance = record_acceptance(
+            db,
+            tenant_id=ctx.tenant_id,
+            actor_id=ctx.user.id,
+            quote=quote,
+            contact_id=body.contact_id,
+            relationship=body.relationship,
+            source=body.source,
+            evidence=body.evidence or body.note,
+        )
+    except CommercialCloseError as exc:
+        raise HTTPException(status_code=exc.status_code, detail=str(exc)) from exc
     db.commit()
-    return Envelope(data={"id": str(quote.id), "status": quote.status, "version": quote.version})
+    return Envelope(
+        data={
+            "id": str(quote.id),
+            "status": quote.status,
+            "version": quote.version,
+            "acceptance_id": str(acceptance.id),
+            "review_state": acceptance.review_state,
+            "source": acceptance.source,
+            "customer_created": False,
+        }
+    )
+
+
+@router.post("/quotes/{quote_id}/acceptance/review", response_model=Envelope[dict])
+def review_quote_acceptance(
+    quote_id: UUID,
+    body: AcceptanceReviewIn,
+    db: Annotated[Session, Depends(get_db)],
+    ctx: Annotated[AuthContext, Depends(require_permission("commercial.write"))],
+) -> Envelope[dict]:
+    quote = get_owned(db, Quote, ctx.tenant_id, quote_id)
+    try:
+        acceptance = review_acceptance(db, tenant_id=ctx.tenant_id, actor_id=ctx.user.id, quote=quote, note=body.note)
+    except CommercialCloseError as exc:
+        raise HTTPException(status_code=exc.status_code, detail=str(exc)) from exc
+    db.commit()
+    return Envelope(data={"id": str(quote.id), "review_state": acceptance.review_state, "provider_verified": False})
 
 
 @router.post("/sequences/{sequence_id}/activate", response_model=Envelope[dict])

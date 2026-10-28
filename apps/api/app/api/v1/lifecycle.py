@@ -52,6 +52,7 @@ from app.schemas.lifecycle import (
     CampaignMemberIn,
     CampaignMemberOut,
     CampaignOut,
+    CommercialViewOut,
     ConversationIn,
     ConversationOut,
     DealInsightOut,
@@ -107,6 +108,15 @@ from app.services.ads import (
 )
 from app.services.ads_assembly import assemble_paused_meta, assembly_view, proposal_errors
 from app.services.audit import write_audit
+from app.services.commercial_close import (
+    CommercialCloseError,
+    clone_quote_edit,
+    commercial_ledger,
+    commercial_view,
+    freeze_quote_commercial,
+    issue_quote,
+    quote_is_frozen,
+)
 from app.services.customer_intelligence import rebuild_health
 from app.services.dograh_browser import browser_test_from_settings
 from app.services.lifecycle import (
@@ -840,6 +850,13 @@ def post_quote(
         discount_pct=body.discount_pct,
         tax_pct=body.tax_pct,
         lines=[line.model_dump() for line in body.lines],
+        terms=body.terms,
+        scope_text=body.scope_text,
+        billing_cadence=body.billing_cadence,
+        service_start=body.service_start,
+        service_end=body.service_end,
+        valid_until=body.valid_until,
+        offer_label=body.offer_label,
     )
     write_audit(db, tenant_id=ctx.tenant_id, actor_id=ctx.user.id, action="quote.create", entity_type="quote", entity_id=str(row.id), after={"total": str(row.total)}, correlation_id=ctx.correlation_id)
     db.commit()
@@ -867,6 +884,19 @@ def add_quote_line(
     product = get_owned(db, Product, ctx.tenant_id, body.product_id)
     quantity = max(1, body.quantity)
     unit = body.unit_price if body.unit_price is not None else product.list_price
+    if quote_is_frozen(quote):
+        successor = clone_quote_edit(
+            db,
+            tenant_id=ctx.tenant_id,
+            actor_id=ctx.user.id,
+            quote=quote,
+            product=product,
+            quantity=quantity,
+            unit_price=unit,
+        )
+        db.commit()
+        db.refresh(successor)
+        return Envelope(data=_quote_out(db, successor))
     db.add(
         QuoteLine(
             tenant_id=ctx.tenant_id,
@@ -883,9 +913,43 @@ def add_quote_line(
     if quote.status == "approved":
         quote.status = "draft"
     recompute_quote(db, quote)
+    freeze_quote_commercial(db, quote)
     db.commit()
     db.refresh(quote)
     return Envelope(data=_quote_out(db, quote))
+
+
+@router.post("/quotes/{quote_id}/issue", response_model=Envelope[QuoteOut])
+def post_issue_quote(
+    quote_id: UUID,
+    db: Annotated[Session, Depends(get_db)],
+    ctx: Annotated[AuthContext, Depends(require_permission("commercial.write"))],
+) -> Envelope[QuoteOut]:
+    quote = get_owned(db, Quote, ctx.tenant_id, quote_id)
+    try:
+        issue_quote(db, tenant_id=ctx.tenant_id, actor_id=ctx.user.id, quote=quote)
+    except CommercialCloseError as exc:
+        raise HTTPException(status_code=exc.status_code, detail=str(exc)) from exc
+    db.commit()
+    db.refresh(quote)
+    return Envelope(data=_quote_out(db, quote))
+
+
+@router.get("/opportunities/{opportunity_id}/commercial", response_model=Envelope[CommercialViewOut])
+def opportunity_commercial(
+    opportunity_id: UUID,
+    db: Annotated[Session, Depends(get_db)],
+    ctx: Annotated[AuthContext, Depends(require_permission("opportunities.read"))],
+) -> Envelope[CommercialViewOut]:
+    return Envelope(data=CommercialViewOut.model_validate(commercial_view(db, tenant_id=ctx.tenant_id, opportunity_id=opportunity_id)))
+
+
+@router.get("/commercial-ledger", response_model=Envelope[dict])
+def ledger(
+    db: Annotated[Session, Depends(get_db)],
+    ctx: Annotated[AuthContext, Depends(require_permission("forecast.read"))],
+) -> Envelope[dict]:
+    return Envelope(data=commercial_ledger(db, ctx.tenant_id))
 
 
 @router.get("/forecast", response_model=Envelope[list[ForecastOut]])

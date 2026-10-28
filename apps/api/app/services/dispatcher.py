@@ -56,6 +56,11 @@ def _voice_dial(db: Session, *, tenant_id: UUID, actor_id: UUID, row: AIApproval
     return execute_voice_dial(db, tenant_id=tenant_id, actor_id=actor_id, approval=row)
 
 
+def _commercial_close(db: Session, *, tenant_id: UUID, actor_id: UUID, row: AIApproval, payload_patch: dict | None = None) -> str:
+    _ = db, tenant_id, actor_id, row, payload_patch
+    return "Close-won is an operator decision. The worker did not convert the deal."
+
+
 def _voice_handoff(db: Session, *, tenant_id: UUID, actor_id: UUID, row: AIApproval, payload_patch: dict | None = None) -> str:
     _ = payload_patch
     result = execute_voice_handoff(db, tenant_id=tenant_id, actor_id=actor_id, approval=row, client=None)
@@ -98,10 +103,12 @@ def _quote_discount(db: Session, *, tenant_id: UUID, actor_id: UUID, row: AIAppr
     bound = int(payload.get("version") or quote.version or 1)
     if int(quote.version or 1) != bound:
         return "Stale authorization. The quote version changed after this approval."
-    recompute_quote(db, quote)
     approved_discount = payload.get("discount_pct")
     if approved_discount is not None and int(approved_discount) != int(quote.discount_pct):
         return "Stale authorization. The discount changed after this approval."
+    if quote.status == "approved":
+        return f"Quote {quote.id} is already approved at version {quote.version}."
+    recompute_quote(db, quote)
     if quote.discount_pct >= 10 and not quote.approval_required and quote.status == "approved":
         return f"Quote {quote.id} is already approved at version {quote.version}."
     quote.status = "approved"
@@ -209,6 +216,7 @@ HANDLERS: dict[str, Handler] = {
     "meeting.record": _meeting_record,
     "voice.dial": _voice_dial,
     "voice.handoff": _voice_handoff,
+    "commercial.close_won": _commercial_close,
     "expansion.opportunity.create": _expansion,
     "renewal.commercial": _renewal,
     "calendar.create": _calendar_book,

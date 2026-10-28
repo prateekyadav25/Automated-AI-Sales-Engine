@@ -9,6 +9,7 @@ from app.core.deps import AuthContext, require_permission
 from app.db.session import get_db
 from app.models.crm import ICP, Account, Activity, Contact, Customer, Lead, Opportunity, Task
 from app.models.identity import User
+from app.models.lifecycle import DealPurchase
 from app.schemas.assessment import (
     AssessmentOut,
     DiscoveryBookingIn,
@@ -39,16 +40,17 @@ from app.schemas.crm import (
     TaskIn,
     TaskOut,
 )
+from app.schemas.lifecycle import CloseWonCorrectionIn, CloseWonIn, CommercialViewOut
 from app.schemas.pilot import ChurnIn, CloseLostIn
 from app.services.assessment import Fact, assess_and_store, handoff_sales_opportunity
 from app.services.audit import emit_event, write_audit
 from app.services.autopilot_settings import get_or_create_settings
 from app.services.calendar_booking import confirm_discovery_slot
+from app.services.commercial_close import CommercialCloseError, commercial_view, correct_close_won, decide_close_won
 from app.services.crm import (
     STAGE_PROBABILITY,
     add_activity,
     assign_lead,
-    close_won,
     latest_lead_score,
     list_lead_assignees,
 )
@@ -738,6 +740,19 @@ def update_opportunity(
     ctx: Annotated[AuthContext, Depends(require_permission("opportunities.write"))],
 ) -> Envelope[OpportunityOut]:
     row = get_owned(db, Opportunity, ctx.tenant_id, opportunity_id)
+    if body.stage == "closed_won" and row.stage != "closed_won":
+        raise HTTPException(status_code=409, detail="Close-won is a separate decision and needs an accepted quote.")
+    if body.stage != row.stage:
+        purchase = db.scalar(
+            select(DealPurchase).where(
+                DealPurchase.tenant_id == ctx.tenant_id,
+                DealPurchase.opportunity_id == row.id,
+                DealPurchase.status == "won",
+                DealPurchase.deleted_at.is_(None),
+            )
+        )
+        if purchase is not None:
+            raise HTTPException(status_code=409, detail="A won opportunity changes stage only through a recorded correction.")
     previous = row.stage
     before = {
         "stage": row.stage,
@@ -780,23 +795,60 @@ def update_opportunity(
     return Envelope(data=OpportunityOut.model_validate(row))
 
 
-@router.post("/opportunities/{opportunity_id}/close-won", response_model=Envelope[CustomerOut])
-def close_opportunity_won(
+@router.get("/opportunities/{opportunity_id}/commercial", response_model=Envelope[CommercialViewOut])
+def opportunity_commercial_view(
     opportunity_id: UUID,
     db: Annotated[Session, Depends(get_db)],
+    ctx: Annotated[AuthContext, Depends(require_permission("opportunities.read"))],
+) -> Envelope[CommercialViewOut]:
+    try:
+        payload = commercial_view(db, tenant_id=ctx.tenant_id, opportunity_id=opportunity_id)
+    except CommercialCloseError as exc:
+        raise HTTPException(status_code=exc.status_code, detail=str(exc)) from exc
+    return Envelope(data=CommercialViewOut.model_validate(payload))
+
+
+@router.post("/opportunities/{opportunity_id}/close-won", response_model=Envelope[CommercialViewOut])
+def close_opportunity_won(
+    opportunity_id: UUID,
+    body: CloseWonIn,
+    db: Annotated[Session, Depends(get_db)],
     ctx: Annotated[AuthContext, Depends(require_permission("opportunities.close"))],
-) -> Envelope[CustomerOut]:
-    _opp, customer, _renewal = close_won(
-        db,
-        tenant_id=ctx.tenant_id,
-        actor_id=ctx.user.id,
-        opportunity_id=opportunity_id,
-        correlation_id=ctx.correlation_id,
-    )
-    process_pending_events(db, tenant_id=ctx.tenant_id, actor_id=ctx.user.id, limit=200)
+) -> Envelope[CommercialViewOut]:
+    try:
+        payload = decide_close_won(
+            db,
+            tenant_id=ctx.tenant_id,
+            actor_id=ctx.user.id,
+            opportunity_id=opportunity_id,
+            quote_id=body.quote_id,
+            note=body.note,
+        )
+    except CommercialCloseError as exc:
+        raise HTTPException(status_code=exc.status_code, detail=str(exc)) from exc
     db.commit()
-    db.refresh(customer)
-    return Envelope(data=CustomerOut.model_validate(customer))
+    return Envelope(data=CommercialViewOut.model_validate(payload))
+
+
+@router.post("/opportunities/{opportunity_id}/close-won/correct", response_model=Envelope[CommercialViewOut])
+def correct_opportunity_won(
+    opportunity_id: UUID,
+    body: CloseWonCorrectionIn,
+    db: Annotated[Session, Depends(get_db)],
+    ctx: Annotated[AuthContext, Depends(require_permission("opportunities.close"))],
+) -> Envelope[CommercialViewOut]:
+    try:
+        payload = correct_close_won(
+            db,
+            tenant_id=ctx.tenant_id,
+            actor_id=ctx.user.id,
+            opportunity_id=opportunity_id,
+            reason=body.reason,
+        )
+    except CommercialCloseError as exc:
+        raise HTTPException(status_code=exc.status_code, detail=str(exc)) from exc
+    db.commit()
+    return Envelope(data=CommercialViewOut.model_validate(payload))
 
 
 @router.post("/opportunities/{opportunity_id}/close-lost", response_model=Envelope[OpportunityOut])
@@ -838,6 +890,15 @@ def churn_customer(
     return Envelope(data=CustomerOut.model_validate(row))
 
 
+def _task_out(db: Session, tenant_id: UUID, row: Task) -> TaskOut:
+    data = TaskOut.model_validate(row)
+    if row.owner_id:
+        owner = db.get(User, row.owner_id)
+        if owner is not None and owner.tenant_id == tenant_id:
+            data.owner_name = owner.name or ""
+    return data
+
+
 @router.get("/tasks", response_model=Envelope[list[TaskOut]])
 def list_tasks(
     db: Annotated[Session, Depends(get_db)],
@@ -854,7 +915,7 @@ def list_tasks(
         stmt = stmt.where(or_(Task.title.ilike(f"%{q}%"), Task.description.ilike(f"%{q}%")))
     rows, total = paginate(db, stmt.order_by(Task.created_at.desc()), page, page_size)
     return Envelope(
-        data=[TaskOut.model_validate(row) for row in rows],
+        data=[_task_out(db, ctx.tenant_id, row) for row in rows],
         meta=Meta(page=page, page_size=page_size, total=total),
     )
 
@@ -878,7 +939,7 @@ def create_task(
     )
     db.commit()
     db.refresh(row)
-    return Envelope(data=TaskOut.model_validate(row))
+    return Envelope(data=_task_out(db, ctx.tenant_id, row))
 
 
 @router.get("/tasks/{task_id}", response_model=Envelope[TaskOut])
@@ -887,7 +948,7 @@ def get_task(
     db: Annotated[Session, Depends(get_db)],
     ctx: Annotated[AuthContext, Depends(require_permission("tasks.read"))],
 ) -> Envelope[TaskOut]:
-    return Envelope(data=TaskOut.model_validate(get_owned(db, Task, ctx.tenant_id, task_id)))
+    return Envelope(data=_task_out(db, ctx.tenant_id, get_owned(db, Task, ctx.tenant_id, task_id)))
 
 
 @router.patch("/tasks/{task_id}", response_model=Envelope[TaskOut])
@@ -903,7 +964,7 @@ def update_task(
     row.updated_by = ctx.user.id
     db.commit()
     db.refresh(row)
-    return Envelope(data=TaskOut.model_validate(row))
+    return Envelope(data=_task_out(db, ctx.tenant_id, row))
 
 
 @router.get("/activities", response_model=Envelope[list[ActivityOut]])

@@ -391,6 +391,9 @@ class QuoteLineOut(APIModel):
     quantity: int
     unit_price: Decimal
     line_total: Decimal
+    customer_facing_name: str = ""
+    offer_label: str = ""
+    sku: str = ""
 
 
 class QuoteIn(APIModel):
@@ -398,6 +401,13 @@ class QuoteIn(APIModel):
     discount_pct: int = 0
     tax_pct: int = 0
     lines: list[QuoteLineIn] = Field(default_factory=list)
+    terms: str = ""
+    scope_text: str = ""
+    billing_cadence: str = ""
+    service_start: date | None = None
+    service_end: date | None = None
+    valid_until: datetime | None = None
+    offer_label: str = ""
 
 
 class QuoteOut(APIModel):
@@ -409,7 +419,104 @@ class QuoteOut(APIModel):
     subtotal: Decimal
     total: Decimal
     approval_required: bool
+    version: int = 1
+    terms: str = ""
+    currency: str = ""
+    customer_facing_name: str = ""
+    offer_label: str = ""
+    sku: str = ""
+    scope_text: str = ""
+    billing_cadence: str = ""
+    service_start: date | None = None
+    service_end: date | None = None
+    valid_until: datetime | None = None
+    operating_plan_id: UUID | None = None
+    parent_quote_id: UUID | None = None
+    superseded_by_id: UUID | None = None
+    context_version: str = ""
+    fixture: bool = False
     lines: list[QuoteLineOut] = Field(default_factory=list)
+
+
+class CommercialViewOut(APIModel):
+    opportunity_id: UUID
+    account_id: UUID
+    stage: str
+    quote_id: UUID | None = None
+    quote_version: int | None = None
+    quote_status: str = ""
+    currency: str = ""
+    subtotal: Decimal = Decimal("0")
+    total: Decimal = Decimal("0")
+    discount_pct: int | None = None
+    tax_pct: int | None = None
+    customer_facing_name: str = ""
+    offer_label: str = ""
+    sku: str = ""
+    scope_text: str = ""
+    terms: str = ""
+    billing_cadence: str = ""
+    service_start: date | None = None
+    service_end: date | None = None
+    valid_until: datetime | None = None
+    acceptance_source: str = ""
+    acceptance_review: str = ""
+    acceptance_relationship: str = ""
+    acceptance_evidence: str = ""
+    provider_verified: bool = False
+    blockers: list[str] = Field(default_factory=list)
+    ready: bool = False
+    won: bool = False
+    purchase_status: str = ""
+    payment_status: str = ""
+    customer_id: UUID | None = None
+    customer_status: str = ""
+    activated: bool = False
+    onboarding_plan_id: UUID | None = None
+    onboarding_status: str = ""
+    onboarding_next_action: str = ""
+    onboarding_blocker: str = ""
+    task_id: UUID | None = None
+    task_status: str = ""
+    owner_id: UUID | None = None
+    owner_name: str = ""
+    missing_information: list[str] = Field(default_factory=list)
+    fixture: bool = False
+    external_block: str = ""
+    external_released: bool = False
+    decided_at: datetime | None = None
+    reversal_reason: str = ""
+    note: str = ""
+
+
+class CloseWonIn(APIModel):
+    quote_id: UUID
+    note: str = ""
+
+
+class CloseWonCorrectionIn(APIModel):
+    reason: str
+
+
+class PurchaseOut(APIModel):
+    id: UUID
+    opportunity_id: UUID
+    quote_id: UUID
+    quote_version: int | None = None
+    status: str
+    currency: str = ""
+    amount: Decimal
+    payment_status: str = ""
+    customer_facing_name: str = ""
+    sku: str = ""
+    offer_label: str = ""
+    scope_text: str = ""
+    onboarding_status: str = ""
+    onboarding_next_action: str = ""
+    task_status: str = ""
+    owner_name: str = ""
+    fixture: bool = False
+    activated: bool = False
 
 
 class ForecastOut(APIModel):

@@ -129,22 +129,27 @@ def test_approved_discount_changes_the_quote_and_a_later_edit_is_stale(client: T
     current = client.get(f"/api/v1/lifecycle/quotes/{quote['id']}", headers=headers).json()["data"]
     assert current["status"] == "approved"
     assert current["approval_required"] is False
+    original_total = current["total"]
     edited = client.post(
         f"/api/v1/lifecycle/quotes/{quote['id']}/lines",
         headers=headers,
         json={"product_id": products[0]["id"], "quantity": 1},
     )
     assert edited.status_code == 200, edited.text
-    assert edited.json()["data"]["status"] == "draft"
+    draft = edited.json()["data"]
+    assert draft["id"] != quote["id"]
+    assert draft["status"] == "draft"
+    assert draft["parent_quote_id"] == quote["id"]
     again = client.post(
         f"/api/v1/ai/approvals/{approval['id']}/decide",
         headers=headers,
         json={"decision": "approve", "note": "reuse"},
     )
     assert again.status_code == 200, again.text
-    assert "Stale authorization" in again.json()["data"]["decision_note"]
+    assert "already approved" in again.json()["data"]["decision_note"]
     after = client.get(f"/api/v1/lifecycle/quotes/{quote['id']}", headers=headers).json()["data"]
-    assert after["status"] == "draft"
+    assert after["status"] == "approved"
+    assert after["total"] == original_total
 
 
 def test_emergency_stop_blocks_social_before_the_publisher(client: TestClient, monkeypatch) -> None:
