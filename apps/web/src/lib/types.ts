@@ -664,9 +664,65 @@ export type CommercialClose = {
   fixture: boolean;
   external_block: string;
   external_released: boolean;
+  checklist?: PurchaseChecklistItem[];
   decided_at: string | null;
   reversal_reason: string;
   note: string;
+};
+
+export type PurchaseChecklistItem = {
+  id: string;
+  purchase_id?: string;
+  template_key?: string;
+  step?: string;
+  title: string;
+  status: string;
+  required?: boolean;
+  owner_name?: string;
+  depends_on_id?: string;
+  next_action?: string;
+  due_date?: string | null;
+  evidence?: string;
+  review_state?: string;
+  waiver_reason?: string;
+  provenance?: string;
+};
+
+export type PurchaseHealthSignal = {
+  id: string;
+  purchase_id: string;
+  signal_type: string;
+  definition?: string;
+  source?: string;
+  provenance?: string;
+  observed_at?: string | null;
+  period_key?: string;
+  value_text?: string;
+  value_numeric?: string | null;
+  freshness?: string;
+  coverage?: string;
+  evidence?: string;
+  limitations?: string;
+  fixture?: boolean;
+};
+
+export type RetentionTask = {
+  id: string;
+  title: string;
+  status: string;
+  description?: string;
+  owner_name?: string;
+  purchase_id?: string;
+};
+
+export type OnboardingHistory = {
+  id: string;
+  purchase_id?: string;
+  action: string;
+  evidence?: string;
+  waived?: string[];
+  recorded_at?: string | null;
+  actor_name?: string;
 };
 
 export type PurchaseRecord = {
@@ -688,6 +744,12 @@ export type PurchaseRecord = {
   owner_name?: string;
   fixture: boolean;
   activated: boolean;
+  product_kind?: string;
+  billing_cadence?: string;
+  service_end?: string;
+  provenance?: string;
+  renewal_recorded?: boolean;
+  checklist?: PurchaseChecklistItem[];
 };
 
 export type Forecast = {
@@ -814,7 +876,7 @@ export type Customer360 = {
   health_total: number | null;
   health_trend: string;
   health_version: string;
-  health_data_coverage?: number;
+  health_data_coverage?: number | null;
   health_components?: Record<string, { status?: string; score?: number | null; evidence?: string }>;
   unavailable_components: string;
   usage_freshness?: string;
@@ -835,7 +897,7 @@ export type Customer360 = {
   contract: { id: string; status: string; total_value: string | null; term_months: number | null; escalation_pct: number | null } | null;
   handoff: { id: string; status: string; kickoff_agenda: string; missing_fields: string[] } | null;
   onboarding_status: string;
-  milestones: { id: string; title: string; status: string; due_date: string | null }[];
+  milestones: PurchaseChecklistItem[];
   usage: { provider: string; is_mock: boolean; evidence: string; trend: string } | null;
   expansion: ExpansionRec[];
   advocacy: { id: string; type: string; status: string; score: number; quote: string | null }[];
@@ -848,6 +910,10 @@ export type Customer360 = {
     days_to_onboarding_complete: number | null;
   };
   purchases?: PurchaseRecord[];
+  purchase_health?: PurchaseHealthSignal[];
+  health_explanation?: { status?: string; score?: number | null; coverage?: string; limitations?: string[]; signals?: PurchaseHealthSignal[] };
+  retention_tasks?: RetentionTask[];
+  onboarding_history?: OnboardingHistory[];
 };
 
 export type Referral = {

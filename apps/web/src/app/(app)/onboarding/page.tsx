@@ -44,7 +44,7 @@ export default function OnboardingPage() {
                 <StatusPill tone={row.onboarding_status === "complete" ? "success" : "review"}>{row.onboarding_status || "Not started"}</StatusPill>
               ),
             },
-            { key: "renewal", header: "Renewal", cell: (row) => row.renewal_date || "Unavailable" },
+            { key: "renewal", header: "Renewal", cell: (row) => row.renewal_date || "Not recorded" },
           ]}
         />
       )}

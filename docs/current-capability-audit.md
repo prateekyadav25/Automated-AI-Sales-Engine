@@ -1,5 +1,37 @@
 # Current capability audit
 
+## Current status — 2026-10-28, purchase onboarding and retention
+
+This is the current status. The close-won section below, and every section under it, are earlier. Where they disagree with this section, this section is the one to use.
+
+A won purchase now has one onboarding plan bound to the tenant, customer, opportunity, accepted quote version, purchase snapshot, and assigned owner. The checklist covers billing, service dates, cadence, product setup, delivery verification, an optional note, and a completion gate. Facts copied from the quote are marked reviewed and say they are not provider-verified. Missing billing, dates, cadence, access, or configuration stay visible. A document or note stays in review until an operator reviews it. Setup and delivery are not marked complete because the plan was created or a due date passed.
+
+Completion uses `success.write`. Mandatory steps must be reviewed or waived with a reason. The record stores who completed it, when, and which purchase. A correction appends history and reopens the plan. Completion does not collect payment, execute a contract, activate an external service, record first value, or create a renewal. The customer remains `NEW CUSTOMER` and `onboarding`.
+
+Health evidence is stored per purchase. Each signal has a type, definition, source, provenance, observed time, period, value, freshness, coverage, evidence, and limitations. Missing usage is not stored as zero. No payment integration is not an unpaid invoice. No recent enquiry is not churn. Overdue onboarding is a service blocker, not cancellation. The status is `insufficient_evidence` when coverage is incomplete, and no numeric score is produced. Unsupported payment and invoice sources stay unsupported. The older rules-v2 health job does not write a mock score for a customer who already has a won purchase.
+
+A supported signal can create one internal task: an onboarding follow-up, a service-issue review, or a check-in proposal. A recurring frozen term with a recorded end can create one renewal-preparation task. A one-time purchase does not get a renewal date or a `Renewal` row. Repeating the same signal and period does not duplicate the task. A later period can. No task sends, charges, discounts, cancels, or renews. A customer record does not create marketing consent.
+
+The opportunity header shows the pipeline amount in that field's recorded currency, or unknown when no currency is stored. The accepted quote amount stays separate. Commercial provenance is fixture, operator-recorded, provider-verified, unsupported, or not recorded. The older seed activation path cannot be called without `historical_fixture=True`. Operator and worker paths still require the accepted quote and `decide_close_won`. Historical customers were not rewritten. Fixture amounts stay out of the real commercial totals.
+
+### Running locally
+
+| Item | Value |
+|---|---|
+| Database | Alembic `045`, applied after a backup at `044` |
+| Backup | `.local-backups/agrayian-before-045-2026-10-28.dump`, custom format, gitignored |
+| Restore | Stop api, worker, and beat. `pg_restore --clean --if-exists` the dump into `agrayian` inside the Postgres container. The restored schema is `044`. Upgrade before starting images that contain `045` |
+| Disposable proof | A restored copy was upgraded `044` → `045`. `onboarding_completions` and `purchase_health_signals` were present. The prepared scope, holds, leads, meetings, and approval counts were unchanged. The copy was dropped |
+| Scope | One row, `prepared`, expiry `2026-10-29 18:03:28.181796+00`. Not authorized |
+| Holds | 3 approvals and 9 enrollments remained `held`. Approvals remained 3 held, 5 pending, and 10 rejected |
+| Leads | 33 active, 43 total. The 10 soft-deleted rows from 2026-10-10 were not restored |
+| Meetings | 3 rows, all soft-deleted. No meeting was restored or booked |
+| Commercial | Temporary fixture rows were deleted after the browser check. No purchase remains. The historical draft quote and the soft-deleted contract were not changed |
+| Images | api, web, worker, and beat rebuilt after the upgrade. Api, worker, and beat were stopped during it |
+| Browser | The fixture opportunity, quote, customer, onboarding list, health evidence, and retention task were opened. Pipeline amount stayed currency-unknown. The quote stayed USD 250,001.00. Provenance stayed Fixture. Completion stayed separate from payment, first value, and renewal. Close won, Accept, Send, churn, and a real lead were not used |
+
+After the image restart, inbox backlog returned 0 and failed-send retry returned 0. The existing mailbox poll read Gmail history at `startHistoryId=4134` and returned HTTP 200. No message, charge, renewal, Twilio call, booking, publish, discovery, or spend was started by this work.
+
 ## Current status — 2026-10-28, evidence-backed close-won
 
 This is the current status. The voice section below, the Meet section, the paused Meta section, the lead-form section, the organic section, the discovery section, the outbound section, the executive assessment, the baseline table, and the capability matrix are earlier. Where they disagree with this section, this section is the one to use.

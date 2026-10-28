@@ -6,7 +6,14 @@ from sqlalchemy import func, select
 from sqlalchemy.orm import Session
 
 from app.models.crm import Account, Activity, Customer, Task
-from app.models.lifecycle import Conversation, HealthScore, MeetingRecord, OnboardingMilestone, OnboardingPlan
+from app.models.lifecycle import (
+    Conversation,
+    DealPurchase,
+    HealthScore,
+    MeetingRecord,
+    OnboardingMilestone,
+    OnboardingPlan,
+)
 from app.models.post_sale import HealthScoreSnapshot, ProductUsageSnapshot, SuccessPlanObjective
 from app.providers.finance import get_finance_provider
 from app.providers.support import get_support_provider
@@ -133,7 +140,23 @@ def _threshold_crossed(previous: int | None, current: int) -> bool:
     return False
 
 
-def recalculate(db: Session, tenant_id: UUID, customer: Customer, actor_id: UUID | None = None) -> HealthScore:
+def recalculate(db: Session, tenant_id: UUID, customer: Customer, actor_id: UUID | None = None) -> HealthScore | None:
+    purchase = db.scalar(
+        select(DealPurchase.id).where(
+            DealPurchase.tenant_id == tenant_id,
+            DealPurchase.customer_id == customer.id,
+            DealPurchase.status == "won",
+            DealPurchase.deleted_at.is_(None),
+        )
+    )
+    if purchase is not None:
+        return db.scalar(
+            select(HealthScore).where(
+                HealthScore.tenant_id == tenant_id,
+                HealthScore.customer_id == customer.id,
+                HealthScore.deleted_at.is_(None),
+            )
+        )
     account = get_owned(db, Account, tenant_id, customer.account_id)
     settings = get_or_create_settings(db, tenant_id=tenant_id, actor_id=actor_id)
     usage_provider = get_usage_provider(db, tenant_id)

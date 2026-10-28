@@ -122,14 +122,14 @@ class Customer360Out(APIModel):
     lifecycle_state: str = "NEW_CUSTOMER"
     health_total: int | None = None
     health_trend: str = "stable"
-    health_version: str = "rules-v2"
-    health_data_coverage: int = 0
+    health_version: str = ""
+    health_data_coverage: int | None = None
     health_components: dict = Field(default_factory=dict)
     unavailable_components: str = ""
     usage_freshness: str = "MOCK"
     support_freshness: str = "NOT_CONNECTED"
     finance_freshness: str = "NOT_CONNECTED"
-    commercial_freshness: str = "LIVE"
+    commercial_freshness: str = "not_recorded"
     last_usage_at: datetime | None = None
     last_support_at: datetime | None = None
     last_finance_at: datetime | None = None
@@ -154,6 +154,10 @@ class Customer360Out(APIModel):
     time_to_value: TimeToValueOut = Field(default_factory=TimeToValueOut)
     growth_plan: dict = Field(default_factory=dict)
     purchases: list[dict] = Field(default_factory=list)
+    purchase_health: list[dict] = Field(default_factory=list)
+    health_explanation: dict = Field(default_factory=dict)
+    retention_tasks: list[dict] = Field(default_factory=list)
+    onboarding_history: list[dict] = Field(default_factory=list)
 
 
 class PostSaleAttentionOut(APIModel):

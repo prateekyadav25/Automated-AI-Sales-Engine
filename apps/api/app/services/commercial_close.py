@@ -22,7 +22,6 @@ from app.models.execution import JourneyLink
 from app.models.identity import Tenant, User
 from app.models.lifecycle import (
     DealPurchase,
-    OnboardingMilestone,
     OnboardingPlan,
     Product,
     Quote,
@@ -36,6 +35,7 @@ from app.services.demo_guard import EXPIRED_BLOCK, PREPARED_BLOCK, scope_for_exe
 from app.services.journey_engine import link_journey
 from app.services.product_context import CONTEXT_VERSION, context_for_lead
 from app.services.provider_ops import begin_action, confirm_action
+from app.services.purchase_followthrough import bind_purchase_onboarding, checklist_for_plan
 from app.services.query import get_owned
 from app.services.rbac import user_permissions
 
@@ -142,6 +142,7 @@ def freeze_quote_commercial(db: Session, quote: Quote) -> Quote:
                 "customer_facing_name": line.customer_facing_name,
                 "offer_label": line.offer_label,
                 "catalogue_name": product.name if product is not None else "",
+                "kind": product.kind if product is not None else "",
                 "quantity": line.quantity,
                 "unit_price": _money(line.unit_price),
                 "line_total": _money(line.line_total),
@@ -599,6 +600,14 @@ def _snapshot(quote: Quote) -> str:
     body["billing_cadence"] = quote.billing_cadence
     body["quote_id"] = str(quote.id)
     body["version"] = quote.version
+    lines = body.get("lines") if isinstance(body.get("lines"), list) else []
+    kinds = [str(row.get("kind") or "") for row in lines if isinstance(row, dict) and str(row.get("kind") or "").strip()]
+    if len(set(kinds)) > 1:
+        body["product_kind"] = "mixed"
+    elif kinds:
+        body["product_kind"] = kinds[0]
+    else:
+        body["product_kind"] = str(body.get("product_kind") or "")
     return json.dumps(body)
 
 
@@ -723,6 +732,7 @@ def commercial_view(db: Session, *, tenant_id: UUID, opportunity_id: UUID) -> di
         "fixture": bool((purchase and purchase.fixture) or (selected and selected.fixture)),
         "external_block": external,
         "external_released": False,
+        "checklist": checklist_for_plan(db, tenant_id=tenant_id, plan=plan),
         "decided_at": purchase.decided_at if purchase else None,
         "reversal_reason": purchase.reversal_reason if purchase else "",
         "note": _NO_EXTERNAL,
@@ -757,6 +767,16 @@ def decide_close_won(
     if existing is not None and existing.status == "won":
         if existing.quote_id != quote.id:
             raise CommercialCloseError("This opportunity already has a purchase snapshot.")
+        prior_acceptance = _acceptance(db, tenant_id, quote.id)
+        prior_contact = db.get(Contact, prior_acceptance.contact_id) if prior_acceptance is not None and prior_acceptance.contact_id else None
+        bind_purchase_onboarding(
+            db,
+            tenant_id=tenant_id,
+            actor_id=actor_id,
+            purchase=existing,
+            quote=quote,
+            contact=prior_contact,
+        )
         return commercial_view(db, tenant_id=tenant_id, opportunity_id=opportunity.id)
     if existing is not None and existing.status == "reversed":
         raise CommercialCloseError("This purchase was reversed. A new close needs a new opportunity.")
@@ -829,18 +849,6 @@ def decide_close_won(
     )
     db.add(plan)
     db.flush()
-    milestone = OnboardingMilestone(
-        tenant_id=tenant_id,
-        created_by=actor_id,
-        plan_id=plan.id,
-        title="Collect required customer information",
-        status="open",
-        owner_id=owner.id if owner else None,
-        position=1,
-        required_evidence=", ".join(missing) if missing else "customer confirmation",
-        template_key="purchase",
-    )
-    db.add(milestone)
     task = Task(
         tenant_id=tenant_id,
         created_by=actor_id,
@@ -885,6 +893,15 @@ def decide_close_won(
     )
     db.add(purchase)
     db.flush()
+    plan.purchase_id = purchase.id
+    bind_purchase_onboarding(
+        db,
+        tenant_id=tenant_id,
+        actor_id=actor_id,
+        purchase=purchase,
+        quote=quote,
+        contact=contact,
+    )
     from app.services.ml.history import record_opportunity_fields
 
     record_opportunity_fields(
@@ -955,7 +972,7 @@ def decide_close_won(
         event_type="commercial.onboarding_opened",
         entity_type="opportunity",
         entity_id=str(opportunity.id),
-        payload={"plan_id": str(plan.id), "task_id": str(task.id), "completed": False},
+        payload={"plan_id": str(plan.id), "task_id": str(task.id), "purchase_id": str(purchase.id), "completed": False},
     )
     add_activity(
         db,
@@ -1125,6 +1142,12 @@ def purchases_for_customer(db: Session, *, tenant_id: UUID, customer_id: UUID) -
                 "scope_text": snapshot.get("scope_text", "") if isinstance(snapshot, dict) else "",
                 "onboarding_status": plan.status if plan else "",
                 "onboarding_next_action": plan.next_action if plan else "",
+                "product_kind": snapshot.get("product_kind", "") if isinstance(snapshot, dict) else "",
+                "billing_cadence": snapshot.get("billing_cadence", "") if isinstance(snapshot, dict) else "",
+                "service_end": snapshot.get("service_end", "") if isinstance(snapshot, dict) else "",
+                "provenance": "fixture" if row.fixture else "operator_recorded",
+                "renewal_recorded": False,
+                "checklist": checklist_for_plan(db, tenant_id=tenant_id, plan=plan),
                 "task_status": task.status if task else "",
                 "owner_name": _owner_name(db, tenant_id, task.owner_id if task else None),
                 "fixture": row.fixture,

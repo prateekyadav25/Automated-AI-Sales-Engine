@@ -7,7 +7,7 @@ import { Timeline } from "@/components/timeline";
 import { Badge, Button, Drawer, Field, FormActions, Input, Select, Textarea } from "@/components/ui";
 import { useAuth } from "@/lib/auth";
 import { OPP_STAGES } from "@/lib/constants";
-import { labelize, money } from "@/lib/format";
+import { labelize, recordedAmount } from "@/lib/format";
 import { CommercialClosePanel } from "@/components/commercial-close";
 import type { CommercialClose, Opportunity } from "@/lib/types";
 import { api } from "@agrayian/sdk";
@@ -104,7 +104,7 @@ export default function OpportunityDetailPage() {
       <PageHeader
         eyebrow="Deal room"
         title={opp.name}
-        subtitle={`${labelize(opp.stage)} · ${money(opp.amount)} · ${opp.probability}%`}
+        subtitle={`${labelize(opp.stage)} · Pipeline ${recordedAmount(opp.amount, "")} · ${opp.probability}%`}
         nextHref="/deals"
         nextLabel="Deal risk"
         actions={
@@ -177,7 +177,8 @@ export default function OpportunityDetailPage() {
           <div className="between">
             <div>
               <div className="upper">{labelize(opp.stage)}</div>
-              <div className="stat-value num">{money(opp.amount)}</div>
+              <div className="stat-label">Pipeline amount</div>
+              <div className="stat-value num" data-testid="pipeline-amount">{recordedAmount(opp.amount, "")}</div>
               <div className="small muted">{opp.probability}% stage probability · before a new discount</div>
             </div>
             <Badge tone="blue">{labelize(opp.stage)}</Badge>
@@ -210,7 +211,7 @@ export default function OpportunityDetailPage() {
           <p className="text-[11px] uppercase tracking-[0.18em] text-[var(--muted)]">Motion</p>
           <ul className="mt-4 space-y-3 text-sm">
             <li className="flex justify-between"><span className="text-[var(--muted)]">Stage</span><Badge tone="gold">{labelize(opp.stage)}</Badge></li>
-            <li className="flex justify-between"><span className="text-[var(--muted)]">Amount</span>{money(opp.amount)}</li>
+            <li className="flex justify-between"><span className="text-[var(--muted)]">Pipeline amount</span>{recordedAmount(opp.amount, "")}</li>
             <li className="flex justify-between"><span className="text-[var(--muted)]">Probability</span>{opp.probability}%</li>
             <li className="flex justify-between"><span className="text-[var(--muted)]">Close</span>{opp.expected_close || "—"}</li>
             {opp.loss_reason ? <li className="flex justify-between"><span className="text-[var(--muted)]">Lost</span>{opp.loss_reason}</li> : null}

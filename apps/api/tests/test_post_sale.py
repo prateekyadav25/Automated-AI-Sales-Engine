@@ -24,6 +24,7 @@ def _legacy_close(client: TestClient, headers: dict, opp_id: str) -> dict:
             tenant_id=UUID(user["tenant_id"]),
             actor_id=UUID(user["id"]),
             opportunity_id=UUID(opp_id),
+            historical_fixture=True,
         )
         db.commit()
         return {"id": str(customer.id), "opportunity_id": str(customer.opportunity_id)}

@@ -7,7 +7,7 @@ from sqlalchemy.orm import Session
 
 from app.models.crm import Account, Activity, Customer, Lead, Opportunity, Renewal, Task
 from app.models.identity import DomainEvent
-from app.models.lifecycle import AdvocacyAsset, HealthScore, OnboardingMilestone, OnboardingPlan
+from app.models.lifecycle import AdvocacyAsset, HealthScore
 from app.models.post_sale import (
     Contract,
     ContractLine,
@@ -34,6 +34,7 @@ from app.services.autopilot_status import entity_trace
 from app.services.commercial_close import purchases_for_customer
 from app.services.expansion import growth_plan
 from app.services.onboarding import time_to_value
+from app.services.purchase_followthrough import customer_followthrough
 
 
 def build_customer_360(db: Session, *, tenant_id: UUID, customer: Customer) -> Customer360Out:
@@ -70,13 +71,8 @@ def build_customer_360(db: Session, *, tenant_id: UUID, customer: Customer) -> C
             risks=risks if isinstance(risks, list) else [],
             kickoff_agenda=handoff_row.kickoff_agenda,
         )
-    plan = db.scalar(select(OnboardingPlan).where(OnboardingPlan.tenant_id == tenant_id, OnboardingPlan.customer_id == customer.id))
-    milestones = []
-    if plan:
-        milestones = [
-            {"id": str(row.id), "title": row.title, "status": row.status, "due_date": row.due_date.isoformat() if row.due_date else None}
-            for row in db.scalars(select(OnboardingMilestone).where(OnboardingMilestone.plan_id == plan.id).order_by(OnboardingMilestone.position.asc())).all()
-        ]
+    followthrough = customer_followthrough(db, tenant_id=tenant_id, customer_id=customer.id)
+    milestones = followthrough["milestones"]
     usage_row = db.scalar(
         select(ProductUsageSnapshot)
         .where(ProductUsageSnapshot.tenant_id == tenant_id, ProductUsageSnapshot.customer_id == customer.id)
@@ -120,11 +116,15 @@ def build_customer_360(db: Session, *, tenant_id: UUID, customer: Customer) -> C
     rollup = latest_rollup(db, tenant_id, customer.id)
     support_row = latest_support(db, tenant_id, customer.id)
     finance_row = latest_finance(db, tenant_id, customer.id)
-    usage_freshness = "MOCK"
+    usage_freshness = "MOCK" if health is not None else "NOT_CONNECTED"
     if rollup is not None and not rollup.is_mock:
         usage_freshness = rollup.freshness_state
-    elif usage_row and usage_row.is_mock:
+    elif rollup is not None and rollup.is_mock:
         usage_freshness = "MOCK"
+    elif usage_row is not None and usage_row.is_mock:
+        usage_freshness = "MOCK"
+    elif usage_row is not None:
+        usage_freshness = usage_row.freshness_state or usage_freshness
     support_freshness = "NOT_CONNECTED"
     if support_row is not None:
         support_freshness = support_row.freshness_state
@@ -152,14 +152,14 @@ def build_customer_360(db: Session, *, tenant_id: UUID, customer: Customer) -> C
         lifecycle_state=customer.lifecycle_state,
         health_total=health.total if health else None,
         health_trend=customer.health_trend,
-        health_version=health.version if health else "rules-v2",
-        health_data_coverage=health.health_data_coverage if health else 0,
+        health_version=health.version if health else "",
+        health_data_coverage=health.health_data_coverage if health else None,
         health_components=components if isinstance(components, dict) else {},
         unavailable_components=health.unavailable_components if health else "",
         usage_freshness=usage_freshness,
         support_freshness=support_freshness,
         finance_freshness=finance_freshness,
-        commercial_freshness="LIVE",
+        commercial_freshness=followthrough["commercial_provenance"],
         last_usage_at=rollup.last_activity_at if rollup else (usage_row.last_activity_at if usage_row else None),
         last_support_at=support_row.last_event_at if support_row else None,
         last_finance_at=finance_row.last_event_at if finance_row else None,
@@ -173,7 +173,7 @@ def build_customer_360(db: Session, *, tenant_id: UUID, customer: Customer) -> C
         renewal_countdown_days=countdown,
         contract=contract,
         handoff=handoff,
-        onboarding_status=plan.status if plan else "",
+        onboarding_status=followthrough["onboarding_status"],
         milestones=milestones,
         usage=UsageSnapshotOut.model_validate(usage_row) if usage_row else None,
         expansion=expansion,
@@ -184,6 +184,10 @@ def build_customer_360(db: Session, *, tenant_id: UUID, customer: Customer) -> C
         time_to_value=TimeToValueOut(**ttv),
         growth_plan=growth_plan(db, tenant_id=tenant_id, customer=customer),
         purchases=purchases_for_customer(db, tenant_id=tenant_id, customer_id=customer.id),
+        purchase_health=followthrough["purchase_health"],
+        health_explanation=followthrough["health_explanation"],
+        retention_tasks=followthrough["retention_tasks"],
+        onboarding_history=followthrough["completions"],
     )
 
 

@@ -300,17 +300,24 @@ class OnboardingPlan(Base, TenantOwnedMixin):
     customer_id: Mapped[UUID] = mapped_column(ForeignKey("customers.id"), index=True, nullable=False)
     opportunity_id: Mapped[UUID | None] = mapped_column(nullable=True)
     quote_id: Mapped[UUID | None] = mapped_column(nullable=True)
+    purchase_id: Mapped[UUID | None] = mapped_column(nullable=True)
     status: Mapped[str] = mapped_column(String(20), default="planned", nullable=False)
     objective: Mapped[str] = mapped_column(Text, default="", nullable=False)
     next_action: Mapped[str] = mapped_column(Text, default="", nullable=False)
     blocker: Mapped[str] = mapped_column(Text, default="", nullable=False)
+    completed_by: Mapped[UUID | None] = mapped_column(nullable=True)
+    completed_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    completion_evidence: Mapped[str] = mapped_column(Text, default="", nullable=False)
 
 
 class OnboardingMilestone(Base, TenantOwnedMixin):
     __tablename__ = "onboarding_milestones"
 
     plan_id: Mapped[UUID] = mapped_column(ForeignKey("onboarding_plans.id"), index=True, nullable=False)
+    purchase_id: Mapped[UUID | None] = mapped_column(nullable=True)
     title: Mapped[str] = mapped_column(String(160), nullable=False)
+    step: Mapped[str] = mapped_column(String(40), default="", nullable=False)
+    required: Mapped[bool] = mapped_column(Boolean, default=True, nullable=False)
     due_date: Mapped[date | None] = mapped_column(Date, nullable=True)
     status: Mapped[str] = mapped_column(String(20), default="open", nullable=False)
     owner_id: Mapped[UUID | None] = mapped_column(ForeignKey("users.id"), nullable=True)
@@ -318,8 +325,56 @@ class OnboardingMilestone(Base, TenantOwnedMixin):
     sla_days: Mapped[int] = mapped_column(Integer, default=7, nullable=False)
     depends_on_id: Mapped[UUID | None] = mapped_column(ForeignKey("onboarding_milestones.id"), nullable=True)
     required_evidence: Mapped[str] = mapped_column(String(200), default="", nullable=False)
+    next_action: Mapped[str] = mapped_column(Text, default="", nullable=False)
+    evidence: Mapped[str] = mapped_column(Text, default="", nullable=False)
+    review_state: Mapped[str] = mapped_column(String(40), default="", nullable=False)
+    waiver_reason: Mapped[str] = mapped_column(Text, default="", nullable=False)
+    provenance: Mapped[str] = mapped_column(String(40), default="", nullable=False)
     completed_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    completed_by: Mapped[UUID | None] = mapped_column(nullable=True)
     template_key: Mapped[str] = mapped_column(String(80), default="", nullable=False)
+
+
+class OnboardingCompletion(Base, TenantOwnedMixin):
+    """Append-only onboarding decision. A correction adds a row and leaves the earlier one."""
+
+    __tablename__ = "onboarding_completions"
+
+    plan_id: Mapped[UUID] = mapped_column(ForeignKey("onboarding_plans.id"), index=True, nullable=False)
+    purchase_id: Mapped[UUID | None] = mapped_column(nullable=True)
+    customer_id: Mapped[UUID] = mapped_column(ForeignKey("customers.id"), index=True, nullable=False)
+    action: Mapped[str] = mapped_column(String(20), nullable=False)
+    evidence: Mapped[str] = mapped_column(Text, default="", nullable=False)
+    waived_json: Mapped[str] = mapped_column(Text, default="[]", nullable=False)
+    recorded_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+
+
+class PurchaseHealthSignal(Base, TenantOwnedMixin):
+    """Observed purchase evidence. A missing value stays null and is not a score."""
+
+    __tablename__ = "purchase_health_signals"
+    __table_args__ = (
+        UniqueConstraint("tenant_id", "purchase_id", "signal_type", "period_key", name="uq_purchase_health_period"),
+    )
+
+    customer_id: Mapped[UUID] = mapped_column(ForeignKey("customers.id"), index=True, nullable=False)
+    purchase_id: Mapped[UUID] = mapped_column(index=True, nullable=False)
+    signal_type: Mapped[str] = mapped_column(String(40), nullable=False)
+    definition: Mapped[str] = mapped_column(Text, default="", nullable=False)
+    source: Mapped[str] = mapped_column(String(40), default="operator", nullable=False)
+    provenance: Mapped[str] = mapped_column(String(40), default="operator", nullable=False)
+    observed_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    period_key: Mapped[str] = mapped_column(String(80), default="", nullable=False)
+    period_start: Mapped[date | None] = mapped_column(Date, nullable=True)
+    period_end: Mapped[date | None] = mapped_column(Date, nullable=True)
+    value_text: Mapped[str] = mapped_column(Text, default="", nullable=False)
+    value_numeric: Mapped[Decimal | None] = mapped_column(Numeric(18, 4), nullable=True)
+    freshness: Mapped[str] = mapped_column(String(20), default="missing", nullable=False)
+    coverage: Mapped[str] = mapped_column(String(20), default="insufficient", nullable=False)
+    evidence: Mapped[str] = mapped_column(Text, default="", nullable=False)
+    limitations: Mapped[str] = mapped_column(Text, default="", nullable=False)
+    inferred_risk: Mapped[str] = mapped_column(Text, default="", nullable=False)
+    fixture: Mapped[bool] = mapped_column(Boolean, default=False, nullable=False)
 
 
 class SuccessPlan(Base, TenantOwnedMixin):

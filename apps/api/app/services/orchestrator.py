@@ -26,6 +26,7 @@ from app.services.idempotency import claim_key, remember_result
 from app.services.inbox import handle_email_received
 from app.services.lifecycle import enroll_sequence
 from app.services.nba import generate_for_lead
+from app.services.purchase_followthrough import PURCHASE_EVENTS, reconcile_purchase_event
 from app.services.qualification import qualify_lead
 from app.services.rbac import user_permissions
 from app.services.scoring import score_lead
@@ -828,6 +829,8 @@ def run_lead_intake(
 def handle_event(db: Session, event: DomainEvent, *, actor_id: UUID | None = None) -> str:
     tenant_id = event.tenant_id
     actor = _actor(db, tenant_id, actor_id)
+    if event.event_type in PURCHASE_EVENTS:
+        return reconcile_purchase_event(db, event, actor_id=actor)
     settings = get_or_create_settings(db, tenant_id=tenant_id, actor_id=actor)
     if not settings.enabled:
         return "skipped_disabled"

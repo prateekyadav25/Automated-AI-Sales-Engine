@@ -276,6 +276,8 @@ def reconcile_onboarding(db: Session, *, tenant_id: UUID, actor_id: UUID, custom
     )
     if plan is None:
         return {"overdue": 0, "blocked": 0}
+    if plan.quote_id is not None or plan.purchase_id is not None:
+        return {"overdue": 0, "blocked": 0, "done": 0, "skipped": "purchase_onboarding"}
     milestones = db.scalars(
         select(OnboardingMilestone).where(OnboardingMilestone.plan_id == plan.id, OnboardingMilestone.deleted_at.is_(None))
     ).all()

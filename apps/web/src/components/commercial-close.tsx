@@ -37,6 +37,13 @@ export function CommercialClosePanel({ view }: { view: CommercialClose }) {
         <Line label="Provider verified" value={view.provider_verified ? "Yes" : "No"} />
         <Line label="Payment" value={view.payment_status ? view.payment_status : "Not recorded"} />
         <Line label="Onboarding" value={recorded(view.onboarding_status, "Not opened")} />
+        {view.checklist?.length ? (
+          <div data-testid="purchase-checklist">
+            {view.checklist.map((item) => (
+              <Line key={item.id} label={item.title} value={`${item.status}${item.next_action ? ` · ${item.next_action}` : ""}`} />
+            ))}
+          </div>
+        ) : null}
         <Line label="Owner" value={recorded(view.owner_name)} />
         <Line label="Next action" value={recorded(view.onboarding_next_action)} />
         <Line label="Onboarding blocker" value={recorded(view.onboarding_blocker, "None recorded")} />

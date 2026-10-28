@@ -116,7 +116,10 @@ def close_won(
     actor_id: UUID,
     opportunity_id: UUID,
     correlation_id: str = "",
+    historical_fixture: bool = False,
 ) -> tuple[Opportunity, Customer, Renewal]:
+    if not historical_fixture:
+        raise ValueError("Historical activation is closed. Use the accepted-quote close-won decision.")
     opp = lock_row(db, Opportunity, tenant_id, opportunity_id) or get_owned(db, Opportunity, tenant_id, opportunity_id)
 
     record_opportunity_fields(

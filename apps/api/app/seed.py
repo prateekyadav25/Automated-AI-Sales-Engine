@@ -781,7 +781,7 @@ def _seed_lifecycle(db, tenant_id, admin_id, seller_id, accounts: list[Account])
             )
             db.add(helios)
             db.flush()
-        close_won(db, tenant_id=tenant_id, actor_id=admin_id, opportunity_id=helios.id)
+        close_won(db, tenant_id=tenant_id, actor_id=admin_id, opportunity_id=helios.id, historical_fixture=True)
 
     harbor = db.scalar(
         select(Opportunity).where(Opportunity.tenant_id == tenant_id, Opportunity.name.ilike("%Harbor%"))

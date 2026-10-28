@@ -75,7 +75,14 @@ def test_two_workers_close_won_once(pg: sessionmaker) -> None:
     def _run() -> None:
         db = pg()
         try:
-            close_won(db, tenant_id=tenant_id, actor_id=actor_id, opportunity_id=opp_id, correlation_id="c")
+            close_won(
+                db,
+                tenant_id=tenant_id,
+                actor_id=actor_id,
+                opportunity_id=opp_id,
+                correlation_id="c",
+                historical_fixture=True,
+            )
             db.commit()
         except Exception:
             db.rollback()

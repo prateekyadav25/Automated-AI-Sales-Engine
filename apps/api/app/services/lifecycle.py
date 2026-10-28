@@ -192,7 +192,7 @@ def build_forecast(db: Session, tenant_id: UUID, actor_id: UUID) -> ForecastSnap
     return snapshot
 
 
-def score_health(db: Session, tenant_id: UUID, customer: Customer) -> HealthScore:
+def score_health(db: Session, tenant_id: UUID, customer: Customer) -> HealthScore | None:
     from app.services.customer_health import recalculate
 
     return recalculate(db, tenant_id, customer, customer.created_by)

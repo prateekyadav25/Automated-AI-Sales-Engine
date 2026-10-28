@@ -484,6 +484,7 @@ class CommercialViewOut(APIModel):
     fixture: bool = False
     external_block: str = ""
     external_released: bool = False
+    checklist: list[dict] = Field(default_factory=list)
     decided_at: datetime | None = None
     reversal_reason: str = ""
     note: str = ""
@@ -680,6 +681,37 @@ class LifecycleOverview(APIModel):
     playbook_runs: int
     arr: str
     note: str = "SQL counts only. Empty stays empty."
+
+
+class OnboardingEvidenceIn(APIModel):
+    note: str = ""
+    source: str = "operator"
+
+
+class OnboardingNoteIn(APIModel):
+    note: str = ""
+
+
+class OnboardingReasonIn(APIModel):
+    reason: str
+
+
+class OnboardingCompleteIn(APIModel):
+    evidence: str
+
+
+class PurchaseHealthIn(APIModel):
+    signal_type: str
+    definition: str = ""
+    source: str = "operator"
+    provenance: str = "operator"
+    value_text: str = ""
+    value_numeric: Decimal | None = None
+    period_key: str
+    freshness: str = "fresh"
+    coverage: str = "insufficient"
+    evidence: str = ""
+    limitations: str = ""
 
 
 class AccountLifecycleOut(APIModel):

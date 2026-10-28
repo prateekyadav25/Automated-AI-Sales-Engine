@@ -42,9 +42,43 @@ def test_historical_close_won_still_creates_the_renewal_stub(client: TestClient)
             tenant_id=UUID(user["tenant_id"]),
             actor_id=UUID(user["id"]),
             opportunity_id=UUID(opp_id),
+            historical_fixture=True,
         )
         db.commit()
         assert customer.opportunity_id == UUID(opp_id)
         assert renewal.customer_id == customer.id
     finally:
         db.close()
+
+
+def test_close_won_without_the_historical_boundary_does_not_activate(client: TestClient) -> None:
+    headers = login(client)
+    accounts = client.get("/api/v1/accounts", headers=headers).json()["data"]
+    created = client.post(
+        "/api/v1/opportunities",
+        headers=headers,
+        json={"account_id": accounts[0]["id"], "name": "Unguarded activation", "stage": "commit", "amount": "100000"},
+    )
+    opp_id = created.json()["data"]["id"]
+    user = client.get("/api/v1/auth/me", headers=headers).json()["data"]["user"]
+    before = client.get("/api/v1/customers", headers=headers).json()["data"]
+    db = get_session()
+    try:
+        try:
+            close_won(
+                db,
+                tenant_id=UUID(user["tenant_id"]),
+                actor_id=UUID(user["id"]),
+                opportunity_id=UUID(opp_id),
+            )
+        except ValueError as exc:
+            assert "accepted-quote" in str(exc)
+        else:
+            raise AssertionError("close_won created a customer without the historical boundary")
+        db.rollback()
+    finally:
+        db.close()
+    after = client.get("/api/v1/customers", headers=headers).json()["data"]
+    assert len(after) == len(before)
+    opportunity = client.get(f"/api/v1/opportunities/{opp_id}", headers=headers).json()["data"]
+    assert opportunity["stage"] != "closed_won"

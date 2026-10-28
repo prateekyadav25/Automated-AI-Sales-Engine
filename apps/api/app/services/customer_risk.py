@@ -77,7 +77,7 @@ def detect_risks(db: Session, *, tenant_id: UUID, actor_id: UUID, customer: Cust
     plan = db.scalar(
         select(OnboardingPlan).where(OnboardingPlan.tenant_id == tenant_id, OnboardingPlan.customer_id == customer.id, OnboardingPlan.deleted_at.is_(None))
     )
-    if plan:
+    if plan and plan.quote_id is None and plan.purchase_id is None:
         overdue = db.scalars(
             select(OnboardingMilestone).where(
                 OnboardingMilestone.plan_id == plan.id,

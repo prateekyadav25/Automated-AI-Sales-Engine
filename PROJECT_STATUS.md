@@ -2,6 +2,8 @@
 
 ## CURRENT PHASE
 
+2026-10-28: Purchase onboarding, evidence-backed health, and reviewable retention follow-through are in the local application at Alembic `045`. The sales engine is not finished. Broader Facebook and Instagram performance is the next milestone. Paid activation and reporting, and SEO, remain open. The paragraph below is the older phase inventory.
+
 Phases 0–22 plus Autopilot batches 1–8 and the full-funnel completion slice are in product. Tenant credentials now drive ads, voice, and discovery execution. Voice is split into telephony and conversation with Exotel as India primary. Meeting capture and transcript-only intelligence exist. Ads persist CTR/CPC/CPL and can pause/sync. Public inbound capture and first-touch attribution exist. Rules-v1/rules-v2 remain champion. No production ML model is trained. All prediction tasks are DATA_COLLECTION. Ready for a controlled PILOT tenant is not the same as unrestricted enterprise production.
 
 ## COMPLETED

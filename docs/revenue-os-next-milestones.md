@@ -4,6 +4,12 @@ This plan follows the audit in `docs/current-capability-audit.md`. It connects t
 
 The running demonstration stays `prepared`. None of these milestones authorize a send, a post, a call, a booking, or ad spend. Live provider checks are a separate evidence step after the fixture journey is green.
 
+## Status on 2026-10-28, purchase onboarding and retention
+
+**Purchase onboarding, health evidence, and retention follow-through are complete as a fixture path, and the local application is on Alembic `045`.** Close-won, voice handoff, Google Meet booking, paused Meta website assembly, native lead-form ingestion, organic creative production, discovery follow-through, outbound drafting, and organic acquisition remain complete as fixture paths. LinkedIn assembly, native lead-form campaign creation, activation, and paid-metrics read-back stay open. The next milestone is broader Facebook and Instagram performance. Paid activation and reporting, and SEO, stay on the roadmap. The sales engine is not finished.
+
+A won purchase keeps one owned onboarding checklist, recorded completion evidence, and purchase-scoped health signals. A repeated signal does not duplicate the follow-up task. A one-time purchase does not invent a renewal. No message, charge, cancellation, or renewal was made.
+
 ## Status on 2026-10-28, close-won
 
 **Evidence-backed close-won is complete as a fixture path, and the local application is on Alembic `044`.** Voice handoff, Google Meet booking, paused Meta website assembly, native lead-form ingestion, organic creative production, discovery follow-through, outbound drafting, and organic acquisition remain complete as fixture paths. LinkedIn assembly, native lead-form campaign creation, activation, and paid-metrics read-back stay open. The next milestone is customer onboarding follow-through and retention. Broader social performance, paid activation and reporting, SEO, and the remaining live-integration verification stay on the roadmap. The sales engine is not finished.

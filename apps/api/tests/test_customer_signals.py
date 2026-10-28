@@ -57,6 +57,7 @@ def _close(client: TestClient, headers: dict, name: str, domain: str = "") -> di
             tenant_id=UUID(user["tenant_id"]),
             actor_id=UUID(user["id"]),
             opportunity_id=UUID(opp["id"]),
+            historical_fixture=True,
         )
         db.commit()
         customer_id = str(customer.id)

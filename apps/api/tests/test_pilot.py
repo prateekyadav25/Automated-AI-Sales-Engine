@@ -65,6 +65,7 @@ def test_close_lost_and_churn_outcomes(client: TestClient) -> None:
             tenant_id=UUID(user["tenant_id"]),
             actor_id=UUID(user["id"]),
             opportunity_id=UUID(won_opp["id"]),
+            historical_fixture=True,
         )
         db.commit()
         customer = {"id": str(customer_row.id)}

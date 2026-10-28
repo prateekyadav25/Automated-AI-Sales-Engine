@@ -20,6 +20,7 @@ from app.models.lifecycle import (
     CampaignMember,
     Conversation,
     DealInsight,
+    DealPurchase,
     ForecastSnapshot,
     HealthScore,
     MeetingRecord,
@@ -72,11 +73,16 @@ from app.schemas.lifecycle import (
     MeetingTranscriptIn,
     MilestoneOut,
     ModelCardOut,
+    OnboardingCompleteIn,
+    OnboardingEvidenceIn,
+    OnboardingNoteIn,
+    OnboardingReasonIn,
     PlaybookIn,
     PlaybookOut,
     PlaybookRunIn,
     ProductIn,
     ProductOut,
+    PurchaseHealthIn,
     QuoteIn,
     QuoteLineIn,
     QuoteLineOut,
@@ -139,6 +145,17 @@ from app.services.meeting_capture import (
     schedule_capture,
 )
 from app.services.outcomes import mark_renewed
+from app.services.purchase_followthrough import (
+    FollowthroughError,
+    complete_onboarding,
+    correct_onboarding,
+    purchase_view,
+    record_health_signal,
+    record_item_evidence,
+    review_item,
+    review_retention,
+    waive_item,
+)
 from app.services.query import get_owned, paginate
 from app.services.voice import extract_meeting_notes, queue_voice_dial
 from app.services.voice_handoff import voice_for_conversation
@@ -1023,6 +1040,8 @@ def rescore_health(
 ) -> Envelope[HealthOut]:
     customer = get_owned(db, Customer, ctx.tenant_id, customer_id)
     row = score_health(db, ctx.tenant_id, customer)
+    if row is None:
+        raise HTTPException(status_code=409, detail="No health score is calculated from missing purchase evidence.")
     db.commit()
     db.refresh(row)
     return Envelope(data=HealthOut.model_validate(row))
@@ -1221,3 +1240,186 @@ def account_lifecycle(
             renewal=renewal,
         )
     )
+
+
+def _followthrough(action):
+    try:
+        return action()
+    except FollowthroughError as exc:
+        raise HTTPException(status_code=exc.status_code, detail=exc.message) from exc
+
+
+@router.post("/onboarding/{plan_id}/items/{item_id}/evidence")
+def record_onboarding_evidence(
+    plan_id: UUID,
+    item_id: UUID,
+    body: OnboardingEvidenceIn,
+    db: Annotated[Session, Depends(get_db)],
+    ctx: Annotated[AuthContext, Depends(require_permission("success.write"))],
+) -> Envelope[dict]:
+    payload = _followthrough(
+        lambda: record_item_evidence(
+            db,
+            tenant_id=ctx.tenant_id,
+            actor_id=ctx.user.id,
+            plan_id=plan_id,
+            item_id=item_id,
+            note=body.note,
+            source=body.source,
+        )
+    )
+    db.commit()
+    return Envelope(data=payload)
+
+
+@router.post("/onboarding/{plan_id}/items/{item_id}/review")
+def review_onboarding_item(
+    plan_id: UUID,
+    item_id: UUID,
+    body: OnboardingNoteIn,
+    db: Annotated[Session, Depends(get_db)],
+    ctx: Annotated[AuthContext, Depends(require_permission("success.write"))],
+) -> Envelope[dict]:
+    payload = _followthrough(
+        lambda: review_item(
+            db,
+            tenant_id=ctx.tenant_id,
+            actor_id=ctx.user.id,
+            plan_id=plan_id,
+            item_id=item_id,
+            note=body.note,
+        )
+    )
+    db.commit()
+    return Envelope(data=payload)
+
+
+@router.post("/onboarding/{plan_id}/items/{item_id}/waive")
+def waive_onboarding_item(
+    plan_id: UUID,
+    item_id: UUID,
+    body: OnboardingReasonIn,
+    db: Annotated[Session, Depends(get_db)],
+    ctx: Annotated[AuthContext, Depends(require_permission("success.write"))],
+) -> Envelope[dict]:
+    payload = _followthrough(
+        lambda: waive_item(
+            db,
+            tenant_id=ctx.tenant_id,
+            actor_id=ctx.user.id,
+            plan_id=plan_id,
+            item_id=item_id,
+            reason=body.reason,
+        )
+    )
+    db.commit()
+    return Envelope(data=payload)
+
+
+@router.post("/onboarding/{plan_id}/complete")
+def complete_purchase_onboarding(
+    plan_id: UUID,
+    body: OnboardingCompleteIn,
+    db: Annotated[Session, Depends(get_db)],
+    ctx: Annotated[AuthContext, Depends(require_permission("success.write"))],
+) -> Envelope[dict]:
+    payload = _followthrough(
+        lambda: complete_onboarding(
+            db,
+            tenant_id=ctx.tenant_id,
+            actor_id=ctx.user.id,
+            plan_id=plan_id,
+            evidence=body.evidence,
+        )
+    )
+    db.commit()
+    return Envelope(data=payload)
+
+
+@router.post("/onboarding/{plan_id}/correct")
+def correct_purchase_onboarding(
+    plan_id: UUID,
+    body: OnboardingReasonIn,
+    db: Annotated[Session, Depends(get_db)],
+    ctx: Annotated[AuthContext, Depends(require_permission("success.write"))],
+) -> Envelope[dict]:
+    payload = _followthrough(
+        lambda: correct_onboarding(
+            db,
+            tenant_id=ctx.tenant_id,
+            actor_id=ctx.user.id,
+            plan_id=plan_id,
+            reason=body.reason,
+        )
+    )
+    db.commit()
+    return Envelope(data=payload)
+
+
+@router.get("/purchases/{purchase_id}/followthrough")
+def get_purchase_followthrough(
+    purchase_id: UUID,
+    db: Annotated[Session, Depends(get_db)],
+    ctx: Annotated[AuthContext, Depends(require_permission("success.read"))],
+) -> Envelope[dict]:
+    payload = _followthrough(lambda: purchase_view(db, tenant_id=ctx.tenant_id, purchase_id=purchase_id))
+    return Envelope(data=payload)
+
+
+def _owned_purchase(db: Session, tenant_id: UUID, purchase_id: UUID) -> tuple[DealPurchase, OnboardingPlan, Quote]:
+    purchase = db.scalar(
+        select(DealPurchase).where(
+            DealPurchase.id == purchase_id,
+            DealPurchase.tenant_id == tenant_id,
+            DealPurchase.deleted_at.is_(None),
+        )
+    )
+    if purchase is None or purchase.onboarding_plan_id is None:
+        raise HTTPException(status_code=404, detail="Not found")
+    plan = db.get(OnboardingPlan, purchase.onboarding_plan_id)
+    quote = db.get(Quote, purchase.quote_id)
+    if plan is None or quote is None or plan.tenant_id != tenant_id or quote.tenant_id != tenant_id:
+        raise HTTPException(status_code=404, detail="Not found")
+    return purchase, plan, quote
+
+
+@router.post("/purchases/{purchase_id}/health")
+def record_purchase_health(
+    purchase_id: UUID,
+    body: PurchaseHealthIn,
+    db: Annotated[Session, Depends(get_db)],
+    ctx: Annotated[AuthContext, Depends(require_permission("success.write"))],
+) -> Envelope[dict]:
+    payload = _followthrough(
+        lambda: record_health_signal(
+            db,
+            tenant_id=ctx.tenant_id,
+            actor_id=ctx.user.id,
+            purchase_id=purchase_id,
+            signal_type=body.signal_type,
+            definition=body.definition,
+            source=body.source,
+            provenance=body.provenance,
+            value_text=body.value_text,
+            value_numeric=body.value_numeric,
+            period_key=body.period_key,
+            freshness=body.freshness,
+            coverage=body.coverage,
+            evidence=body.evidence,
+            limitations=body.limitations,
+        )
+    )
+    db.commit()
+    return Envelope(data=payload)
+
+
+@router.post("/purchases/{purchase_id}/retention-review")
+def review_purchase_retention(
+    purchase_id: UUID,
+    db: Annotated[Session, Depends(get_db)],
+    ctx: Annotated[AuthContext, Depends(require_permission("success.write"))],
+) -> Envelope[dict]:
+    purchase, plan, quote = _owned_purchase(db, ctx.tenant_id, purchase_id)
+    review_retention(db, tenant_id=ctx.tenant_id, actor_id=ctx.user.id, purchase=purchase, plan=plan, quote=quote)
+    db.commit()
+    return Envelope(data=purchase_view(db, tenant_id=ctx.tenant_id, purchase_id=purchase.id))
