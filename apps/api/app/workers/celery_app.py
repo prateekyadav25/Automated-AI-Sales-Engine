@@ -51,6 +51,7 @@ celery_app.conf.update(
         "hold-stale-external-work": {"task": "hold_stale_external_work", "schedule": 60.0},
         "publish-due-operating-plans": {"task": "publish_due_operating_plans", "schedule": 60.0},
         "collect-organic-metrics": {"task": "collect_organic_metrics", "schedule": 300.0},
+        "retrieve-native-lead-forms": {"task": "retrieve_native_lead_forms", "schedule": 60.0},
         "operator-daily-brief": {"task": "operator_daily_brief", "schedule": 86400.0},
     },
 )
@@ -126,6 +127,21 @@ def publish_due_operating_plans() -> int:
             count = run_per_tenant(db, lambda _tenant_id: publish_due_versions(db))
         else:
             count = publish_due_versions(db)
+        db.commit()
+        return count
+    finally:
+        db.close()
+
+
+@celery_app.task(name="retrieve_native_lead_forms")
+def retrieve_native_lead_forms() -> int:
+    from app.db.session import get_engine, get_session
+    from app.services.lead_forms import process_due_lead_receipts
+
+    get_engine()
+    db = get_session()
+    try:
+        count = process_due_lead_receipts(db, client=None)
         db.commit()
         return count
     finally:

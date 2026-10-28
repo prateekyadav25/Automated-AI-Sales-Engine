@@ -83,6 +83,7 @@ from app.models.integrations import (
     ProviderInboxEvent,
     WebhookRoute,
 )
+from app.models.lead_form import LeadFormBinding, LeadFormReceipt
 from app.models.lifecycle import (
     AbmPlay,
     AdvocacyAsset,
@@ -236,6 +237,8 @@ __all__ = [
     "OperatingPlan",
     "CreativeVersion",
     "DemoScope",
+    "LeadFormBinding",
+    "LeadFormReceipt",
     "ContentProposal",
     "OrganicMetricObservation",
     "ContentRecommendation",

@@ -10,6 +10,7 @@ from app.db.session import get_db
 from app.schemas.common import Envelope
 from app.services.content_calendar import attach_local_preview, promote_proposal, propose_calendar
 from app.services.discovery import bound_operating_plan
+from app.services.lead_forms import bind_lead_form
 from app.services.marketing import (
     attributed_outcomes,
     authorize_version,
@@ -57,6 +58,16 @@ class CalendarIn(BaseModel):
 
 class ProposalIn(BaseModel):
     proposal_id: UUID
+
+
+class LeadFormIn(BaseModel):
+    plan_id: UUID
+    page_id: str
+    form_id: str
+    form_purpose: str = ""
+    answer_question: str = ""
+    marketing_question: str = ""
+    call_question: str = ""
 
 
 @router.get("/readiness")
@@ -193,6 +204,49 @@ def metrics(
     data = record_metrics(db, tenant_id=ctx.tenant_id, version_id=body.version_id, metrics=supplied or None)
     db.commit()
     return Envelope(data=data)
+
+
+@router.post("/lead-forms")
+def save_lead_form(
+    body: LeadFormIn,
+    db: Annotated[Session, Depends(get_db)],
+    ctx: Annotated[AuthContext, Depends(require_permission("campaigns.write"))],
+) -> Envelope[dict]:
+    """Save a local Meta form mapping. This does not call Meta."""
+    questions: dict = {}
+    if body.answer_question.strip():
+        questions["answer_enquiry"] = {
+            "source": "field",
+            "question": body.answer_question.strip(),
+            "yes_values": ["yes"],
+            "meaning": "Permission to answer this enquiry by email.",
+        }
+    if body.marketing_question.strip():
+        questions["marketing_sequence"] = {
+            "source": "field",
+            "question": body.marketing_question.strip(),
+            "yes_values": ["yes"],
+            "meaning": "Permission for a marketing sequence. A yes does not enroll a sequence.",
+        }
+    if body.call_question.strip():
+        questions["calls"] = {
+            "source": "field",
+            "question": body.call_question.strip(),
+            "yes_values": ["yes"],
+            "meaning": "Permission for a phone call. A yes does not place a call.",
+        }
+    binding = bind_lead_form(
+        db,
+        tenant_id=ctx.tenant_id,
+        actor_id=ctx.user.id,
+        page_id=body.page_id,
+        form_id=body.form_id,
+        operating_plan_id=body.plan_id,
+        form_purpose=body.form_purpose,
+        permission_questions=questions,
+    )
+    db.commit()
+    return Envelope(data={"id": str(binding.id), "detail": "The Meta form is mapped to this operating plan."})
 
 
 @router.post("/calendar")

@@ -34,6 +34,7 @@ from app.services.content_calendar import list_proposals
 from app.services.demo_guard import external_execution_block
 from app.services.discovery import annotate_prospects, bound_operating_plan, explicit_icp, run_discovery
 from app.services.effects import EffectAttempt, ReconciledEffect, execute_external_effect
+from app.services.lead_forms import native_form_rows
 from app.services.organic_metrics import latest_recommendation, metric_summary, sales_evidence
 from app.services.product_context import build_product_context, customer_facing_from_profile, is_tier_label
 from app.services.public_forms import form_key_url
@@ -912,7 +913,9 @@ def marketing_board(db: Session, tenant_id: UUID) -> dict:
             "customer_facing_name": "",
             "offer_label": "",
             "sku": "",
+            "plan_id": "",
             "proposals": [],
+            "native_forms": native_form_rows(db, tenant_id),
             "enquiries": [],
             "acknowledgement": {"not_prepared": 0, "pending": 0, "approved": 0},
             "outcomes": {
@@ -946,7 +949,9 @@ def marketing_board(db: Session, tenant_id: UUID) -> dict:
         "customer_facing_name": context.customer_facing_name,
         "offer_label": context.offer_label(),
         "sku": context.sku,
+        "plan_id": str(plan.id),
         "proposals": list_proposals(db, tenant_id, plan.id),
+        "native_forms": native_form_rows(db, tenant_id),
         "products": products,
         "research_runs": plan.research_runs,
         "research_limit": plan.research_limit,

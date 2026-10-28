@@ -113,6 +113,15 @@ class LeadOut(LeadIn):
     eligibility: str = ""
     next_action: str = ""
     approval_id: str = ""
+    native_platform: str = ""
+    native_form_id: str = ""
+    native_status: str = ""
+    native_product: str = ""
+    native_permission: str = ""
+    native_attribution: str = ""
+    native_missing: str = ""
+    native_acknowledgement: str = ""
+    native_review: str = ""
 
 
 class LeadAssigneeOut(APIModel):

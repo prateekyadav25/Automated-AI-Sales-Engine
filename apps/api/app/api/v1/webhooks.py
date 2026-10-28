@@ -6,6 +6,7 @@ from typing import Annotated
 from uuid import UUID
 
 from fastapi import APIRouter, Depends, Header, HTTPException, Request
+from fastapi.responses import PlainTextResponse
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
@@ -14,8 +15,10 @@ from app.core.rate_limit import enforce_rate_limit
 from app.db.session import get_db
 from app.db.tenant_context import set_tenant_context
 from app.models.identity import Tenant, User
+from app.providers.meta_leads import challenge_response, signatures_match
 from app.schemas.common import Envelope
 from app.services.inbox import process_inbox_event, record_inbox_event
+from app.services.lead_forms import accept_leadgen_notification
 from app.services.webhook_routes import resolve_tenant_id
 
 router = APIRouter(prefix="/webhooks", tags=["webhooks"])
@@ -168,6 +171,59 @@ async def _handle_inbound(
     status = _enqueue_or_process(db, event, actor_id=actor.id)
     db.commit()
     return Envelope(data={"id": str(event.id), "status": status})
+
+
+@router.get("/meta/leadgen")
+def meta_leadgen_challenge(request: Request) -> PlainTextResponse:
+    """Meta's subscription handshake. This does not register the subscription."""
+    settings = get_settings()
+    expected = settings.meta_webhook_verify_token
+    if not expected:
+        raise HTTPException(status_code=503, detail="Meta webhook verify token is not configured.")
+    params = request.query_params
+    challenge = challenge_response(
+        params.get("hub.mode", ""),
+        params.get("hub.verify_token", ""),
+        params.get("hub.challenge", ""),
+        expected,
+    )
+    if not challenge:
+        raise HTTPException(status_code=403, detail="Invalid Meta verification.")
+    return PlainTextResponse(challenge)
+
+
+@router.post("/meta/leadgen")
+async def meta_leadgen_notification(
+    request: Request,
+    db: Annotated[Session, Depends(get_db)],
+    x_hub_signature_256: Annotated[str | None, Header(alias="X-Hub-Signature-256")] = None,
+) -> dict:
+    """Validate the signature, store the notification, then acknowledge it."""
+    settings = get_settings()
+    raw = await request.body()
+    if len(raw) > settings.webhook_max_body_bytes:
+        raise HTTPException(status_code=413, detail="Payload too large")
+    if not settings.meta_app_secret:
+        raise HTTPException(status_code=401, detail="Meta app secret is not configured.")
+    if not signatures_match(raw, x_hub_signature_256, settings.meta_app_secret):
+        raise HTTPException(status_code=401, detail="Invalid Meta notification signature.")
+    try:
+        payload = json.loads(raw.decode("utf-8") or "{}")
+    except json.JSONDecodeError as exc:
+        raise HTTPException(status_code=400, detail="Invalid JSON") from exc
+    if not isinstance(payload, dict):
+        raise HTTPException(status_code=400, detail="Invalid JSON")
+    payload.pop("tenant_id", None)
+    result = accept_leadgen_notification(db, payload)
+    db.commit()
+    if not settings.webhook_inline_process:
+        try:
+            from app.workers.celery_app import retrieve_native_lead_forms
+
+            retrieve_native_lead_forms.delay()
+        except Exception:  # noqa: BLE001 — the stored receipt remains for the scheduled job
+            pass
+    return result
 
 
 @router.post("/{provider}/{routing_token}")

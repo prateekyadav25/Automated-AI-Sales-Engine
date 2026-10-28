@@ -54,6 +54,7 @@ from app.services.crm import (
 )
 from app.services.discovery import workflow_fields
 from app.services.enrichment import enrich_owned_lead
+from app.services.lead_forms import native_form_for_lead
 from app.services.nba import generate_for_lead, generate_for_opportunity, steps_for_lead
 from app.services.orchestrator import process_pending_events
 from app.services.outcomes import close_lost, mark_churned
@@ -604,6 +605,16 @@ def get_lead(
     payload.eligibility = view["eligibility"]
     payload.next_action = view["next_action"]
     payload.approval_id = view["approval_id"]
+    native = native_form_for_lead(db, lead)
+    payload.native_platform = str(native.get("platform") or "")
+    payload.native_form_id = str(native.get("form_id") or "")
+    payload.native_status = str(native.get("status") or "")
+    payload.native_product = str(native.get("product_name") or "")
+    payload.native_permission = str(native.get("permission") or "")
+    payload.native_attribution = str(native.get("attribution") or "")
+    payload.native_missing = ", ".join(native.get("missing_fields") or [])
+    payload.native_acknowledgement = str(native.get("acknowledgement") or "")
+    payload.native_review = str(native.get("review") or "")
     return Envelope(data=payload)
 
 

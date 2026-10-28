@@ -200,6 +200,17 @@ export default function LeadDetailPage() {
           <hr className="rule" />
           <Line label="Fit assessment" value={parts?.total != null ? `${parts.total} / 100 · evidence attached` : "Not scored"} />
           <Line label="Source" value={lead.source || "Not recorded"} />
+          {lead.native_status ? (
+            <>
+              <Line label="Native form" value={`${lead.native_platform || "Meta"} · ${lead.native_form_id || "form not recorded"} · ${lead.native_status}`} />
+              <Line label="Mapped product" value={lead.native_product || "No product is mapped"} />
+              <Line label="Attribution" value={lead.native_attribution || "Unattributed"} />
+              <Line label="Permission evidence" value={lead.native_permission || "Permission was not established"} />
+              <Line label="Missing fields" value={lead.native_missing || "Nothing further is listed"} />
+              <Line label="Acknowledgement" value={lead.native_acknowledgement || "Not prepared"} />
+              <Line label="Review" value={lead.native_review || "No review blocker"} />
+            </>
+          ) : null}
           <Line label="Selected product" value={lead.product_name || "No product is bound"} />
           <Line label="Offer" value={lead.offer_label || "No offer or tier is stored"} />
           <Line label="Enrichment" value={lead.enrichment_state ? labelize(lead.enrichment_state) : "Not started"} />

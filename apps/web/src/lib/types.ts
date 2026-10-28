@@ -74,6 +74,15 @@ export type Lead = {
   eligibility?: string;
   next_action?: string;
   approval_id?: string;
+  native_platform?: string;
+  native_form_id?: string;
+  native_status?: string;
+  native_product?: string;
+  native_permission?: string;
+  native_attribution?: string;
+  native_missing?: string;
+  native_acknowledgement?: string;
+  native_review?: string;
 };
 
 export type Opportunity = {

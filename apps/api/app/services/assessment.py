@@ -26,7 +26,7 @@ RULES_VERSION = "heuristics-v2"
 OBSERVATION_WINDOW_DAYS = 90
 REQUIRED_FACETS = ("industry", "employees", "geography", "persona", "business_need")
 FACT_CLASSES = {"unknown", "self_reported", "observed", "inferred", "verified"}
-INBOUND_SOURCES = {"inbound", "public_form", "website", "event", "manual"}
+INBOUND_SOURCES = {"inbound", "public_form", "website", "event", "manual", "meta_lead_form"}
 FREE_MAIL_DOMAINS = {"gmail.com", "yahoo.com", "outlook.com", "hotmail.com", "icloud.com"}
 MEETING_MARKERS = (
     "can we meet",

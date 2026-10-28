@@ -93,6 +93,26 @@ type Recommendation = {
   proposed_change: string;
 };
 type PlanEnquiry = { lead_id: string; acknowledgement: string; publication: string };
+type NativeForm = {
+  id: string;
+  platform: string;
+  page_id: string;
+  form_id: string;
+  form_purpose: string;
+  status: string;
+  product_name: string;
+  offer_label: string;
+  operating_plan_id: string;
+  attribution: string;
+  ad_id: string;
+  provider_campaign_id: string;
+  supplied_fields: string[];
+  missing_fields: string[];
+  permission: string;
+  lead_id: string;
+  acknowledgement: string;
+  review: string;
+};
 type PlanProduct = { id: string; name: string; kind: string; list_price: string; currency: string };
 type Operations = {
   offer: { name: string; offer_key: string; scope: string; sales_rules_configured: boolean } | null;
@@ -120,7 +140,9 @@ type Operations = {
     offer_label?: string;
     sku?: string;
     product_id?: string;
+    plan_id?: string;
     proposals?: ContentProposal[];
+    native_forms?: NativeForm[];
     enquiries?: PlanEnquiry[];
     acknowledgement?: { not_prepared: number; pending: number; approved: number };
     outcomes: {
@@ -170,6 +192,12 @@ export function CommandOperations() {
   const [cadenceDays, setCadenceDays] = useState("7");
   const [themes, setThemes] = useState("");
   const [callToAction, setCallToAction] = useState("");
+  const [formPage, setFormPage] = useState("");
+  const [formId, setFormId] = useState("");
+  const [formPurpose, setFormPurpose] = useState("");
+  const [answerQuestion, setAnswerQuestion] = useState("");
+  const [marketingQuestion, setMarketingQuestion] = useState("");
+  const [callQuestion, setCallQuestion] = useState("");
   const operations = useQuery({
     queryKey: ["command-operations"],
     queryFn: async () => (await api<Operations>("/api/v1/command-center/operations")).data,
@@ -474,6 +502,44 @@ export function CommandOperations() {
           {" "}{data.marketing?.outcomes?.recommendation?.limitation || ""}
           {" "}{data.marketing?.outcomes?.recommendation?.proposed_change || ""}
         </p>
+        <h3>Native lead forms</h3>
+        <p className="muted">Meta native lead forms only. LinkedIn Lead Sync, Google lead forms, comments, and direct messages are not ingested here.</p>
+        {(data.marketing?.native_forms || []).length === 0 ? <p className="muted">No Meta lead form notification is stored.</p> : data.marketing?.native_forms?.map((formRow) => (
+          <div className="line-item" key={formRow.id}>
+            <span>{formRow.platform} · form {formRow.form_id || "unknown"} · page {formRow.page_id || "unknown"}</span>
+            <span>{formRow.status}{formRow.form_purpose ? ` · ${formRow.form_purpose}` : ""}</span>
+            <span>{formRow.product_name || "No mapped product"}{formRow.offer_label ? ` · ${formRow.offer_label}` : ""}{formRow.operating_plan_id ? ` · plan ${formRow.operating_plan_id}` : ""}</span>
+            <span>{formRow.attribution === "ad" ? `Ad ${formRow.ad_id}${formRow.provider_campaign_id ? ` · campaign ${formRow.provider_campaign_id}` : ""}` : "Unattributed. No ad id was supplied."}</span>
+            <span>Fields {formRow.supplied_fields.length ? formRow.supplied_fields.join(", ") : "none"}{formRow.missing_fields.length ? ` · missing ${formRow.missing_fields.join(", ")}` : ""}</span>
+            <span>{formRow.permission}</span>
+            <span>{formRow.lead_id ? `Lead ${formRow.lead_id}` : "No lead"} · acknowledgement {formRow.acknowledgement}{formRow.review ? ` · ${formRow.review}` : ""}</span>
+          </div>
+        ))}
+        {can("campaigns.write") && data.marketing?.plan_id ? (
+          <form className="ds-flex" onSubmit={(event) => {
+            event.preventDefault();
+            plan.mutate({
+              path: "lead-forms",
+              body: {
+                plan_id: data.marketing?.plan_id,
+                page_id: formPage,
+                form_id: formId,
+                form_purpose: formPurpose,
+                answer_question: answerQuestion,
+                marketing_question: marketingQuestion,
+                call_question: callQuestion,
+              },
+            });
+          }}>
+            <input aria-label="Meta page id" value={formPage} onChange={(event) => setFormPage(event.target.value)} placeholder="Page id" />
+            <input aria-label="Meta form id" value={formId} onChange={(event) => setFormId(event.target.value)} placeholder="Form id" />
+            <input aria-label="Form purpose" value={formPurpose} onChange={(event) => setFormPurpose(event.target.value)} placeholder="Form purpose" />
+            <input aria-label="Answer permission question" value={answerQuestion} onChange={(event) => setAnswerQuestion(event.target.value)} placeholder="Question that allows a reply" />
+            <input aria-label="Marketing permission question" value={marketingQuestion} onChange={(event) => setMarketingQuestion(event.target.value)} placeholder="Marketing question" />
+            <input aria-label="Call permission question" value={callQuestion} onChange={(event) => setCallQuestion(event.target.value)} placeholder="Call question" />
+            <button className="btn" type="submit">Save form mapping</button>
+          </form>
+        ) : <p className="muted">Choose the operating plan before mapping a Meta form.</p>}
         <h3>Journeys</h3>
         {data.journeys.length === 0 ? <p className="muted">No journey is active.</p> : data.journeys.map((row) => (
           <button className="row" key={row.journey_id} type="button" onClick={() => setJourneyId(row.journey_id)} style={{ width: "100%", textAlign: "left" }}>

@@ -6,7 +6,13 @@ The running demonstration stays `prepared`. None of these milestones authorize a
 
 ## Status on 2026-10-28
 
-**Organic creative production and provider-backed performance read-back are complete as a fixture path, and the local application is on Alembic `039`.** Discovery follow-through, outbound drafting, and organic acquisition remain complete as fixture paths. The next milestone to implement is native lead-form and supported enquiry ingestion. Paid campaign children, Meet, voice, commercial activation, and SEO remain required and are not started by this slice.
+**Meta native lead-form ingestion is complete as a fixture path, and the local application is on Alembic `040`.** Organic creative production, discovery follow-through, outbound drafting, and organic acquisition remain complete as fixture paths. The next milestone to implement is paused paid campaign assembly and attribution. LinkedIn Lead Sync, Google lead forms, comments, direct messages, Meet, voice, commercial activation, and SEO remain required and are not started by this slice.
+
+A verified Meta `leadgen` notification is stored before acknowledgement. Lead details are retrieved through the worker and tested with fake Graph responses. The workspace and operating plan come from a local mapping. A prepared demonstration does not open a live Graph client. No Page subscription was registered.
+
+## Status on 2026-10-28, earlier
+
+**Organic creative production and provider-backed performance read-back are complete as a fixture path, and the local application was on Alembic `039`.** Discovery follow-through, outbound drafting, and organic acquisition remain complete as fixture paths. The milestone after that status was native lead-form ingestion. Paid campaign children, Meet, voice, commercial activation, and SEO remain required and were not started by that slice.
 
 The calendar, the local preview, the LinkedIn statistics adapter, and the reviewable recommendation are fixture-tested. A live metrics request was not made. The prepared demonstration was not authorized and its expiry was not changed.
 
@@ -316,7 +322,9 @@ Acceptance that was proved with fixtures: one selected plan produces distinct pr
 
 ### Native lead-form and supported enquiry ingestion
 
-Acceptance: a fixture LinkedIn or Meta lead form payload, and one supported enquiry payload, each create one consented lead with its source and campaign identifiers. An incomplete or unconsented payload is held. Repeating the provider id does not create a second lead. The lead then uses the existing acknowledgement or outbound path, not a new one.
+**Meta only is complete in fixtures on 2026-10-28, and running locally at Alembic `040`.** LinkedIn Lead Sync, Google lead forms, comments, and direct messages are not implemented. A live Graph call was not made, and the Page was not subscribed.
+
+Acceptance that was proved with fake Graph responses: a verified notification is stored before acknowledgement; retrieval uses the lead id; one mapped form creates one enquiry, one identity, one assessment, and one acknowledgement approval; the acknowledgement does not enroll a sequence. An invalid signature is rejected. An unknown form and a form mapped to two workspaces stay in review and create no lead. A repeated provider id does not create a second capture, lead, acknowledgement, or task. A missing email or a missing answer permission keeps the submission and does not send. A missing request note does not discard the enquiry. A second submission from the same person keeps a distinct enquiry and the original first-touch ad and plan. A permission failure and a rate limit keep the receipt. A prepared scope and a posting token make no live retrieval call. An ad id is stored only when the provider supplied one.
 
 ### Complete paid campaign assembly and attribution
 
@@ -346,7 +354,7 @@ Acceptance: a fixture keyword and page recommendation are stored against the sel
 - Starting MinIO, running mailbox sync, running discovery, publishing, booking, dialing, or spending as part of implementation.
 - SEO: keyword research, articles, landing pages, metadata, and Search Console.
 - YouTube, X, and WhatsApp posting or ads. Google Ads stays `PreparedAdsProvider`.
-- Native LinkedIn, Meta, and Google lead forms, and ingestion of comments or direct messages.
+- LinkedIn Lead Sync, Google lead forms, comments, and direct messages. Meta native lead forms are fixture-tested. A live Meta subscription and a live lead retrieval were not made. A page posting token is not a lead-retrieval token.
 - Automatic creative changes, posting-frequency changes, and ad-spend changes. A fixture can store LinkedIn share statistics and a reviewable recommendation. A live metrics request is still unauthorized. Facebook and Instagram insights are not read by the LinkedIn adapter.
 - Dograh completion webhooks, the browser widget as a CRM dialer, Exotel/Twilio/Vapi live calls, and public voice callbacks.
 - Recall joining a meeting by itself. Milestone 3 only stores a URL.
@@ -359,4 +367,4 @@ Acceptance: a fixture keyword and page recommendation are stored against the sel
 
 ## Completion of this plan
 
-Milestones 1 and 4, discovery follow-through, and organic creative read-back now pass in fixtures. The post, the lead, and the acknowledgement share the selected product. A content proposal can become one mock publication and a stored LinkedIn statistics reading without a live call. The sequence draft freezes that product and labels the facts behind the email. A discovered person keeps the selected plan and reaches that draft only when assessment and channel permission allow it. No Apify, social, or model provider was contacted to prove this. The next milestone is native lead-form and supported enquiry ingestion. Paid campaign children, Meet, voice, commercial activation, and SEO stay listed above with their own acceptance journeys. None of them inherits a live-provider claim from an older row in the database. The sales engine is not finished.
+Milestones 1 and 4, discovery follow-through, organic creative read-back, and Meta native lead-form ingestion now pass in fixtures. The post, the lead, and the acknowledgement share the selected product. A content proposal can become one mock publication and a stored LinkedIn statistics reading without a live call. The sequence draft freezes that product and labels the facts behind the email. A discovered person keeps the selected plan and reaches that draft only when assessment and channel permission allow it. A Meta lead form can become one acknowledgement without a live Graph call and without an outbound sequence. No Apify, social, or model provider was contacted to prove this. The next milestone is paused paid campaign assembly and attribution. Meet, voice, commercial activation, and SEO stay listed above with their own acceptance journeys. None of them inherits a live-provider claim from an older row in the database. The sales engine is not finished.

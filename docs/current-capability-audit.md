@@ -1,8 +1,47 @@
 # Current capability audit
 
-## Current status — 2026-10-28, organic creative production and performance read-back
+## Current status — 2026-10-28, Meta native lead-form ingestion
 
-This is the current status. The discovery section below, the outbound section, the executive assessment, the baseline table, and the capability matrix are earlier. Where they disagree with this section, this section is the one to use.
+This is the current status. The organic section below, the discovery section, the outbound section, the executive assessment, the baseline table, and the capability matrix are earlier. Where they disagree with this section, this section is the one to use.
+
+Meta Page `leadgen` notifications can be verified and stored before the HTTP acknowledgement. The stored lead id is retrieved later by `retrieve_native_lead_forms`. Tests pass a fake Graph client. The supported Graph version is v21.0, the same version already used for Meta page publishing. Official lead-detail examples also show v25.0 and v26.0. This adapter does not call those versions and does not call `has_lead_access`.
+
+The workspace, operating plan, and frozen product come from a local mapping of the Page id and form id. A tenant id in the notification is ignored. Zero mappings, or more than one workspace, stay visible as review and do not create a lead. An ad id is stored only when Meta supplied one.
+
+A submission without the website form's free-text note is still an enquiry. Email alone is not permission to reply, to enroll a sequence, or to call. Answer permission, marketing permission, and call permission are stored separately with the question, the form id, the answer, and the provider time. Missing answer permission keeps the enquiry, opens a review task, and does not send. Missing company size, industry, or role does not by itself disqualify the enquiry. A permitted enquiry uses the existing acknowledgement and does not enter an outbound sequence. The same lead id does not create a second capture. A new lead id for an existing email keeps a new enquiry and the original first touch.
+
+LinkedIn Lead Sync, Google lead forms, comments, and direct messages are not read by this adapter. A page posting token is not used for lead retrieval. The Page was not subscribed, and no form or campaign was created.
+
+### Lead count
+
+Earlier notes said 43 leads. The latest active count is 33. `count(*)` from `leads` is 43. `count(*)` where `deleted_at` is null is 33. All 43 rows belong to the `agrayian` tenant. The 10 excluded rows share one `deleted_at` of `2026-10-10 07:33:25.04537+00`: 6 `ai_discovery` and 4 `inbound`. `audit_logs` has `discovery.run` and `lead.assign` for leads, and no delete or remove action. The `039` backup already contained 33 active leads, so this difference predates that upgrade. No row was restored or recreated to make the counts match.
+
+### Running locally
+
+| Item | Value |
+|---|---|
+| Database | Alembic `040`, applied after a backup at `039` |
+| Backup | `.local-backups/agrayian-before-040-2026-10-28.dump`, custom format, gitignored. Counts at backup: 9 held enrollments, 18 approvals, 33 active leads, 43 lead rows |
+| Restore | Stop api, worker, and beat. `pg_restore --clean --if-exists` the dump into `agrayian` inside the Postgres container. The restored schema is `039`. Upgrade before starting images that contain `040` |
+| Disposable proof | A restored copy was upgraded `039` → `040`. `lead_form_receipts` and `lead_form_bindings` were present. The prepared scope and its expiry were unchanged. The copy was dropped |
+| Scope | One row, `prepared`, expiry `2026-10-29 18:03:28.181796+00`. Not authorized |
+| Holds | 3 approvals and 9 enrollments remained `held` |
+| Images | api, web, worker, and beat rebuilt after the upgrade. Worker and beat were stopped during it |
+| Browser | The existing command view shows the native lead-form section. No mapping was saved and no provider action was clicked |
+
+No live Graph lead retrieval, Page subscription, publish, send, booking, call, spend, or discovery was started for this milestone.
+
+### What this section supersedes
+
+| Capability | Current state |
+|---|---|
+| Meta native lead forms | Fixture-verified from notification through one acknowledgement. Live retrieval is not verified |
+| LinkedIn Lead Sync, Google lead forms, comments, direct messages | Unsupported. Not implied by the Meta adapter |
+| Lead count | 33 active leads. 43 is the same table including 10 rows soft-deleted on 2026-10-10 |
+
+## Earlier status — 2026-10-28, organic creative production and performance read-back
+
+This section was current before Meta lead-form ingestion. The section above replaces it where they disagree.
 
 An operator can prepare a content calendar for one selected operating plan. Proposals stay separate from authorized creative versions. Each proposal uses the frozen product context, names its channel and format, and keeps missing topic research visible. It does not call a topic trending. A local image preview is stored only when the file is a JPEG or PNG of a usable size. A text brief is not presented as an image or a video. Video generation is labeled unsupported. A local preview can exist before a public media URL. Live publishing still requires that URL and the existing execution controls.
 
