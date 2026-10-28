@@ -1,4 +1,4 @@
-# Current Phase
+# Current Project Phase
 
 2026-10-28: Evidence-backed close-won is connected to the existing quote, approval, customer, onboarding, and journey path, and the local application is on Alembic `044`. An enquiry, a meeting, a generated quote, an accepted quote, or a score does not close a deal. Acceptance stores the quote version, the accepting person, their recorded relationship to the buyer, the time, the source, the evidence, and the review state. Fixture and manual acceptance stay distinct from provider-verified acceptance. No electronic-signature provider is connected. Acceptance does not create the customer.
 

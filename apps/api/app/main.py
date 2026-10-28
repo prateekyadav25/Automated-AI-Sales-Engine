@@ -75,7 +75,7 @@ async def validation_handler(_request: Request, exc: RequestValidationError) -> 
     return JSONResponse(
         status_code=422,
         content=Envelope(
-            error=ErrorBody(code="validation_error", message="Invalid request", details=exc.errors())
+            error=ErrorBody(code="validation_error", message="Invalid request parameters", details=exc.errors())
         ).model_dump(),
     )
 
@@ -131,6 +131,7 @@ def _ready() -> dict:
 
 @app.get("/health")
 def health() -> dict:
+    """Check health status."""
     return _live()
 
 
