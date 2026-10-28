@@ -68,6 +68,7 @@ export type Lead = {
   operating_plan_id?: string | null;
   icp_id?: string | null;
   product_name?: string;
+  offer_label?: string;
   enrichment_state?: string;
   missing_information?: string;
   eligibility?: string;

@@ -4,9 +4,15 @@ This plan follows the audit in `docs/current-capability-audit.md`. It connects t
 
 The running demonstration stays `prepared`. None of these milestones authorize a send, a post, a call, a booking, or ad spend. Live provider checks are a separate evidence step after the fixture journey is green.
 
+## Status on 2026-10-28
+
+**Organic creative production and provider-backed performance read-back are complete as a fixture path, and the local application is on Alembic `039`.** Discovery follow-through, outbound drafting, and organic acquisition remain complete as fixture paths. The next milestone to implement is native lead-form and supported enquiry ingestion. Paid campaign children, Meet, voice, commercial activation, and SEO remain required and are not started by this slice.
+
+The calendar, the local preview, the LinkedIn statistics adapter, and the reviewable recommendation are fixture-tested. A live metrics request was not made. The prepared demonstration was not authorized and its expiry was not changed.
+
 ## Status on 2026-10-27
 
-**Discovery and enrichment follow-through is complete as a fixture path, and the local application is running that code at Alembic `038`.** Outbound drafting and organic acquisition from earlier the same day remain complete as fixture paths. The next milestone to implement is organic creative production and performance read-back. Milestone 2's paused campaign children were not built. Only the spend fail-closed gate from that milestone was pulled forward. Milestone 4 no longer means "put the GOV price in every email." The price stays in the frozen context and is written only when the step or the enquiry asks.
+**Discovery and enrichment follow-through is complete as a fixture path, and the local application was running that code at Alembic `038`.** Outbound drafting and organic acquisition from earlier the same day remain complete as fixture paths. The milestone after that status was organic creative production and performance read-back. Milestone 2's paused campaign children were not built. Only the spend fail-closed gate from that milestone was pulled forward. Milestone 4 no longer means "put the GOV price in every email." The price stays in the frozen context and is written only when the step or the enquiry asks.
 
 What is now connected, in fixtures:
 
@@ -304,7 +310,9 @@ Acceptance that was proved with fixture providers: a sparse person is stored and
 
 ### Complete organic planning, creative production, and performance read-back
 
-Acceptance: one operating plan produces a scheduled creative, a mock publication, and a later metrics read that stores only numbers the fixture provider returned. A proposal to change creative stays `proposal_only`. No live post is created. The publication token and product context from Milestone 1 stay on the post.
+**Complete in fixtures on 2026-10-28, and running locally at Alembic `039`.** A live LinkedIn statistics call was not made. Facebook and Instagram insights remain unsupported by this adapter. Video generation remains unsupported.
+
+Acceptance that was proved with fixtures: one selected plan produces distinct proposals, a local image preview, an approved due creative, one mock publication, a fake LinkedIn statistics response, stored observations, an attributed enquiry, and a reviewable recommendation. Missing metrics stay null, a returned zero stays zero, a permission failure does not wipe a stored value, a repeated read does not add the totals, another product is not quoted, and a prepared scope makes no live metrics call.
 
 ### Native lead-form and supported enquiry ingestion
 
@@ -339,7 +347,7 @@ Acceptance: a fixture keyword and page recommendation are stored against the sel
 - SEO: keyword research, articles, landing pages, metadata, and Search Console.
 - YouTube, X, and WhatsApp posting or ads. Google Ads stays `PreparedAdsProvider`.
 - Native LinkedIn, Meta, and Google lead forms, and ingestion of comments or direct messages.
-- Social performance read-back and automatic creative changes. Manual `proposal_only` remains the metric behaviour.
+- Automatic creative changes, posting-frequency changes, and ad-spend changes. A fixture can store LinkedIn share statistics and a reviewable recommendation. A live metrics request is still unauthorized. Facebook and Instagram insights are not read by the LinkedIn adapter.
 - Dograh completion webhooks, the browser widget as a CRM dialer, Exotel/Twilio/Vapi live calls, and public voice callbacks.
 - Recall joining a meeting by itself. Milestone 3 only stores a URL.
 - Gmail Pub/Sub, live WhatsApp, and live support or finance vendor HTTP.
@@ -351,4 +359,4 @@ Acceptance: a fixture keyword and page recommendation are stored against the sel
 
 ## Completion of this plan
 
-Milestones 1 and 4, and discovery follow-through, now pass in fixtures. The post, the lead, and the acknowledgement share the selected product. The sequence draft freezes that product and labels the facts behind the email. A discovered person keeps the selected plan and reaches that draft only when assessment and channel permission allow it. No Apify, social, or model provider was contacted to prove this. The next milestone is organic creative production and performance read-back. Paid campaign children, native lead forms, Meet, voice, commercial activation, and SEO stay listed above with their own acceptance journeys. None of them inherits a live-provider claim from an older row in the database. The sales engine is not finished.
+Milestones 1 and 4, discovery follow-through, and organic creative read-back now pass in fixtures. The post, the lead, and the acknowledgement share the selected product. A content proposal can become one mock publication and a stored LinkedIn statistics reading without a live call. The sequence draft freezes that product and labels the facts behind the email. A discovered person keeps the selected plan and reaches that draft only when assessment and channel permission allow it. No Apify, social, or model provider was contacted to prove this. The next milestone is native lead-form and supported enquiry ingestion. Paid campaign children, Meet, voice, commercial activation, and SEO stay listed above with their own acceptance journeys. None of them inherits a live-provider claim from an older row in the database. The sales engine is not finished.

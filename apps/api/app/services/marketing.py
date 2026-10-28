@@ -30,9 +30,11 @@ from app.providers.social import (
     instagram_can_fetch,
 )
 from app.services.audit import write_audit
+from app.services.content_calendar import list_proposals
 from app.services.demo_guard import external_execution_block
 from app.services.discovery import annotate_prospects, bound_operating_plan, explicit_icp, run_discovery
 from app.services.effects import EffectAttempt, ReconciledEffect, execute_external_effect
+from app.services.organic_metrics import latest_recommendation, metric_summary, sales_evidence
 from app.services.product_context import build_product_context, customer_facing_from_profile, is_tier_label
 from app.services.public_forms import form_key_url
 from app.services.social import publish_post
@@ -414,6 +416,8 @@ def review_versions(db: Session, tenant_id: UUID) -> dict:
                 "status": row.status,
                 "channel": row.channel,
                 "headline": row.headline,
+                "body": row.body,
+                "image_url": row.image_url,
                 "scheduled_for": row.scheduled_for.isoformat() if row.scheduled_for else "",
                 "outcome": row.outcome,
                 **_delivery(db, row),
@@ -486,7 +490,7 @@ def revise_version(db: Session, *, tenant_id: UUID, actor_id: UUID, version_id: 
     db.add(successor)
     db.flush()
     plan.next_action = "review_pending_version"
-    return {**_detail(plan, f"Version {row.version_number} stayed authorized. Version {number} needs review."), "version_id": str(successor.id)}
+    return {**_detail(plan, f"Version {row.version_number} was kept. Version {number} is a new draft and needs review."), "version_id": str(successor.id)}
 
 
 def preview_schedule(db: Session, tenant_id: UUID) -> dict:
@@ -853,13 +857,20 @@ def attributed_outcomes(db: Session, tenant_id: UUID) -> dict:
         if isinstance(parsed, dict) and isinstance(parsed.get("impressions"), int):
             impressions = parsed["impressions"]
     optimization = "insufficient_evidence" if impressions is None or impressions < MINIMUM_IMPRESSIONS else "proposal_only"
+    evidence = sales_evidence(db, tenant_id, plan, leads)
     return {
         "detail": "Enquiries are counted from stored capture attribution. Missing provider metrics stay unavailable.",
         "attributed_enquiries": len(leads),
+        "qualified_leads": evidence["qualified_leads"],
+        "meetings": evidence["meetings"],
+        "won_deals": evidence["won_deals"],
+        "won_amount": evidence["won_amount"],
         "enquiries": [_enquiry(db, tenant_id, lead) for lead in leads[:8]],
         "acknowledgement": _acknowledgement_summary(db, tenant_id, leads),
         "opportunities": [{"id": str(row.id), "name": row.name, "stage": row.stage} for row in opportunities],
         "impressions": impressions,
+        "provider_metrics": metric_summary(db, tenant_id, plan.id),
+        "recommendation": latest_recommendation(db, tenant_id, plan.id),
         "optimization": optimization,
         "budget_change": None,
     }
@@ -899,10 +910,28 @@ def marketing_board(db: Session, tenant_id: UUID) -> dict:
             "products": products,
             "offer_name": "",
             "customer_facing_name": "",
+            "offer_label": "",
             "sku": "",
+            "proposals": [],
             "enquiries": [],
             "acknowledgement": {"not_prepared": 0, "pending": 0, "approved": 0},
-            "outcomes": {"attributed_enquiries": 0, "impressions": None, "optimization": "insufficient_evidence"},
+            "outcomes": {
+                "attributed_enquiries": 0,
+                "qualified_leads": 0,
+                "meetings": 0,
+                "won_deals": 0,
+                "won_amount": None,
+                "impressions": None,
+                "optimization": "insufficient_evidence",
+                "provider_metrics": {"impressions": None, "clicks": None, "freshness": "", "errors": [], "provenance": ""},
+                "recommendation": {
+                    "verdict": "insufficient_evidence",
+                    "observation": "No recommendation has been prepared.",
+                    "sample_size": 0,
+                    "limitation": "There is no stored provider sample.",
+                    "proposed_change": "Prepare a recommendation only after a provider reading is stored.",
+                },
+            },
         }
     reviewed = review_versions(db, tenant_id)
     outcomes = attributed_outcomes(db, tenant_id)
@@ -915,7 +944,9 @@ def marketing_board(db: Session, tenant_id: UUID) -> dict:
         "product_id": str(plan.product_id or ""),
         "offer_name": context.customer_facing_name,
         "customer_facing_name": context.customer_facing_name,
+        "offer_label": context.offer_label(),
         "sku": context.sku,
+        "proposals": list_proposals(db, tenant_id, plan.id),
         "products": products,
         "research_runs": plan.research_runs,
         "research_limit": plan.research_limit,
@@ -924,7 +955,13 @@ def marketing_board(db: Session, tenant_id: UUID) -> dict:
         "acknowledgement": outcomes.get("acknowledgement") or {"not_prepared": 0, "pending": 0, "approved": 0},
         "outcomes": {
             "attributed_enquiries": outcomes["attributed_enquiries"],
+            "qualified_leads": outcomes["qualified_leads"],
+            "meetings": outcomes["meetings"],
+            "won_deals": outcomes["won_deals"],
+            "won_amount": outcomes["won_amount"],
             "impressions": outcomes["impressions"],
+            "provider_metrics": outcomes["provider_metrics"],
+            "recommendation": outcomes["recommendation"],
             "optimization": outcomes["optimization"],
         },
     }

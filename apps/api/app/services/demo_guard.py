@@ -27,6 +27,8 @@ REVIEW_BLOCK = "The demonstration changed after authorization and must be review
 DEMO_DISCOVERY_BLOCK = "A DEMO workspace cannot run paid discovery without an authorized scope."
 DISCOVERY_OUTSIDE = "Paid discovery is outside the authorized scope."
 DEMO_PUBLISH_BLOCK = "A DEMO workspace cannot publish without an authorized scope."
+DEMO_METRICS_BLOCK = "A DEMO workspace cannot read provider metrics without an authorized scope."
+METRICS_OUTSIDE = "Organic metrics are outside the authorized scope."
 
 
 def _aware(moment: datetime | None) -> datetime | None:
@@ -192,6 +194,32 @@ def discovery_execution_block(db: Session, tenant_id: UUID, provider: object) ->
     allowed = _allowed(scope)
     if allowed is None or int(allowed.get("discovery.search") or 0) <= 0:
         return DISCOVERY_OUTSIDE
+    return ""
+
+
+def organic_metrics_block(db: Session, tenant_id: UUID) -> str:
+    """A DEMO tenant does not call a live metrics API unless a scope allows it.
+
+    A missing or prepared scope is not permission. This does not change the scope.
+    """
+    tenant = db.get(Tenant, tenant_id)
+    mode = ((tenant.operating_mode if tenant is not None else "") or "DEMO").strip().upper()
+    if mode != "DEMO":
+        return ""
+    scope = open_demo_scope(db, tenant_id)
+    if scope is None:
+        return DEMO_METRICS_BLOCK
+    if scope.status != "authorized":
+        return PREPARED_BLOCK
+    changed = _material_change(db, scope)
+    if changed:
+        return changed
+    expires = _aware(scope.expires_at)
+    if expires is not None and expires < datetime.now(UTC):
+        return "The demonstration scope has expired. Nothing was sent."
+    allowed = _allowed(scope)
+    if allowed is None or int(allowed.get("organic.metrics") or 0) <= 0:
+        return METRICS_OUTSIDE
     return ""
 
 

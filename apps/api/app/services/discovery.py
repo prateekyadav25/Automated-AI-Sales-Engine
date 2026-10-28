@@ -13,7 +13,6 @@ from app.models.autonomy import AutonomousRunStep, AutopilotSettings, EntityAuto
 from app.models.crm import ICP, Account, Contact, Lead, Task
 from app.models.identity import DomainEvent, User
 from app.models.integrations import ProviderAction
-from app.models.lifecycle import Product
 from app.models.operating_plan import OperatingPlan
 from app.providers.lead_discovery import (
     DISCOVERY_DAILY_LIMIT,
@@ -30,6 +29,7 @@ from app.services.crm import add_activity, assign_lead, list_lead_assignees
 from app.services.demo_guard import discovery_execution_block
 from app.services.discovery_query import build_discovery_query
 from app.services.idempotency import claim_daily_slot
+from app.services.product_context import build_product_context
 from app.services.provider_metrics import DISCOVERY_CANDIDATES, DISCOVERY_CREATED, DISCOVERY_DUPLICATES
 from app.services.provider_ops import (
     begin_action,
@@ -461,24 +461,15 @@ def record_discovery_gap(db: Session, *, tenant_id: UUID, actor_id: UUID, lead: 
     return action
 
 
-def _product_name(db: Session, lead: Lead) -> str:
+def _product_display(db: Session, lead: Lead) -> tuple[str, str]:
+    """Customer-facing name and the separate offer or tier. Neither is hardcoded."""
     if lead.operating_plan_id is None:
-        return ""
+        return "", ""
     plan = db.get(OperatingPlan, lead.operating_plan_id)
-    if plan is None or plan.tenant_id != lead.tenant_id:
-        return ""
-    try:
-        snapshot = json.loads(plan.context_snapshot or "{}")
-    except json.JSONDecodeError:
-        snapshot = {}
-    if isinstance(snapshot, dict) and str(snapshot.get("customer_facing_name") or "").strip():
-        return str(snapshot["customer_facing_name"]).strip()
-    if plan.product_id is None:
-        return ""
-    product = db.get(Product, plan.product_id)
-    if product is None or product.tenant_id != lead.tenant_id:
-        return ""
-    return product.name
+    if plan is None or plan.tenant_id != lead.tenant_id or plan.deleted_at is not None:
+        return "", ""
+    context = build_product_context(db, lead.tenant_id, plan=plan)
+    return context.customer_facing_name, context.offer_label()
 
 
 def _recorded_gaps(db: Session, lead: Lead) -> str:
@@ -588,7 +579,9 @@ def annotate_prospects(db: Session, tenant_id: UUID, result: dict) -> dict:
         prospect["next_action"] = action
         prospect["explanation"] = explanation
         prospect["owner_name"] = owner.name if owner is not None and owner.tenant_id == tenant_id else ""
-        prospect["product_name"] = _product_name(db, lead)
+        product_name, offer_label = _product_display(db, lead)
+        prospect["product_name"] = product_name
+        prospect["offer_label"] = offer_label
         prospect["enrichment_state"] = enrichment
         prospect["missing_information"] = missing
         prospect["eligibility"] = (
@@ -615,6 +608,7 @@ def workflow_fields(db: Session, lead: Lead) -> dict:
     prospect = annotated["prospects"][0]
     return {
         "product_name": str(prospect.get("product_name") or ""),
+        "offer_label": str(prospect.get("offer_label") or ""),
         "enrichment_state": str(prospect.get("enrichment_state") or ""),
         "missing_information": str(prospect.get("missing_information") or ""),
         "eligibility": str(prospect.get("eligibility") or ""),

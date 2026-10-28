@@ -107,6 +107,7 @@ class LeadOut(LeadIn):
     operating_plan_id: UUID | None = None
     icp_id: UUID | None = None
     product_name: str = ""
+    offer_label: str = ""
     enrichment_state: str = ""
     missing_information: str = ""
     eligibility: str = ""

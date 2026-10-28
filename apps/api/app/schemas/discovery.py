@@ -25,6 +25,7 @@ class DiscoveryProspectOut(APIModel):
     owner_name: str = ""
     provider_ref: str = ""
     product_name: str = ""
+    offer_label: str = ""
     enrichment_state: str = ""
     missing_information: str = ""
     eligibility: str = ""

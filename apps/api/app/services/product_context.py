@@ -54,6 +54,19 @@ class ProductContext:
     sources: dict
     missing: tuple[str, ...]
 
+    def offer_label(self) -> str:
+        """The tier and price, kept apart from the customer-facing product name."""
+        catalogue = str(self.sources.get("catalogue_name") or "").strip()
+        parts: list[str] = []
+        if catalogue and catalogue.casefold() != self.customer_facing_name.casefold():
+            parts.append(catalogue)
+        if self.headcount_tier and self.headcount_tier.casefold() not in " ".join(parts).casefold():
+            parts.append(self.headcount_tier)
+        price = self.price_line().rstrip(".")
+        if price:
+            parts.append(price)
+        return " · ".join(parts)
+
     def price_line(self) -> str:
         if "price" in self.missing or not self.price_amount or not self.currency:
             return ""

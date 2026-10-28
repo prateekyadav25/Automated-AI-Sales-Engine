@@ -201,6 +201,7 @@ export default function LeadDetailPage() {
           <Line label="Fit assessment" value={parts?.total != null ? `${parts.total} / 100 · evidence attached` : "Not scored"} />
           <Line label="Source" value={lead.source || "Not recorded"} />
           <Line label="Selected product" value={lead.product_name || "No product is bound"} />
+          <Line label="Offer" value={lead.offer_label || "No offer or tier is stored"} />
           <Line label="Enrichment" value={lead.enrichment_state ? labelize(lead.enrichment_state) : "Not started"} />
           <Line label="Missing" value={lead.missing_information || "Nothing further is listed"} />
           <Line label="Channel eligibility" value={lead.eligibility ? labelize(lead.eligibility) : "Not assessed"} />

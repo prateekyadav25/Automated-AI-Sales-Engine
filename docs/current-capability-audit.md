@@ -1,5 +1,44 @@
 # Current capability audit
 
+## Current status — 2026-10-28, organic creative production and performance read-back
+
+This is the current status. The discovery section below, the outbound section, the executive assessment, the baseline table, and the capability matrix are earlier. Where they disagree with this section, this section is the one to use.
+
+An operator can prepare a content calendar for one selected operating plan. Proposals stay separate from authorized creative versions. Each proposal uses the frozen product context, names its channel and format, and keeps missing topic research visible. It does not call a topic trending. A local image preview is stored only when the file is a JPEG or PNG of a usable size. A text brief is not presented as an image or a video. Video generation is labeled unsupported. A local preview can exist before a public media URL. Live publishing still requires that URL and the existing execution controls.
+
+Approval and scheduling use the existing creative versions. Unapproved content is not published. Future content waits for the due task. A due approved version reaches the existing publisher once. Mock publications keep an empty provider id and an empty permalink. An edit creates a new draft. An unknown provider result is reconciled before another attempt.
+
+LinkedIn share statistics use the organizational entity statistics contract and are tested with fake HTTP. Stored observations keep the provider value, the retrieval time, the period when supplied, and whether the reading is mock, fixture, or live. Zero is distinct from unavailable, unsupported, and failed. Repeated collection does not add cumulative totals. Facebook and Instagram insights are unsupported by this adapter. The worker task does not open a live client while the demonstration scope is prepared.
+
+Provider reach and clicks are shown apart from attributed enquiries, qualified leads, meetings, and won deals. Anonymous clicks are not turned into leads. Recommendations state the sample and the limitation. Insufficient evidence stays insufficient evidence. Recommendations do not change copy, cadence, or spend.
+
+The customer-facing name and the offer or tier are separate. The shared context supplies both. The discovery list does not treat a stored send approval as the next action unless the assessment is outbound-eligible. A display fixture that once showed both together was not produced by follow-through.
+
+### Running locally
+
+| Item | Value |
+|---|---|
+| Database | Alembic `039`, applied after a backup at `038` |
+| Backup | `.local-backups/agrayian-before-039-2026-10-28.dump`, custom format, gitignored. Counts at backup: 9 held enrollments, 18 approvals, 33 leads |
+| Restore | Stop api, worker, and beat. `pg_restore --clean --if-exists` the dump into `agrayian` inside the Postgres container. The restored schema is `038`. Upgrade before starting images that contain `039` |
+| Disposable proof | A restored copy was upgraded `038` → `039`. The new tables and `content_brief_json` were present. The prepared scope and its expiry were unchanged. The copy was dropped |
+| Scope | One row, `prepared`, expiry `2026-10-29 18:03:28.181796+00`. Not authorized |
+| Holds | 3 approvals and 9 enrollments remained `held` |
+| Images | api, web, worker, and beat rebuilt after the upgrade. Worker and beat were stopped during it |
+| Browser | The existing operating-plan view was checked without preparing content, publishing, collecting metrics, researching, or sending |
+
+No live LinkedIn metrics request, publish, send, booking, call, spend, or discovery was started for this milestone.
+
+### What this section supersedes
+
+| Capability | Current state |
+|---|---|
+| Organic calendar | Fixture-verified proposals for one selected plan. They are not scheduled until a person promotes, authorizes, and schedules a version |
+| Creative preview | A local PNG preview is fixture-verified for an image post. Video generation is unsupported. Public media readiness is separate |
+| Organic metrics | LinkedIn share statistics are fixture-verified with fake HTTP. A live read was not made. Facebook and Instagram insights are unsupported here |
+| Sales evidence | Attributed enquiries, qualified leads, meetings, and won deals stay on stored records. Clicks do not create leads |
+| Recommendations | Reviewable only. Insufficient evidence does not pick a winner and does not change the approved post |
+
 ## Current status — 2026-10-27, discovery follow-through
 
 This is the current status. The outbound section below, the executive assessment, the baseline table, the capability matrix, and the organic addendum are earlier the same day. Where they disagree with this section, this section is the one to use.

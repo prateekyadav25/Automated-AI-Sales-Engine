@@ -43,6 +43,7 @@ type Prospect = {
   explanation: string;
   outcome: string;
   product_name?: string;
+  offer_label?: string;
   missing_information?: string;
   eligibility?: string;
   enrichment_state?: string;
@@ -54,11 +55,42 @@ type PlanVersion = {
   status: string;
   channel: string;
   headline?: string;
+  body?: string;
+  image_url?: string;
   outcome: string;
   scheduled_for?: string;
   delivery?: string;
   provider_post_id?: string;
   mock_notice?: string;
+};
+type ContentProposal = {
+  id: string;
+  channel: string;
+  format: string;
+  topic: string;
+  body: string;
+  call_to_action: string;
+  asset_state: string;
+  asset_url: string;
+  asset_note: string;
+  proposed_for: string;
+  missing_research: string;
+  status: string;
+  public_media_ready: boolean;
+};
+type ProviderMetrics = {
+  impressions: number | null;
+  clicks: number | null;
+  freshness: string;
+  errors: string[];
+  provenance: string;
+};
+type Recommendation = {
+  verdict: string;
+  observation: string;
+  sample_size: number;
+  limitation: string;
+  proposed_change: string;
 };
 type PlanEnquiry = { lead_id: string; acknowledgement: string; publication: string };
 type PlanProduct = { id: string; name: string; kind: string; list_price: string; currency: string };
@@ -85,11 +117,23 @@ type Operations = {
     products?: PlanProduct[];
     offer_name?: string;
     customer_facing_name?: string;
+    offer_label?: string;
     sku?: string;
     product_id?: string;
+    proposals?: ContentProposal[];
     enquiries?: PlanEnquiry[];
     acknowledgement?: { not_prepared: number; pending: number; approved: number };
-    outcomes: { attributed_enquiries: number; impressions: number | null; optimization: string };
+    outcomes: {
+      attributed_enquiries: number;
+      qualified_leads?: number;
+      meetings?: number;
+      won_deals?: number;
+      won_amount?: string | null;
+      impressions: number | null;
+      optimization: string;
+      provider_metrics?: ProviderMetrics;
+      recommendation?: Recommendation;
+    };
   };
 };
 
@@ -118,6 +162,14 @@ export function CommandOperations() {
   const [result, setResult] = useState("");
   const [journeyId, setJourneyId] = useState("");
   const [productId, setProductId] = useState("");
+  const [objective, setObjective] = useState("");
+  const [audience, setAudience] = useState("");
+  const [channels, setChannels] = useState<string[]>(["linkedin"]);
+  const [startOn, setStartOn] = useState("");
+  const [endOn, setEndOn] = useState("");
+  const [cadenceDays, setCadenceDays] = useState("7");
+  const [themes, setThemes] = useState("");
+  const [callToAction, setCallToAction] = useState("");
   const operations = useQuery({
     queryKey: ["command-operations"],
     queryFn: async () => (await api<Operations>("/api/v1/command-center/operations")).data,
@@ -263,6 +315,7 @@ export function CommandOperations() {
               </button>
               <button className="btn" type="button" onClick={() => plan.mutate({ path: "research" })}>Research prospects</button>
               <button className="btn" type="button" onClick={() => plan.mutate({ path: "drafts" })}>Generate calendar draft</button>
+              <button className="btn" type="button" onClick={() => plan.mutate({ path: "metrics/collect" })}>Read provider metrics</button>
               <button className="btn" type="button" onClick={() => plan.mutate({ path: "review", method: "GET" })}>Review pending versions</button>
               <button className="btn" type="button" disabled={!pending} onClick={() => pending && plan.mutate({ path: "authorize", body: { version_id: pending.id } })}>Authorize pending version</button>
               <button className="btn" type="button" onClick={() => plan.mutate({ path: "schedule", method: "GET" })}>Preview scheduled work</button>
@@ -286,8 +339,8 @@ export function CommandOperations() {
         <h3>Discovery</h3>
         {data.discovery?.prospects?.length ? data.discovery.prospects.map((row) => (
           <div className="line-item" key={`${row.name}-${row.outcome}`}>
-            <span>{row.name || "Unnamed prospect"} · {row.product_name || "No product"} · {row.owner_name || "Unassigned"}</span>
-            <span>{row.eligibility || row.outcome} · {row.enrichment_state || "enrichment unknown"} · {row.missing_information || "no missing list"} · {row.approval_id ? `draft ${row.approval_id}` : row.next_action}</span>
+            <span>{row.name || "Unnamed prospect"} · {row.product_name || "No product"}{row.offer_label ? ` · ${row.offer_label}` : ""} · {row.owner_name || "Unassigned"}</span>
+            <span>{row.eligibility || row.outcome} · {row.enrichment_state || "enrichment unknown"} · {row.missing_information || "no missing list"} · {row.eligibility === "outbound_eligible" && row.approval_id ? `draft ${row.approval_id}` : row.next_action}</span>
           </div>
         )) : <p className="muted">{data.discovery?.status === "failed" ? data.discovery.reason || "Discovery failed." : "No discovery result is stored."}</p>}
         <h3>Operating plan</h3>
@@ -296,6 +349,64 @@ export function CommandOperations() {
           <span>{data.marketing?.sku ? `Internal SKU ${data.marketing.sku}` : "No SKU on this plan"}</span>
         </div>
         <div className="line-item">
+          <span>Offer</span>
+          <span>{data.marketing?.offer_label || "No offer or tier is stored"}</span>
+        </div>
+        {can("campaigns.write") ? (
+          <form
+            className="ds-grid"
+            onSubmit={(event) => {
+              event.preventDefault();
+              plan.mutate({
+                path: "calendar",
+                body: {
+                  objective,
+                  audience,
+                  channels,
+                  start_on: startOn,
+                  end_on: endOn,
+                  cadence_days: Number(cadenceDays) || 0,
+                  themes: themes.split("\n").map((item) => item.trim()).filter(Boolean),
+                  call_to_action: callToAction,
+                },
+              });
+            }}
+          >
+            <label>Objective<input value={objective} onChange={(event) => setObjective(event.target.value)} /></label>
+            <label>Audience<input value={audience} onChange={(event) => setAudience(event.target.value)} /></label>
+            <label>Start<input type="date" value={startOn} onChange={(event) => setStartOn(event.target.value)} /></label>
+            <label>End<input type="date" value={endOn} onChange={(event) => setEndOn(event.target.value)} /></label>
+            <label>Cadence in days<input value={cadenceDays} onChange={(event) => setCadenceDays(event.target.value)} /></label>
+            <label>Themes, one per line<textarea value={themes} onChange={(event) => setThemes(event.target.value)} /></label>
+            <label>Call to action<input value={callToAction} onChange={(event) => setCallToAction(event.target.value)} /></label>
+            <div className="ds-flex">
+              {["linkedin", "facebook", "instagram"].map((channel) => (
+                <label key={channel}>
+                  <input
+                    type="checkbox"
+                    checked={channels.includes(channel)}
+                    onChange={(event) => setChannels((current) => event.target.checked ? [...current, channel] : current.filter((item) => item !== channel))}
+                  />
+                  {channel}
+                </label>
+              ))}
+            </div>
+            <button className="btn" type="submit">Prepare content proposals</button>
+          </form>
+        ) : null}
+        <h3>Proposed content</h3>
+        {(data.marketing?.proposals || []).length === 0 ? <p className="muted">No content proposal is waiting. A proposal is not a scheduled post.</p> : data.marketing?.proposals?.map((proposal) => (
+          <div className="line-item" key={proposal.id}>
+            <span>{proposal.topic} · {proposal.channel} · {proposal.format} · {proposal.status} · {proposal.proposed_for}</span>
+            <span>{proposal.asset_state}{proposal.public_media_ready ? " · public media ready" : " · public media not ready"} · {proposal.missing_research}</span>
+            {proposal.body ? <p>{proposal.body}</p> : null}
+            {proposal.asset_url && proposal.asset_state === "local_preview" ? <img alt={proposal.topic} src={proposal.asset_url} style={{ maxWidth: 240 }} /> : <p className="muted">{proposal.asset_note}</p>}
+            {can("campaigns.write") && proposal.status === "proposed" ? (
+              <button className="btn" type="button" onClick={() => plan.mutate({ path: "proposals/promote", body: { proposal_id: proposal.id } })}>Promote to draft</button>
+            ) : null}
+          </div>
+        ))}
+        <div className="line-item">
           <span>Blocker or next action</span>
           <span>{data.marketing?.blocker || data.marketing?.next_action || "No blocker is recorded."}</span>
         </div>
@@ -303,11 +414,25 @@ export function CommandOperations() {
           <div className="line-item" key={version.id}>
             <span>{version.headline || `Version ${version.version}`} · {version.channel} · {version.status}{version.scheduled_for ? ` · ${version.scheduled_for}` : ""}</span>
             <span>{version.delivery === "mock" ? "Mock publication. Not a verified live post." : version.delivery === "live" ? `Live post ${version.provider_post_id || ""}`.trim() : version.outcome || "Not sent"}</span>
+            {version.body ? <p>{version.body}</p> : null}
+            {version.image_url ? <img alt={version.headline || "Creative preview"} src={version.image_url} style={{ maxWidth: 240 }} /> : null}
           </div>
         ))}
         <div className="line-item">
           <span>Attributed enquiries</span>
           <span>{data.marketing?.outcomes?.attributed_enquiries ?? 0}</span>
+        </div>
+        <div className="line-item">
+          <span>Qualified leads</span>
+          <span>{data.marketing?.outcomes?.qualified_leads ?? 0}</span>
+        </div>
+        <div className="line-item">
+          <span>Meetings</span>
+          <span>{data.marketing?.outcomes?.meetings ?? 0}</span>
+        </div>
+        <div className="line-item">
+          <span>Won deals</span>
+          <span>{data.marketing?.outcomes?.won_deals ?? 0}{data.marketing?.outcomes?.won_amount ? ` · ${data.marketing.outcomes.won_amount}` : " · no won amount is stored"}</span>
         </div>
         <div className="line-item">
           <span>Acknowledgement</span>
@@ -320,13 +445,35 @@ export function CommandOperations() {
           </div>
         ))}
         <div className="line-item">
-          <span>Provider impressions</span>
+          <span>Stored creative impressions</span>
           <span>{data.marketing?.outcomes?.impressions === null || data.marketing?.outcomes?.impressions === undefined ? "Unavailable" : data.marketing.outcomes.impressions}</span>
         </div>
         <div className="line-item">
-          <span>Optimization</span>
-          <span>{data.marketing?.outcomes?.optimization || "insufficient_evidence"}</span>
+          <span>Provider metrics</span>
+          <span>
+            {data.marketing?.outcomes?.provider_metrics?.impressions === null || data.marketing?.outcomes?.provider_metrics?.impressions === undefined
+              ? "Impressions unavailable"
+              : `${data.marketing.outcomes.provider_metrics.impressions} impressions`}
+            {data.marketing?.outcomes?.provider_metrics?.clicks === null || data.marketing?.outcomes?.provider_metrics?.clicks === undefined
+              ? " · clicks unavailable"
+              : ` · ${data.marketing.outcomes.provider_metrics.clicks} clicks`}
+            {data.marketing?.outcomes?.provider_metrics?.freshness ? ` · read ${data.marketing.outcomes.provider_metrics.freshness}` : " · no reading stored"}
+            {data.marketing?.outcomes?.provider_metrics?.provenance ? ` · ${data.marketing.outcomes.provider_metrics.provenance}` : ""}
+          </span>
         </div>
+        {(data.marketing?.outcomes?.provider_metrics?.errors || []).map((error) => (
+          <p className="muted" key={error}>{error}</p>
+        ))}
+        <div className="line-item">
+          <span>Recommendation</span>
+          <span>{data.marketing?.outcomes?.recommendation?.verdict || data.marketing?.outcomes?.optimization || "insufficient_evidence"}</span>
+        </div>
+        <p className="muted">
+          {data.marketing?.outcomes?.recommendation?.observation || "No recommendation has been prepared."}
+          {" "}Sample {data.marketing?.outcomes?.recommendation?.sample_size ?? 0}.
+          {" "}{data.marketing?.outcomes?.recommendation?.limitation || ""}
+          {" "}{data.marketing?.outcomes?.recommendation?.proposed_change || ""}
+        </p>
         <h3>Journeys</h3>
         {data.journeys.length === 0 ? <p className="muted">No journey is active.</p> : data.journeys.map((row) => (
           <button className="row" key={row.journey_id} type="button" onClick={() => setJourneyId(row.journey_id)} style={{ width: "100%", textAlign: "left" }}>

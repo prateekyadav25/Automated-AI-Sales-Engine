@@ -20,9 +20,9 @@ from app.models.lifecycle import Product, Sequence, SequenceEnrollment, Sequence
 from app.models.operating_plan import DemoScope, OperatingPlan
 from app.providers.lead_discovery import DiscoveredLead, DiscoveryResult
 from app.services.demo_guard import DEMO_DISCOVERY_BLOCK, DISCOVERY_OUTSIDE, PREPARED_BLOCK, seal_scope
-from app.services.discovery import run_discovery
+from app.services.discovery import run_discovery, workflow_fields
 from app.services.marketing import research_prospects
-from app.services.orchestrator import process_pending_events, retry_entity
+from app.services.orchestrator import process_pending_events, retry_entity, run_lead_intake
 
 
 class _Down:
@@ -439,6 +439,57 @@ def test_demo_scopes_make_no_live_discovery_calls(client: TestClient) -> None:
         wrong = run_discovery(db, tenant_id=user.tenant_id, actor_id=user.id, provider=stub, enforce_budget=False, search_query="people")
         assert wrong["reason"] == DISCOVERY_OUTSIDE
         assert stub.calls == 0
+    finally:
+        db.rollback()
+        db.close()
+
+
+def test_ineligible_discovery_follow_through_does_not_create_a_send_approval(client: TestClient, monkeypatch) -> None:
+    """A browser check once showed an ineligible lead beside a send approval.
+
+    That pair was inserted by hand so the page could render both fields, and it was deleted.
+    Follow-through does not create a send approval for a discovered person without permission.
+    """
+    _ = client
+    monkeypatch.setattr("app.services.content.get_llm_provider", lambda *args, **kwargs: _Down())
+    monkeypatch.setattr("app.services.orchestrator.score_lead", _score)
+    db = get_session()
+    try:
+        user = _user(db)
+        lead = Lead(
+            tenant_id=user.tenant_id,
+            created_by=user.id,
+            first_name="Display",
+            last_name="Fixture",
+            email="",
+            company_name="Fixture Freight",
+            source="ai_discovery",
+            consent_email=False,
+            notes="LinkedIn: https://www.linkedin.com/in/display-fixture",
+        )
+        db.add(lead)
+        db.flush()
+        run_lead_intake(db, tenant_id=user.tenant_id, actor_id=user.id, lead=lead, correlation_id="display-fixture")
+        assert _count(db, AIApproval, user.tenant_id, lead.id, "sequence.email.send") == 0
+        assert _count(db, AIApproval, user.tenant_id, lead.id, "email.acknowledge") == 0
+        approval = AIApproval(
+            tenant_id=user.tenant_id,
+            created_by=user.id,
+            action_level=1,
+            action_type="sequence.email.send",
+            title="Display only",
+            entity_type="lead",
+            entity_id=str(lead.id),
+            status="pending",
+            payload_json="{}",
+            idempotency_key="fixture-review-do-not-send",
+        )
+        db.add(approval)
+        db.flush()
+        view = workflow_fields(db, lead)
+        assert view["approval_id"] == str(approval.id)
+        assert view["eligibility"] != "outbound_eligible"
+        assert view["next_action"]
     finally:
         db.rollback()
         db.close()

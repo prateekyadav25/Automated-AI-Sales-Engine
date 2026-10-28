@@ -21,6 +21,7 @@ class OperatingPlan(Base, TenantOwnedMixin):
     blocker: Mapped[str] = mapped_column(Text, default="", nullable=False)
     next_action: Mapped[str] = mapped_column(String(80), default="start_operating_plan", nullable=False)
     context_snapshot: Mapped[str] = mapped_column(Text, default="", nullable=False)
+    content_brief_json: Mapped[str] = mapped_column(Text, default="", nullable=False)
 
 
 class CreativeVersion(Base, TenantOwnedMixin):

@@ -1,8 +1,12 @@
 # Current Phase
 
-2026-10-27: Discovery follow-through is connected in fixtures and the local application is on Alembic `038`. A discovery run stores the tenant, the chosen ICP, and the chosen operating plan, then the existing outbox assesses the person. Missing channel permission keeps the lead and opens a task. It does not acknowledge and it does not create a send approval. A permissioned, assessment-eligible fixture reaches one product-aware draft. Sending stays blocked. The demonstration remains prepared. Its expiry is unchanged. Historical holds were not released. Public hosting remains postponed.
+2026-10-28: Organic creative production and provider-backed performance read-back are connected in fixtures, and the local application is on Alembic `039`. An operator can prepare a reviewable content calendar for one selected operating plan. A proposal stays separate from an approved creative. One supported image format can store a local preview. Live publishing still requires a public media URL and an authorized scope. LinkedIn share statistics are read through the provider contract and tested with fake HTTP. Missing metrics stay missing. A recommendation is reviewable and does not change copy, cadence, or spend. The demonstration remains prepared. Its expiry is unchanged. Historical holds were not released.
 
-Next recommended milestone: organic creative production and performance read-back. Do not authorize a send, a post, a booking, a call, discovery spend, or ad spend as part of that work. Paid campaign children, native lead forms, Meet, voice, commercial activation, and SEO remain listed in `docs/revenue-os-next-milestones.md`.
+Next recommended milestone: native lead-form and supported enquiry ingestion. Do not authorize a send, a post, a booking, a call, discovery spend, or ad spend as part of that work. Paid campaign children, Meet, voice, commercial activation, and SEO remain required and are listed in `docs/revenue-os-next-milestones.md`.
+
+2026-10-27: Discovery follow-through is connected in fixtures and the local application was on Alembic `038`. A discovery run stores the tenant, the chosen ICP, and the chosen operating plan, then the existing outbox assesses the person. Missing channel permission keeps the lead and opens a task. It does not acknowledge and it does not create a send approval. A permissioned, assessment-eligible fixture reaches one product-aware draft. Sending stays blocked. The demonstration remains prepared. Its expiry is unchanged. Historical holds were not released. Public hosting remains postponed.
+
+That day's next milestone was organic creative production and performance read-back. It is the 2026-10-28 section above.
 
 **Phases 0–22 plus Autopilot batches 1–8 and the full-funnel completion slice are in product.**
 

@@ -598,6 +598,7 @@ def get_lead(
     payload = _lead_out(db, lead)
     view = workflow_fields(db, lead)
     payload.product_name = view["product_name"]
+    payload.offer_label = view["offer_label"]
     payload.enrichment_state = view["enrichment_state"]
     payload.missing_information = view["missing_information"]
     payload.eligibility = view["eligibility"]

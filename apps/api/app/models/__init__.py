@@ -132,6 +132,7 @@ from app.models.ml import (
     TrainingExample,
 )
 from app.models.operating_plan import CreativeVersion, DemoScope, OperatingPlan
+from app.models.organic import ContentProposal, ContentRecommendation, OrganicMetricObservation
 from app.models.pilot import (
     AutopilotSettingsVersion,
     DataQualityIssue,
@@ -235,6 +236,9 @@ __all__ = [
     "OperatingPlan",
     "CreativeVersion",
     "DemoScope",
+    "ContentProposal",
+    "OrganicMetricObservation",
+    "ContentRecommendation",
     "CampaignMember",
     "AbmPlay",
     "Sequence",

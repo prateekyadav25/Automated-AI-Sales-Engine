@@ -1,13 +1,15 @@
 from typing import Annotated
 from uuid import UUID
 
-from fastapi import APIRouter, Depends
+from fastapi import APIRouter, Depends, File, UploadFile
 from pydantic import BaseModel
 from sqlalchemy.orm import Session
 
 from app.core.deps import AuthContext, require_permission
 from app.db.session import get_db
 from app.schemas.common import Envelope
+from app.services.content_calendar import attach_local_preview, promote_proposal, propose_calendar
+from app.services.discovery import bound_operating_plan
 from app.services.marketing import (
     attributed_outcomes,
     authorize_version,
@@ -24,6 +26,7 @@ from app.services.marketing import (
     start_operating_plan,
 )
 from app.services.operations import channel_readiness
+from app.services.organic_metrics import collect_linkedin_metrics, prepare_recommendation
 
 router = APIRouter(prefix="/operating-plans", tags=["operating-plans"])
 
@@ -38,6 +41,22 @@ class MetricsIn(BaseModel):
     impressions: int | None = None
     clicks: int | None = None
     spend: str | None = None
+
+
+class CalendarIn(BaseModel):
+    plan_id: UUID | None = None
+    objective: str = ""
+    audience: str = ""
+    channels: list[str] = []
+    start_on: str = ""
+    end_on: str = ""
+    cadence_days: int = 1
+    themes: list[str] = []
+    call_to_action: str = ""
+
+
+class ProposalIn(BaseModel):
+    proposal_id: UUID
 
 
 @router.get("/readiness")
@@ -172,6 +191,73 @@ def metrics(
 ) -> Envelope[dict]:
     supplied = {key: getattr(body, key) for key in body.model_fields_set if key != "version_id" and getattr(body, key) is not None}
     data = record_metrics(db, tenant_id=ctx.tenant_id, version_id=body.version_id, metrics=supplied or None)
+    db.commit()
+    return Envelope(data=data)
+
+
+@router.post("/calendar")
+def calendar(
+    body: CalendarIn,
+    db: Annotated[Session, Depends(get_db)],
+    ctx: Annotated[AuthContext, Depends(require_permission("campaigns.write"))],
+) -> Envelope[dict]:
+    data = propose_calendar(
+        db,
+        tenant_id=ctx.tenant_id,
+        actor_id=ctx.user.id,
+        plan_id=body.plan_id,
+        objective=body.objective,
+        audience=body.audience,
+        channels=body.channels,
+        start_on=body.start_on,
+        end_on=body.end_on,
+        cadence_days=body.cadence_days,
+        themes=body.themes,
+        call_to_action=body.call_to_action,
+    )
+    db.commit()
+    return Envelope(data=data)
+
+
+@router.post("/proposals/{proposal_id}/preview")
+async def preview(
+    proposal_id: UUID,
+    db: Annotated[Session, Depends(get_db)],
+    ctx: Annotated[AuthContext, Depends(require_permission("campaigns.write"))],
+    file: Annotated[UploadFile, File()],
+) -> Envelope[dict]:
+    data = attach_local_preview(
+        db,
+        tenant_id=ctx.tenant_id,
+        actor_id=ctx.user.id,
+        proposal_id=proposal_id,
+        data=await file.read(),
+    )
+    db.commit()
+    return Envelope(data=data)
+
+
+@router.post("/proposals/promote")
+def promote(
+    body: ProposalIn,
+    db: Annotated[Session, Depends(get_db)],
+    ctx: Annotated[AuthContext, Depends(require_permission("campaigns.write"))],
+) -> Envelope[dict]:
+    data = promote_proposal(db, tenant_id=ctx.tenant_id, actor_id=ctx.user.id, proposal_id=body.proposal_id)
+    db.commit()
+    return Envelope(data=data)
+
+
+@router.post("/metrics/collect")
+def collect_metrics(
+    db: Annotated[Session, Depends(get_db)],
+    ctx: Annotated[AuthContext, Depends(require_permission("campaigns.write"))],
+) -> Envelope[dict]:
+    """Record a blocked or client-less read. This route does not open a live provider client."""
+    data = collect_linkedin_metrics(db, tenant_id=ctx.tenant_id, actor_id=ctx.user.id, client=None)
+    plan, _message = bound_operating_plan(db, ctx.tenant_id, None)
+    if plan is not None and not data.get("blocked"):
+        data["recommendation"] = prepare_recommendation(db, tenant_id=ctx.tenant_id, actor_id=ctx.user.id, plan=plan)
     db.commit()
     return Envelope(data=data)
 

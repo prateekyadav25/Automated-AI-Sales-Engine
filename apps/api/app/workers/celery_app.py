@@ -50,6 +50,7 @@ celery_app.conf.update(
         "scheduler-heartbeat": {"task": "scheduler_heartbeat", "schedule": 60.0},
         "hold-stale-external-work": {"task": "hold_stale_external_work", "schedule": 60.0},
         "publish-due-operating-plans": {"task": "publish_due_operating_plans", "schedule": 60.0},
+        "collect-organic-metrics": {"task": "collect_organic_metrics", "schedule": 300.0},
         "operator-daily-brief": {"task": "operator_daily_brief", "schedule": 86400.0},
     },
 )
@@ -125,6 +126,21 @@ def publish_due_operating_plans() -> int:
             count = run_per_tenant(db, lambda _tenant_id: publish_due_versions(db))
         else:
             count = publish_due_versions(db)
+        db.commit()
+        return count
+    finally:
+        db.close()
+
+
+@celery_app.task(name="collect_organic_metrics")
+def collect_organic_metrics() -> int:
+    from app.db.session import get_engine, get_session
+    from app.services.organic_metrics import collect_due_organic_metrics
+
+    get_engine()
+    db = get_session()
+    try:
+        count = collect_due_organic_metrics(db)
         db.commit()
         return count
     finally:
