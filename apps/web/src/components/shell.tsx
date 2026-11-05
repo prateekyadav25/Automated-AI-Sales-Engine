@@ -16,6 +16,7 @@ const WORKSPACE_ICON: Record<string, string> = {
   command: "dashboard",
   strategy: "compass",
   marketing: "megaphone",
+  growth: "spark",
   sales: "briefcase",
   commercial: "document",
   customers: "heart",

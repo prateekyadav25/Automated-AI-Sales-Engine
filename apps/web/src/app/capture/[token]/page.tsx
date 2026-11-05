@@ -160,6 +160,9 @@ export default function PublicCapturePage() {
           utm_campaign: attribution.utm_campaign,
           campaign_id: attribution.campaign_id || null,
           ad_id: attribution.ad_id,
+          ad: query.get("ad") || "",
+          publication: query.get("publication") || "",
+          growth: query.get("growth") || "",
         }),
       });
       setStatus(response.ok ? "Received. A human will follow only if you consented." : "This form could not be submitted.");

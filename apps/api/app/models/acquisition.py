@@ -37,6 +37,7 @@ class InboundCapture(Base, TenantOwnedMixin):
     creative_version_id: Mapped[UUID | None] = mapped_column(ForeignKey("creative_versions.id"), nullable=True)
     operating_plan_id: Mapped[UUID | None] = mapped_column(ForeignKey("operating_plans.id"), nullable=True)
     social_post_id: Mapped[UUID | None] = mapped_column(ForeignKey("social_posts.id"), nullable=True)
+    growth_link_id: Mapped[UUID | None] = mapped_column(index=True, nullable=True)
 
 
 class DedupeReview(Base, TenantOwnedMixin):

@@ -98,6 +98,7 @@ class Lead(Base, TenantOwnedMixin):
     operating_plan_id: Mapped[UUID | None] = mapped_column(ForeignKey("operating_plans.id"), nullable=True)
     icp_id: Mapped[UUID | None] = mapped_column(ForeignKey("icps.id"), nullable=True)
     social_post_id: Mapped[UUID | None] = mapped_column(ForeignKey("social_posts.id"), nullable=True)
+    growth_link_id: Mapped[UUID | None] = mapped_column(index=True, nullable=True)
 
 
 class LeadScore(Base, TenantOwnedMixin):

@@ -53,8 +53,55 @@ celery_app.conf.update(
         "collect-organic-metrics": {"task": "collect_organic_metrics", "schedule": 300.0},
         "retrieve-native-lead-forms": {"task": "retrieve_native_lead_forms", "schedule": 60.0},
         "operator-daily-brief": {"task": "operator_daily_brief", "schedule": 86400.0},
+        "growth-plan-calendars": {"task": "growth_plan_calendars", "schedule": 3600.0},
+        "growth-prepare-creatives": {"task": "growth_prepare_creatives", "schedule": 600.0},
+        "growth-publish-due": {"task": "growth_publish_due", "schedule": 60.0},
+        "growth-collect-insights": {"task": "growth_collect_insights", "schedule": 3600.0},
+        "growth-collect-ga4": {"task": "growth_collect_ga4", "schedule": 86400.0},
     },
 )
+
+
+def _growth_task(job_name: str) -> int:
+    """Run one Social Growth job for every active tenant with that tenant's RLS context."""
+    from app.db.session import get_engine, get_session
+    from app.db.tenant_jobs import run_per_tenant
+    from app.services.growth import automation
+
+    job = getattr(automation, job_name)
+    get_engine()
+    db = get_session()
+    try:
+        total = run_per_tenant(db, lambda tenant_id: job(db, tenant_id))
+        db.commit()
+        return total
+    finally:
+        db.close()
+
+
+@celery_app.task(name="growth_plan_calendars")
+def growth_plan_calendars() -> int:
+    return _growth_task("plan_tenant")
+
+
+@celery_app.task(name="growth_prepare_creatives")
+def growth_prepare_creatives() -> int:
+    return _growth_task("prepare_tenant")
+
+
+@celery_app.task(name="growth_publish_due")
+def growth_publish_due() -> int:
+    return _growth_task("publish_tenant")
+
+
+@celery_app.task(name="growth_collect_insights")
+def growth_collect_insights() -> int:
+    return _growth_task("insights_tenant")
+
+
+@celery_app.task(name="growth_collect_ga4")
+def growth_collect_ga4() -> int:
+    return _growth_task("ga4_tenant")
 
 
 @celery_app.task(name="run_autonomous_cycles")

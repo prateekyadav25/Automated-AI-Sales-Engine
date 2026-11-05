@@ -29,6 +29,7 @@ class CaptureIn(APIModel):
     ad_id: str = ""
     ad: str = ""
     publication: str = ""
+    growth: str = ""
 
 
 class CaptureOut(APIModel):

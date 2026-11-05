@@ -1,5 +1,39 @@
 # Current capability audit
 
+## Current status — 2026-10-28, Social Growth Autopilot
+
+This is the current status. The purchase onboarding section below, and every section under it, are earlier. Where they disagree with this section, this section is the one to use. The full design and inventory are in `docs/61-social-growth-autopilot.md`.
+
+Facebook and Instagram growth now has its own path in fixtures. The client's website becomes brand facts with the page, the evidence, and the time read. Claims wait for review, and only approved facts reach copy. Several Pages and Instagram professional accounts can be connected per workspace, each with its own encrypted token, posting window, daily cap, and verified permissions. An approved strategy cites approved facts. A rolling 30-day calendar explains every slot. Creative is a caption plus a brand-template image, a 2–10 slide carousel, or a 1080×1920 Reel, and it must pass format, size, placeholder, provenance, text, contrast, and video checks before approval.
+
+Publishing needs the workspace flag, the live deployment mode, an authorized workspace, an approved strategy and creative with an unchanged content hash, and an execution grant or an inbox approval. It is off by default and was not used. Insights are read per account and per post with the period, retrieval time, Graph version, and provenance. A missing value stays null and is shown as unavailable. Tracking links, the `growth` capture token, a GA4 boundary, and separate clicks, sessions, enquiries, qualified leads, and won purchases replace a single blended number.
+
+No Meta, GA4, or image-model call was made with a real account. No post was published, no real metric was read, and nothing was spent.
+
+### Running locally
+
+| Item | Value |
+|---|---|
+| Database | Alembic `046`, applied on 2026-10-29 after a backup at `045` |
+| Backup | `.local-backups/agrayian-before-046-2026-10-29.dump`, custom format, gitignored. The 2026-10-28 backup is also kept |
+| Restore | Stop api, worker, and beat. `pg_restore --clean --if-exists` the dump into `agrayian` inside the Postgres container. The restored schema is `045` |
+| Disposable proof | A restored copy was upgraded `045` → `046`. The 17 growth tables had forced RLS and app-role grants. `growth_link_id` was on leads and captures. The flag was off for both tenants. Scope, holds, approvals, leads, meetings, emails, customers, and tenant modes were unchanged. The copy was dropped |
+| Scope | One row, `prepared`, expiry `2026-10-29 18:03:28.181796+00`. Not authorized |
+| Holds | 9 enrollments `held`. Approvals 4 held, 4 pending, and 10 rejected. One pending approval had become held before this work |
+| Leads | 33 active, 43 total |
+| Images | Api, web, worker, and beat rebuilt on 2026-10-29 and started without MinIO. The seed completed after the prompt-flush fix. Growth beat tasks run and return 0 with the flag off |
+| Browser | A separate stack on ports 8100 and 3100 with its own database and Redis index. `growth.spec.ts` passed five consecutive runs. That stack was removed |
+
+### What this section supersedes
+
+| Area | Now |
+|---|---|
+| Organic metrics | Facebook and Instagram insights are read by the growth module in fixtures. The LinkedIn adapter is unchanged. A live read was not made |
+| Organic calendar | Growth slots are planned for every connected account from an approved strategy. The older one-plan proposals still exist |
+| Organic metrics and optimization | Growth recommendations need five measured live posts per group and stay proposals. `record_metrics` is unchanged |
+| Brand rules | Growth captions are checked against approved facts. The operating-plan path still uses prompt instructions |
+| Video | Growth Reels are rendered and checked with FFmpeg. The wizard's stored video and the missing YouTube publisher are unchanged |
+
 ## Current status — 2026-10-28, purchase onboarding and retention
 
 This is the current status. The close-won section below, and every section under it, are earlier. Where they disagree with this section, this section is the one to use.

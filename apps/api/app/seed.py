@@ -49,6 +49,8 @@ from app.models.lifecycle import (
 from app.models.market import AccountSignal, CompetitiveSignal, IntentSignal, Market, MarketSignal, TriggerEvent
 from app.seed_showroom import seed_showroom
 from app.services.crm import close_won
+from app.services.growth.copywriter import CAPTION_SYSTEM as GROWTH_CAPTION_SYSTEM
+from app.services.growth.copywriter import PROMPT_KEY as GROWTH_CAPTION_KEY
 from app.services.lifecycle import (
     build_forecast,
     create_quote,
@@ -78,6 +80,7 @@ FLAGS = [
     ("ENABLE_FORECAST_ML", False, "Forecast ML"),
     ("ENABLE_LEAD_DISCOVERY", True, "Apify or labeled mock discovery"),
     ("ENABLE_AUTOPILOT", True, "Persisted autonomous cycle"),
+    ("ENABLE_SOCIAL_GROWTH", False, "Social Growth Autopilot automation"),
 ]
 
 
@@ -189,6 +192,7 @@ def _prompts(db, tenant_id, actor_id) -> None:
         "opportunity_summary": "Summarize the opportunity. Do not change commercial terms.",
         "email_draft": "Draft email only. Never claim it was sent. Honor opt-out.",
         "knowledge": "Answer from retrieved chunks. If empty, abstain.",
+        GROWTH_CAPTION_KEY: GROWTH_CAPTION_SYSTEM,
     }
     for key, template in templates.items():
         exists = db.scalar(
@@ -207,6 +211,7 @@ def _prompts(db, tenant_id, actor_id) -> None:
                     status="approved",
                 )
             )
+    db.flush()
 
 
 def seed() -> None:

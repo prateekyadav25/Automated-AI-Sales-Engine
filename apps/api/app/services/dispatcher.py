@@ -18,6 +18,7 @@ from app.services.email_send import execute_email_send
 from app.services.entity_mapping import confirm_mapping
 from app.services.expansion import mint_opportunity
 from app.services.external_hold import approval_execution_block
+from app.services.growth.publisher import publish_item as publish_growth_item
 from app.services.meet_booking import execute_meet_booking, execute_meet_cancel, execute_meet_reschedule
 from app.services.meeting_capture import grant_recording_consent
 from app.services.renewal import execute_renewal_commercial
@@ -191,6 +192,17 @@ def _social_publish(db: Session, *, tenant_id: UUID, actor_id: UUID, row: AIAppr
     return publish_approved_posts(db, tenant_id=tenant_id, actor_id=actor_id, approval=row, payload_patch=payload_patch)
 
 
+def _growth_publish(db: Session, *, tenant_id: UUID, actor_id: UUID, row: AIApproval, payload_patch: dict | None = None) -> str:
+    """The approval only authorizes this exact creative. A later edit needs a new approval."""
+    _ = payload_patch
+    item_id = _payload(row).get("item_id") or row.entity_id
+    try:
+        parsed = UUID(str(item_id))
+    except ValueError:
+        return "The approval does not name a calendar item."
+    return str(publish_growth_item(db, tenant_id=tenant_id, actor_id=actor_id, item_id=parsed).get("detail") or "")
+
+
 def _mapping_confirm(db: Session, *, tenant_id: UUID, actor_id: UUID, row: AIApproval, payload_patch: dict | None = None) -> str:
     payload = {**_payload(row), **(payload_patch or {})}
     mapping_id = payload.get("mapping_id") or row.entity_id
@@ -227,6 +239,7 @@ HANDLERS: dict[str, Handler] = {
     "whatsapp.send": _whatsapp,
     "quote.discount": _quote_discount,
     "social.publish": _social_publish,
+    "social.growth_publish": _growth_publish,
     "email.acknowledge": _send,
 }
 

@@ -73,10 +73,14 @@ PERMISSIONS = [
     ("ml.rollback", "Rollback champion models"),
     ("pilot.view", "View pilot readiness"),
     ("pilot.activate", "Activate tenant operating mode"),
+    ("social_growth.read", "View the Social Growth command center"),
+    ("social_growth.write", "Prepare brand analysis, calendars, and creative"),
+    ("social_growth.approve", "Approve brand claims, strategy, creative, and execution grants"),
 ]
 
 ML_MUTATE = {"ml.dataset.create", "ml.train", "ml.promote", "ml.rollback"}
 PILOT_MUTATE = {"pilot.activate"}
+GROWTH_APPROVE = {"social_growth.approve"}
 
 ROLE_PERMISSIONS: dict[str, list[str]] = {
     "Super Admin": [p[0] for p in PERMISSIONS],
@@ -111,9 +115,14 @@ ROLE_PERMISSIONS: dict[str, list[str]] = {
         "ai.approvals.read",
         "ai.approvals.decide",
         "integrations.read",
+        "social_growth.read",
+        "social_growth.write",
+        "social_growth.approve",
     ],
     "Sales Director": [p[0] for p in PERMISSIONS if p[0] != "flags.write" and p[0] not in ML_MUTATE | PILOT_MUTATE],
-    "Sales Manager": [p[0] for p in PERMISSIONS if p[0] not in {"flags.write", "users.write"} | ML_MUTATE | PILOT_MUTATE],
+    "Sales Manager": [
+        p[0] for p in PERMISSIONS if p[0] not in {"flags.write", "users.write"} | ML_MUTATE | PILOT_MUTATE | GROWTH_APPROVE
+    ],
     "Sales Rep": [
         "command_center.read",
         "accounts.read",
@@ -156,6 +165,7 @@ ROLE_PERMISSIONS: dict[str, list[str]] = {
         "revops.read",
         "autonomy.read",
         "autonomy.write",
+        "social_growth.read",
     ],
     "SDR Manager": [
         "command_center.read",
@@ -228,6 +238,7 @@ ROLE_PERMISSIONS: dict[str, list[str]] = {
         "advocacy.read",
         "revops.read",
         "autonomy.read",
+        "social_growth.read",
     ],
     "AI Agent": ["accounts.read", "contacts.read", "leads.read", "opportunities.read", "tasks.write", "autonomy.read"],
 }

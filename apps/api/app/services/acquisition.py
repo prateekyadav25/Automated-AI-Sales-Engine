@@ -8,10 +8,12 @@ from sqlalchemy.orm import Session
 from app.models.acquisition import DedupeReview, InboundCapture
 from app.models.crm import Account, Contact, Lead
 from app.models.funnel import PaidAd
+from app.models.growth import GrowthTrackingLink
 from app.models.lifecycle import Campaign
 from app.models.operating_plan import CreativeVersion, OperatingPlan
 from app.services.assessment import FREE_MAIL_DOMAINS
 from app.services.audit import emit_event
+from app.services.growth.attribution import link_for_capture, strategy_plan_for_link
 from app.services.scoring import score_lead
 
 
@@ -108,6 +110,22 @@ def _resolved_attribution(
     return version, campaign_id, ""
 
 
+def _growth_link(db: Session, tenant_id: UUID, payload: dict) -> GrowthTrackingLink | None:
+    """A growth token is resolved for this tenant only. An unknown or foreign token attributes nothing."""
+    token = str(payload.get("growth") or "").strip()
+    return link_for_capture(db, tenant_id, token) if token else None
+
+
+def _apply_growth_first_touch(db: Session, lead: Lead, link: GrowthTrackingLink | None) -> None:
+    if link is None or lead.growth_link_id is not None or lead.creative_version_id is not None or lead.campaign_id is not None:
+        return
+    lead.growth_link_id = link.id
+    if lead.operating_plan_id is None:
+        lead.operating_plan_id = strategy_plan_for_link(db, link)
+    if not (lead.channel or "").strip() or lead.channel == "website":
+        lead.channel = link.utm_source or lead.channel
+
+
 def _apply_first_touch(lead: Lead, version: CreativeVersion | None, campaign_id: UUID | None) -> None:
     if version is not None and lead.creative_version_id is None:
         lead.creative_version_id = version.id
@@ -173,6 +191,8 @@ def hold_interest(
     capture.campaign_id = campaign_id
     capture.ad_id = ad_external
     _apply_capture_publication(capture, version)
+    link = _growth_link(db, tenant_id, payload)
+    capture.growth_link_id = link.id if link is not None else None
     db.add(capture)
     db.flush()
     return capture
@@ -280,6 +300,7 @@ def capture_inbound(
     reviews: list[DedupeReview] = []
     created_lead = False
     version, campaign_id, ad_external = _resolved_attribution(db, tenant_id, payload)
+    growth_link = _growth_link(db, tenant_id, payload)
     if lead is None:
         lead = Lead(
             tenant_id=tenant_id,
@@ -305,6 +326,7 @@ def capture_inbound(
             notes=str(payload.get("request_note") or "").strip()[:4000],
         )
         _apply_first_touch(lead, version, campaign_id)
+        _apply_growth_first_touch(db, lead, growth_link)
         db.add(lead)
         db.flush()
         score_lead(db, lead, emit=False)
@@ -400,6 +422,7 @@ def capture_inbound(
         captured_at=datetime.now(UTC),
         campaign_id=campaign_id,
         ad_id=ad_external,
+        growth_link_id=growth_link.id if growth_link is not None else None,
     )
     _apply_capture_publication(capture, version)
     db.add(capture)

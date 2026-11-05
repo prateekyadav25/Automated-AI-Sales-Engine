@@ -201,3 +201,23 @@ Superseded by ADR-040. Chat, embeddings, and uploaded-audio transcription previo
 ## ADR-040 — Gemini is the live model vendor
 
 Chat and reasoning call Gemini `generateContent`. Embeddings call `batchEmbedContents` with `taskType` `SEMANTIC_SIMILARITY`. Uploaded meeting audio is sent as inline `inlineData` on `generateContent`. Model ids and the API key come from `GEMINI_*` settings. `LLM_PROVIDER=mock` stays the example default until a key is set. A live provider without a key is `NOT_CONFIGURED`. Switching the embedding model requires re-ingesting knowledge; Gemini embedding length will not match an existing `vector(32)` column, so local search uses the stored JSON vectors.
+
+## ADR-041 — Social growth runs on the existing execution path
+
+Facebook and Instagram growth is a domain module (`services/growth`) inside the Revenue OS, not a separate application or orchestrator. Publishing uses `execute_external_effect`, `external_execution_block`, `AuthorizationGrant`, `AIApproval`, and the dispatcher. Workers run through `run_per_tenant`. Account tokens are tenant `ProviderAccount` rows. The model writes captions from approved facts through the prompt registry and never reads the database.
+
+## ADR-042 — Brand facts are sourced and reviewed
+
+A fact keeps its page, evidence, time read, and method. Claims start in review. Only approved facts reach copy, strategy pillars, and templates. A hand-recorded claim needs a source or written evidence. The website reader respects `robots.txt` and refuses private addresses at every redirect. Numbers, `#1`, and superlatives in a caption are checked against approved facts. Unsupported ones go to a person.
+
+## ADR-043 — Publishing needs every gate
+
+A post goes out only when the workspace flag is on, the deployment mode is live, the workspace is authorized, the strategy and creative are approved, the content hash is unchanged, and an execution grant or an inbox approval covers that exact creative. Approving a strategy is not permission to post. Approving a new strategy version withdraws unpublished work planned under the old one. Fixture accounts never reach Meta. An unknown result is reconciled before any retry. Engagement automation, follow/unfollow, and duplicate posting are not built.
+
+## ADR-044 — Graph API version is a setting
+
+`META_GRAPH_API_VERSION` (default `v26.0`) drives the growth client and the resumable upload host path. Each publication and reading stores the version used. Older ads, lead-form, and page-posting clients stay on `v21.0` until they are migrated. Meta lists its expiry as 2027-01-21.
+
+## ADR-045 — Social metrics are readings, not totals
+
+Each insight is stored per account or post, metric, period, and retrieval with its endpoint, version, provenance, and status. Missing is null and shown as unavailable, never zero. Additive daily metrics are summed. Unique-person metrics are averaged per day and labeled. Follower counts use the latest reading. Fixture readings never enter live totals. Tracked clicks, GA4 sessions, enquiries, qualified leads, and won purchases are separate measures. Currencies are not combined.

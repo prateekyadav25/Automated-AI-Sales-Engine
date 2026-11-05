@@ -18,3 +18,9 @@
 - MLflow is not installed. The internal Postgres registry is enough until experiment volume justifies it.
 - Opportunity history starts at Batch 7 write-time. Pre-Batch 7 stage/amount/close mutations were overwritten and cannot be reconstructed.
 - Cross-tenant anonymized training is deferred pending legal/governance design.
+- Ten tables from Alembic `039`–`045` have no row-level security: `content_proposals`, `content_recommendations`, `deal_purchases`, `lead_form_bindings`, `lead_form_receipts`, `onboarding_completions`, `organic_metric_observations`, `paid_ads`, `purchase_health_signals`, `quote_acceptances`. The `046` growth tables have forced RLS.
+- The `collect_organic_metrics` and `retrieve_native_lead_forms` workers run without a tenant context. Growth workers use `run_per_tenant`.
+- Ads, lead-form, and page-posting Graph clients are pinned to `v21.0`, which Meta lists as expiring 2027-01-21. The growth client reads `META_GRAPH_API_VERSION`.
+- `ruff check app tests` fails at HEAD on `app/ai/runtime.py`, `app/api/v1/ai.py`, `app/api/v1/channel_search.py` (import order), and `tests/conftest.py` (E402). Those files were not changed by the growth work.
+- Social Growth has no live evidence yet. Publishing, insights, GA4, and model imagery are fixture-tested only.
+- On Windows, `next build` with `output: "standalone"` fails at the final copy step without symlink permission. The Linux image build is unaffected.

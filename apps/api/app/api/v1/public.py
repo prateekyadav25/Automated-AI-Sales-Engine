@@ -3,7 +3,7 @@ import json
 from typing import Annotated
 
 from fastapi import APIRouter, Depends, HTTPException, Request
-from fastapi.responses import HTMLResponse, Response
+from fastapi.responses import HTMLResponse, RedirectResponse, Response
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
@@ -16,6 +16,7 @@ from app.schemas.common import Envelope
 from app.schemas.crm import LeadOut, LeadScoreOut
 from app.services.acquisition import capture_inbound, hold_interest, interest_is_eligible
 from app.services.crm import latest_lead_score
+from app.services.growth.attribution import resolve_redirect
 from app.services.outbox_notify import notify_outbox
 from app.services.public_forms import loads_form_fields, public_form_inputs, resolve_form_key
 from app.services.social_media import read_social_image
@@ -50,6 +51,7 @@ def embeddable_form(token: str, request: Request, db: Annotated[Session, Depends
         "utm_campaign": query.get("utm_campaign") or query.get("campaign") or "",
         "ad": query.get("ad") or "",
         "publication": query.get("publication") or "",
+        "growth": query.get("growth") or "",
     }
     hidden_html = "".join(
         f'<input type="hidden" name="{html.escape(name)}" value="{html.escape(value)}">' for name, value in hidden.items()
@@ -120,6 +122,22 @@ def public_media(token: str, request: Request, db: Annotated[Session, Depends(ge
     enforce_rate_limit(key=f"public-media:{request.client.host if request.client else 'unknown'}", limit=120, window_seconds=60)
     data, content_type = read_social_image(db, token)
     return Response(content=data, media_type=content_type, headers={"Cache-Control": "public, max-age=86400"})
+
+
+@router.get("/r/{token}")
+def tracked_redirect(token: str, request: Request, db: Annotated[Session, Depends(get_db)]) -> Response:
+    """A canonical social link. The click is counted once, then the visitor goes to the stored destination."""
+    enforce_rate_limit(key=f"public-redirect:{request.client.host if request.client else 'unknown'}", limit=120, window_seconds=60)
+    destination = resolve_redirect(
+        db,
+        token,
+        referer=request.headers.get("referer") or "",
+        user_agent=request.headers.get("user-agent") or "",
+    )
+    if destination is None:
+        raise HTTPException(status_code=404, detail="Link not found")
+    db.commit()
+    return RedirectResponse(destination, status_code=302, headers={"Cache-Control": "no-store", "Referrer-Policy": "strict-origin-when-cross-origin"})
 
 
 @router.get("/forms/{token}/meta", response_model=Envelope[dict])

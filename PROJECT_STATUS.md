@@ -2,7 +2,9 @@
 
 ## CURRENT PHASE
 
-2026-10-28: Purchase onboarding, evidence-backed health, and reviewable retention follow-through are in the local application at Alembic `045`. The sales engine is not finished. Broader Facebook and Instagram performance is the next milestone. Paid activation and reporting, and SEO, remain open. The paragraph below is the older phase inventory.
+2026-10-28: The Social Growth Autopilot for Facebook and Instagram is complete in fixtures, and the local application is on Alembic `046` since 2026-10-29. Live publishing, live insights, and GA4 are off and unverified. Live verification needs a Meta app with App Review permissions, client tokens, a public HTTPS media host, and an authorized workspace. Paid activation and reporting, and SEO, remain open. The sales engine is not finished.
+
+Earlier on 2026-10-28: purchase onboarding, evidence-backed health, and reviewable retention follow-through reached the local application at Alembic `045`. The paragraph below is the older phase inventory.
 
 Phases 0–22 plus Autopilot batches 1–8 and the full-funnel completion slice are in product. Tenant credentials now drive ads, voice, and discovery execution. Voice is split into telephony and conversation with Exotel as India primary. Meeting capture and transcript-only intelligence exist. Ads persist CTR/CPC/CPL and can pause/sync. Public inbound capture and first-touch attribution exist. Rules-v1/rules-v2 remain champion. No production ML model is trained. All prediction tasks are DATA_COLLECTION. Ready for a controlled PILOT tenant is not the same as unrestricted enterprise production.
 
@@ -28,6 +30,7 @@ Phases 0–22 plus Autopilot batches 1–8 and the full-funnel completion slice 
 - Full-funnel completion: Alembic `014`–`016`, tenant credential execution, Exotel/Vapi split, India compliance gates, Recall/manual meeting capture, ads depth + campaigns UI, enrichment, public forms, campaign ROAS.
 - Channel search: keyword search grouped by Google, Facebook, Instagram, and LinkedIn. Rank is the Google result position. Missing search credentials stay `not_configured` and invent no posts. Alembic `024`.
 - Website signals: a confirmed catalog of public website facts, a free page reader, and a cohort whose first line is one of those facts. It does not discover leads, enroll sequences, or send mail. Alembic `031`.
+- Social Growth Autopilot (fixtures): source-backed brand facts, several Pages and Instagram accounts per workspace, an approved strategy and rolling 30-day calendar, brand-template images, carousels, and 9:16 Reels behind quality gates, gated publishing with reconciliation, insight read-back with freshness, tracking links, a GA4 boundary, and the Social Growth Command Center. Alembic `046`. Doc 61. ADRs 041–045.
 
 ## IN PROGRESS
 
@@ -35,11 +38,11 @@ None.
 
 ## BLOCKED
 
-None.
+- Social Growth live verification: needs a Meta app with Advanced Access to the Page and Instagram permissions, client Page and Instagram tokens, a public HTTPS `PUBLIC_API_BASE_URL` with shared object storage, and an authorized workspace.
 
 ## NEXT
 
-Live WhatsApp adapter when credentials exist, Gmail Pub/Sub after measured ingest lag, live Zendesk/Stripe HTTP, HNSW after measured chunk latency, trained ML only after a task is READY_FOR_EXPERIMENT and a human starts one SHADOW experiment. A public HTTPS host is required before Exotel/Twilio/Vapi/Recall/Gmail callbacks can reach a non-local API.
+Social Growth live verification in this order: token verification, history import, insight and GA4 reads, then one separately authorized test post. Live WhatsApp adapter when credentials exist, Gmail Pub/Sub after measured ingest lag, live Zendesk/Stripe HTTP, HNSW after measured chunk latency, trained ML only after a task is READY_FOR_EXPERIMENT and a human starts one SHADOW experiment. A public HTTPS host is required before Exotel/Twilio/Vapi/Recall/Gmail callbacks can reach a non-local API.
 
 ## TECHNICAL DEBT
 
@@ -53,6 +56,6 @@ See DECISIONS.md.
 
 - API: pytest SQLite suite + ruff; Postgres RLS job in CI
 - Web: vitest, lint, tsc, next build
-- Playwright: Autopilot, engagement, post-sale, providers, Batch 5 hardening, Batch 6 signals, Batch 7 intelligence admin, Batch 8 pilot readiness / trace / mapping
+- Playwright: Autopilot, engagement, post-sale, providers, Batch 5 hardening, Batch 6 signals, Batch 7 intelligence admin, Batch 8 pilot readiness / trace / mapping, Social Growth (fixture accounts, creative review, attribution, read-only, cross-tenant)
 - docker compose config: valid
 - CI: RLS fail-if-empty, Postgres concurrency/chaos, E2E-LITE + E2E-POSTGRES
