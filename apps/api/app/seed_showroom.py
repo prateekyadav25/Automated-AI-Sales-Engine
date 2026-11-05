@@ -18,6 +18,33 @@ from app.models.post_sale import ExpansionRecommendation
 from app.models.social import SocialPost
 from app.services.lifecycle import score_deal
 
+SHOWROOM_DRAFTS = (
+    (
+        "linkedin",
+        "post",
+        "Governed AI does not start with a bigger model",
+        "Meridian's CIO asked who owns model risk before she asked about features. That is the conversation worth posting.",
+        "Book a working session",
+    ),
+    (
+        "facebook",
+        "post",
+        "One line, two weeks, a real plant",
+        "ForgeLine does not want a platform tour. They want predictive quality on one production line.",
+        "See how the pilot is scoped",
+    ),
+    (
+        "instagram",
+        "post",
+        "The pipeline is a set of decisions, not a chart",
+        "Proposal, discovery, negotiation, and one customer already live. Each one has a next step or it shows up as a stall.",
+        "Open the workspace",
+    ),
+)
+SHOWROOM_POST = (
+    "Banks are staffing model risk before they buy another copilot. Worth a conversation with the CIO, not a feature list."
+)
+
 
 def seed_showroom(db: Session, *, tenant_id, actor_id, owner_id) -> None:
     accounts = {
@@ -213,30 +240,7 @@ def _content(db, tenant_id, actor_id) -> None:
             )
         )
     product = db.scalar(select(Product).where(Product.tenant_id == tenant_id, Product.sku == "CORE"))
-    drafts = [
-        (
-            "linkedin",
-            "post",
-            "Governed AI does not start with a bigger model",
-            "Meridian's CIO asked who owns model risk before she asked about features. That is the conversation worth posting.",
-            "Book a working session",
-        ),
-        (
-            "facebook",
-            "post",
-            "One line, two weeks, a real plant",
-            "ForgeLine does not want a platform tour. They want predictive quality on one production line.",
-            "See how the pilot is scoped",
-        ),
-        (
-            "instagram",
-            "post",
-            "The pipeline is a set of decisions, not a chart",
-            "Proposal, discovery, negotiation, and one customer already live. Each one has a next step or it shows up as a stall.",
-            "Open the workspace",
-        ),
-    ]
-    for channel, kind, headline, body, cta in drafts:
+    for channel, kind, headline, body, cta in SHOWROOM_DRAFTS:
         exists = db.scalar(
             select(ContentDraft).where(ContentDraft.tenant_id == tenant_id, ContentDraft.headline == headline)
         )
@@ -257,15 +261,14 @@ def _content(db, tenant_id, actor_id) -> None:
                 is_mock=False,
             )
         )
-    post_body = "Banks are staffing model risk before they buy another copilot. Worth a conversation with the CIO, not a feature list."
-    posted = db.scalar(select(SocialPost).where(SocialPost.tenant_id == tenant_id, SocialPost.body == post_body))
+    posted = db.scalar(select(SocialPost).where(SocialPost.tenant_id == tenant_id, SocialPost.body == SHOWROOM_POST))
     if posted is None:
         db.add(
             SocialPost(
                 tenant_id=tenant_id,
                 created_by=actor_id,
                 channel="linkedin",
-                body=post_body,
+                body=SHOWROOM_POST,
                 link_url="https://revanzas.demo.agrayianailabs.com",
                 status="draft",
                 is_mock=False,

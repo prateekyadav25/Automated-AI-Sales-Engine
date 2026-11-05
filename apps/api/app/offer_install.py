@@ -1,15 +1,16 @@
 """Install the revenue engine as the product this workspace sells.
 
-Fictional .example accounts are retired. No outreach is sent.
+Fictional sample data is retired. No outreach is sent.
 """
 
 from __future__ import annotations
 
+import argparse
 import json
 from datetime import UTC, datetime
 from decimal import Decimal
 
-from sqlalchemy import or_, select
+from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from app.ai.rag import ingest_text
@@ -17,25 +18,16 @@ from app.db.session import get_engine, get_session
 from app.db.tenant_context import set_tenant_context
 from app.models.ai import AIApproval, KnowledgeChunk, KnowledgeSource
 from app.models.content import ContentDraft, SellerProfile
-from app.models.crm import ICP, Account, Contact, Customer, Lead, LeadScore, Opportunity, Renewal, Task
+from app.models.crm import ICP, Account, Lead, LeadScore
 from app.models.identity import Tenant, User
 from app.models.integrations import ProviderHealthState
-from app.models.lifecycle import (
-    AdvocacyAsset,
-    Campaign,
-    Conversation,
-    MeetingRecord,
-    Product,
-    Quote,
-    Sequence,
-    SequenceStep,
-)
+from app.models.lifecycle import Campaign, Product, Sequence, SequenceStep
 from app.models.market import AccountSignal, CompetitiveSignal, IntentSignal, Market, MarketSignal
-from app.models.post_sale import Contract, ExpansionRecommendation
 from app.providers.lead_discovery import get_lead_discovery_provider
 from app.services.discovery import run_discovery
 from app.services.lifecycle import build_forecast
 from app.services.orchestrator import process_pending_events
+from app.services.sample_data import retire_sample_data
 
 OFFER_NAME = "AGRAYIAN Autonomous Revenue OS"
 ICP_NAME = "India B2B revenue teams"
@@ -89,60 +81,11 @@ def _hide(row, now: datetime) -> None:
 
 
 def _retire_fiction(db: Session, tenant_id, now: datetime) -> int:
-    accounts = list(
-        db.scalars(
-            select(Account).where(
-                Account.tenant_id == tenant_id,
-                Account.deleted_at.is_(None),
-                or_(Account.domain.ilike("%.example"), Account.notes.ilike("%Fictional%")),
-            )
-        ).all()
-    )
-    account_ids = [row.id for row in accounts]
-    for row in accounts:
-        _hide(row, now)
-    if not account_ids:
-        return 0
-    id_strings = {str(item) for item in account_ids}
-    linked = (
-        (Contact, Contact.account_id),
-        (Lead, Lead.account_id),
-        (Opportunity, Opportunity.account_id),
-        (Customer, Customer.account_id),
-        (Conversation, Conversation.account_id),
-        (MeetingRecord, MeetingRecord.account_id),
-        (Contract, Contract.account_id),
-        (Renewal, Renewal.account_id),
-        (ExpansionRecommendation, ExpansionRecommendation.account_id),
-        (AdvocacyAsset, AdvocacyAsset.account_id),
-    )
-    for model, column in linked:
-        for row in db.scalars(select(model).where(model.tenant_id == tenant_id, column.in_(account_ids), model.deleted_at.is_(None))):
-            _hide(row, now)
-    for row in db.scalars(
-        select(Lead).where(Lead.tenant_id == tenant_id, Lead.deleted_at.is_(None), Lead.email.ilike("%@%.example"))
-    ):
-        _hide(row, now)
-    opportunity_ids = [
-        row.id
-        for row in db.scalars(select(Opportunity).where(Opportunity.tenant_id == tenant_id, Opportunity.account_id.in_(account_ids)))
-    ]
-    if opportunity_ids:
-        for row in db.scalars(select(Quote).where(Quote.tenant_id == tenant_id, Quote.opportunity_id.in_(opportunity_ids), Quote.deleted_at.is_(None))):
-            _hide(row, now)
-    for row in db.scalars(select(Task).where(Task.tenant_id == tenant_id, Task.deleted_at.is_(None))):
-        if row.entity_id in id_strings:
-            _hide(row, now)
-    fiction = ("meridian", "helios", "forgeline", "nimbus", "harbor", "vertex", "northwind", "demo.board", ".example")
-    for row in db.scalars(select(AIApproval).where(AIApproval.tenant_id == tenant_id, AIApproval.status == "pending", AIApproval.deleted_at.is_(None))):
-        blob = f"{row.title} {row.payload_json} {row.entity_id}".lower()
-        if any(token in blob for token in fiction) or row.entity_id in id_strings:
-            row.status = "rejected"
-            row.decision_note = "Retired with the fictional demo. A real send waits for a real lead and an approval."
+    retired = retire_sample_data(db, tenant_id=tenant_id, now=now)
     for model in (MarketSignal, AccountSignal, IntentSignal, CompetitiveSignal):
         for row in db.scalars(select(model).where(model.tenant_id == tenant_id, model.is_mock.is_(True), model.deleted_at.is_(None))):
             _hide(row, now)
-    return len(accounts)
+    return retired.get(Account.__tablename__, 0)
 
 
 def _install_icp(db: Session, tenant_id, actor_id) -> ICP:
@@ -441,7 +384,7 @@ def _prepare_outreach(db: Session, tenant_id, actor_id) -> str:
     )
 
 
-def install_offer(db: Session) -> dict[str, str | int]:
+def install_offer(db: Session, *, discover: bool = True) -> dict[str, str | int]:
     tenant = db.scalar(select(Tenant).where(Tenant.slug == "agrayian"))
     if tenant is None:
         raise RuntimeError("AGRAYIAN tenant is not seeded")
@@ -465,8 +408,8 @@ def install_offer(db: Session) -> dict[str, str | int]:
     health = get_lead_discovery_provider(db, tenant.id).health()
     discovered = 0
     outreach = "Discovery did not run."
-    reason = str(health.get("reason") or "")
-    if health.get("connected") and not health.get("is_mock"):
+    reason = str(health.get("reason") or "") if discover else "Discovery was skipped."
+    if discover and health.get("connected") and not health.get("is_mock"):
         _clear_discovery_cooldown(db, tenant.id)
         result = run_discovery(db, tenant_id=tenant.id, actor_id=actor.id, correlation_id="offer-install-30")
         process_pending_events(db, tenant_id=tenant.id, actor_id=actor.id)
@@ -477,10 +420,13 @@ def install_offer(db: Session) -> dict[str, str | int]:
 
 
 def main() -> None:
+    parser = argparse.ArgumentParser(prog="python -m app.offer_install", description=__doc__)
+    parser.add_argument("--skip-discovery", action="store_true", help="Do not start a lead discovery run.")
+    args = parser.parse_args()
     get_engine()
     db = get_session()
     try:
-        summary = install_offer(db)
+        summary = install_offer(db, discover=not args.skip_discovery)
         db.commit()
     except Exception:
         db.rollback()

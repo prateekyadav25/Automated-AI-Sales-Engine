@@ -22,5 +22,6 @@
 - The `collect_organic_metrics` and `retrieve_native_lead_forms` workers run without a tenant context. Growth workers use `run_per_tenant`.
 - Ads, lead-form, and page-posting Graph clients are pinned to `v21.0`, which Meta lists as expiring 2027-01-21. The growth client reads `META_GRAPH_API_VERSION`.
 - `ruff check app tests` fails at HEAD on `app/ai/runtime.py`, `app/api/v1/ai.py`, `app/api/v1/channel_search.py` (import order), and `tests/conftest.py` (E402). Those files were not changed by the growth work.
+- Seed campaigns ("Governed AI inbound", "Manufacturing ABM", "LinkedIn discovery (draft)") and the "Enterprise CIO cadence" sequence stay active after `retire_samples`, because real enquiries can attach to them. Retire them by hand once no real lead uses them. A hosted API with `SEED_DEMO=true` still creates the demo users on first boot.
 - Social Growth has no live evidence yet. Publishing, insights, GA4, and model imagery are fixture-tested only.
 - On Windows, `next build` with `output: "standalone"` fails at the final copy step without symlink permission. The Linux image build is unaffected.
