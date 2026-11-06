@@ -15,6 +15,7 @@ from app.db.session import get_session
 from app.models.assessment import ExternalEffect
 from app.models.growth import GrowthPublication
 from app.services.growth import publisher
+from app.services.growth.acceptance import authorize
 from app.services.growth.common import now
 from app.services.organic_metrics import collect_due_organic_metrics
 from tests.growth_support import FakeGraph, network_error, ok
@@ -60,6 +61,9 @@ def test_a_second_scheduler_tick_does_not_publish_twice(client: TestClient, monk
         graph = _client(fake)
         monkeypatch.setattr(get_settings(), "social_growth_publish_mode", "live")
         monkeypatch.setattr("app.services.growth.publisher.live_client", lambda *_args, **_kwargs: graph)
+        assert publisher.publish_due(db, tenant_id=admin.tenant_id) == 0
+        assert fake.calls == []
+        authorize(db, tenant_id=admin.tenant_id, actor_id=admin.id, step_key="instagram_image", note="Scheduler check for one Instagram image.")
         assert publisher.publish_due(db, tenant_id=admin.tenant_id) == 1
         assert publisher.publish_due(db, tenant_id=admin.tenant_id) == 0
         assert fake.count("POST", r"/media_publish$") == 1

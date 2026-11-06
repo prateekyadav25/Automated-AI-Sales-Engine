@@ -31,7 +31,7 @@ Create these before the first pod starts. None of them are the local Compose ser
 
 ## Schema
 
-Staging starts empty or from a staging backup and migrates to `047`. `047` only adds row-level security policies. Downgrade is a no-op. Rolling back means restoring the backup taken before the upgrade and starting the previous images. Do not point this migrate Job at the demonstration database.
+Staging starts empty or from a staging backup and migrates to head. Head is Alembic `048`. `047` only adds row-level security policies. `048` adds the acceptance-authorization table and forces the same tenant policy on it. Downgrade is a no-op. Rolling back means restoring the backup taken before the upgrade and starting the previous images. Do not point this migrate Job at the demonstration database.
 
 The demonstration on this machine is Alembic `046`. Its containers were not restarted for this work. Backups under `.local-backups/`, including `agrayian-before-sample-retirement-2026-10-29.dump`, were left in place.
 
@@ -50,3 +50,17 @@ Leave these empty until the acceptance checklist says to fill them:
 - GA4 property id and a Google connection with `analytics.readonly`
 
 Do not subscribe a Page, do not call Graph with a real token, and do not turn publish mode on as part of bringing staging up.
+
+## Local isolated Compose
+
+`docker-compose.staging.yml` is a second project, `agrayian-staging`. It does not read `.env`, does not attach to the demonstration volumes, and publishes different ports: Postgres `5436`, Redis `6381`, object storage `9002`, API `8012`, web `3010`.
+
+```
+docker compose -p agrayian-staging -f docker-compose.staging.yml up -d --build
+```
+
+`SEED_DEMO` is false. Publishing, insights, GA4, and ads modes are disabled. The object-storage bucket is `agrayian-staging`. Official `minio/minio` and `quay.io/minio/minio` images no longer pull anonymously, so this file uses the S3-compatible image `pgsty/silo:RELEASE.2026-10-26T00-00-00Z`. The values in that file are for this machine only. Replace them before any public host, and set `TOKEN_ENCRYPTION_KEY` rather than deriving token encryption from `SECRET_KEY`.
+
+There is no public HTTPS name in this file. `PUBLIC_API_BASE_URL` stays `http://localhost:8012`, so Instagram publishing stays blocked. Logs are the Compose project logs. Health is `GET /health` on the API, plus the Compose health checks.
+
+The in-product checklist is `/growth/acceptance`. A step is live-verified only after a stored authorization and a provider result. See `docs/64-social-growth-release-readiness.md`.

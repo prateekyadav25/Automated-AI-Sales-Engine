@@ -27,6 +27,19 @@ export type GrowthAccount = {
   followers_count: number | null;
   followers_observed_at: string;
   problem: string;
+  publish_eligible: boolean;
+  insights_eligible: boolean;
+  reconnect_required: boolean;
+  posting_limit: string;
+};
+
+export type AcceptanceStep = {
+  step_key: string;
+  title: string;
+  status: "not_started" | "blocked" | "awaiting_authorization" | "verified_live" | "failed" | "not_supported";
+  reason: string;
+  authorized_at: string;
+  note: string;
 };
 
 export type BrandFact = {

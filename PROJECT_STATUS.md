@@ -2,7 +2,7 @@
 
 ## CURRENT PHASE
 
-2026-11-06: Social Growth staging readiness is on branch `social-growth-047-hardening` (Alembic `047` in code). The running demonstration is still Alembic `046` and was not migrated or restarted. Live publishing, insights, and GA4 stay off. Docs 62 and 63 describe the isolated staging stack and the approval-gated live checks. Paid activation and reporting, and SEO, remain open. The sales engine is not finished.
+2026-11-06: Milestone 048 is on branch `social-growth-047-hardening`. Isolated staging is running Alembic `048`. The demonstration is still Alembic `046` and was not migrated or restarted. Live publishing, insights, and GA4 stay off. `/growth/acceptance` is the authorization workflow. Doc 64 is the release report. A public HTTPS host, Meta app credentials, and a Page token are still required before any live check. Paid activation and reporting, and SEO, remain open. The sales engine is not finished.
 
 Earlier on 2026-10-28: purchase onboarding, evidence-backed health, and reviewable retention follow-through reached the local application at Alembic `045`. The paragraph below is the older phase inventory.
 

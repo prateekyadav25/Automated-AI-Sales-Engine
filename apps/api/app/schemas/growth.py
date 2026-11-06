@@ -128,3 +128,7 @@ class ResolveIn(BaseModel):
 
 class DecideIn(BaseModel):
     decision: str
+
+
+class AcceptanceIn(BaseModel):
+    note: str

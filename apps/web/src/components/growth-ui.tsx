@@ -34,6 +34,7 @@ const TABS = [
   { href: "/growth", label: "Command centre" },
   { href: "/growth/brand", label: "Brand intelligence" },
   { href: "/growth/accounts", label: "Accounts" },
+  { href: "/growth/acceptance", label: "Live acceptance" },
   { href: "/growth/calendar", label: "Strategy & calendar" },
   { href: "/growth/studio", label: "Creative studio" },
   { href: "/growth/performance", label: "Performance & leads" },

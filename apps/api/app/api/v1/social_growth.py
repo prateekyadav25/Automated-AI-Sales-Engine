@@ -18,6 +18,7 @@ from app.models.funnel import PublicFormKey
 from app.models.growth import GrowthBusinessEvent, GrowthPublication
 from app.schemas.common import Envelope
 from app.schemas.growth import (
+    AcceptanceIn,
     AccountUpdateIn,
     AnalyzeIn,
     BrandFactIn,
@@ -37,6 +38,7 @@ from app.schemas.growth import (
     StrategyIn,
 )
 from app.services.audit import write_audit
+from app.services.growth import acceptance as acceptance_service
 from app.services.growth import accounts as account_service
 from app.services.growth import brand as brand_service
 from app.services.growth import creative as creative_service
@@ -419,6 +421,18 @@ def get_recommendations(db: Annotated[Session, Depends(get_db)], ctx: Annotated[
 @router.post("/recommendations/generate")
 def generate_recommendations(db: Annotated[Session, Depends(get_db)], ctx: Annotated[AuthContext, Depends(require_permission(WRITE))]) -> Envelope[list[dict]]:
     data = recommendations.generate(db, tenant_id=ctx.tenant_id, actor_id=ctx.user.id)
+    db.commit()
+    return Envelope(data=data)
+
+
+@router.get("/acceptance")
+def acceptance_overview(db: Annotated[Session, Depends(get_db)], ctx: Annotated[AuthContext, Depends(require_permission(READ))]) -> Envelope[list[dict]]:
+    return Envelope(data=acceptance_service.overview(db, ctx.tenant_id))
+
+
+@router.post("/acceptance/{step_key}/authorize")
+def authorize_acceptance(step_key: str, body: AcceptanceIn, db: Annotated[Session, Depends(get_db)], ctx: Annotated[AuthContext, Depends(require_permission(APPROVE))]) -> Envelope[dict]:
+    data = acceptance_service.authorize(db, tenant_id=ctx.tenant_id, actor_id=ctx.user.id, step_key=step_key, note=body.note)
     db.commit()
     return Envelope(data=data)
 

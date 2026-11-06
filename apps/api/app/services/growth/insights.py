@@ -27,6 +27,7 @@ from app.providers.meta_growth import (
     MetaGrowthClient,
 )
 from app.services.audit import write_audit
+from app.services.growth.acceptance import require_authorized
 from app.services.growth.accounts import live_client, live_read_block, mark_auth_failure, owned_account, token_problem
 from app.services.growth.common import aware, iso, now
 
@@ -157,6 +158,9 @@ def _open(db: Session, tenant_id: UUID, account: GrowthAccount, client: MetaGrow
     blocked = live_read_block(db, tenant_id)
     if blocked:
         return None, False, blocked
+    denied = require_authorized(db, tenant_id, "meta_insights")
+    if denied:
+        return None, False, denied
     problem = token_problem(account)
     if problem:
         return None, False, problem
@@ -169,6 +173,8 @@ def collect_account_insights(db: Session, *, tenant_id: UUID, actor_id: UUID | N
     graph, owned, blocked = _open(db, tenant_id, account, client)
     if graph is None:
         return {"status": "blocked", "stored": 0, "http_calls": 0, "detail": blocked}
+    if owned:
+        provenance = "provider"
     stored = calls = 0
     try:
         today = datetime.now(UTC).replace(hour=0, minute=0, second=0, microsecond=0)
@@ -248,6 +254,8 @@ def collect_media_insights(db: Session, *, tenant_id: UUID, actor_id: UUID | Non
     graph, owned, blocked = _open(db, tenant_id, account, client)
     if graph is None:
         return {"status": "blocked", "stored": 0, "http_calls": 0, "detail": blocked}
+    if owned:
+        provenance = "provider"
     stored = calls = 0
     try:
         since = now() - timedelta(days=90)

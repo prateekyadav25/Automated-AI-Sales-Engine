@@ -1,5 +1,15 @@
 # Implementation Log
 
+## 2026-11-06 (Isolated staging and live acceptance, Alembic 048)
+
+- Continued on `social-growth-047-hardening`. The demonstration containers were not restarted. Database `agrayian` stayed at Alembic `046`.
+- Alembic `048` adds `growth_acceptance_gates` with forced tenant row-level security. A row is an authorization. Live-verified status is computed from provider evidence. Fixture and scripted results do not qualify. Verify, history, insights, GA4, and publishing open a live client only after the matching step is authorized and the existing mode gates allow it.
+- `/growth/acceptance` shows the seven steps and their six states. Authorize requires `social_growth.approve` and does not call a provider. The accounts page shows granted scopes, publishing eligibility, insight eligibility, the posting limit, and whether reconnection is required. Tokens are still not returned.
+- `docker-compose.staging.yml` is project `agrayian-staging`: Postgres 5436, Redis 6381, Silo object storage 9002 with bucket `agrayian-staging`, API 8012, web 3010, one worker, one beat. `SEED_DEMO=false`. Publish, insights, GA4, and ads modes are disabled. It does not read `.env`. Official MinIO registries no longer pull anonymously, so the file uses `pgsty/silo:RELEASE.2026-10-26T00-00-00Z`.
+- Staging came up at Alembic `048`. API `/health` and the web returned 200. A health object was written and read from the staging bucket. Worker and beat became healthy after Celery was pinned below 5.7 and `packaging` was added, because a fresh install imported `packaging` without declaring it. The demonstration image was not rebuilt. Inbox tasks returned 0. `growth_publications` is 0.
+- A restore of the 2026-10-29 sample-retirement dump into `m048_restore` kept 2 tenants, 9 accounts, 43 leads, and 862 audit rows across `047` and `048`. A staging dump restored to `048` on the staging server. Both copies were dropped. The demonstration version was checked again and was still `046`.
+- The eight clean-environment API failures were reproduced again and are classified in doc 64. They are not growth release blockers. `ruff` passed on the changed files. Aikido still needs a sign-in. No provider was called. The branch was not pushed.
+
 ## 2026-11-06 (Social Growth staging readiness, Alembic 047)
 
 - The 046 implementation was already committed and pushed on `main` (`61daf35`). This work is on branch `social-growth-047-hardening` and was not pushed. The running Compose stack was not restarted. The demonstration database stayed at Alembic `046`.

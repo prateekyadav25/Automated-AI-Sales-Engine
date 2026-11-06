@@ -35,6 +35,7 @@ from app.services.audit import emit_event, write_audit
 from app.services.autopilot_settings import get_or_create_settings
 from app.services.demo_guard import external_execution_block
 from app.services.effects import EffectAttempt, ReconciledEffect, execute_external_effect
+from app.services.growth.acceptance import acceptance_step, require_authorized
 from app.services.growth.accounts import live_client, mark_auth_failure, token_problem
 from app.services.growth.assets import asset_bytes, creative_assets, public_ready
 from app.services.growth.common import aware, digest, dumps, growth_enabled, iso, loads, now, publish_mode
@@ -354,13 +355,18 @@ def publish_item(db: Session, *, tenant_id: UUID, actor_id: UUID | None, item_id
     guard = external_execution_block(db, tenant_id=tenant_id, action="social.publish", target_id=str(item.id), channel=account.platform, real_effect=True)
     if guard:
         return stop(guard)
+    recorded = provenance
     owned = False
     graph = client
     if graph is None:
         if publish_mode() != "live":
             return stop("Publishing is disabled in this deployment (SOCIAL_GROWTH_PUBLISH_MODE). Nothing was published.")
+        denied = require_authorized(db, tenant_id, acceptance_step(account.platform, creative.format))
+        if denied:
+            return stop(denied)
         graph = live_client(db, account)
         owned = True
+        recorded = "provider"
         if graph is None:
             mark_auth_failure(account, "No stored token. Reconnect the account.")
             return stop(account.last_error, status="blocked")
@@ -369,7 +375,7 @@ def publish_item(db: Session, *, tenant_id: UUID, actor_id: UUID | None, item_id
             unready = [asset.role for asset in assets if asset.role in {"image", "slide", "reel", "cover"} and not public_ready(asset.public_url)]
             if unready:
                 return stop("Instagram fetches media from a public https address. PUBLIC_API_BASE_URL is not public, so nothing was sent.")
-        publication = _publication(db, tenant_id, item, creative, account, provenance)
+        publication = _publication(db, tenant_id, item, creative, account, recorded)
         publication.api_version = graph.version
         publication.attempts += 1
         item.status = "publishing"

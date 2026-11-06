@@ -39,7 +39,7 @@ Gaps found in existing code, and where they stand after Alembic `047`:
 - Ads, lead-form, and page posting use `META_GRAPH_API_VERSION`, the same setting as the growth client. Default `v26.0`.
 - The capture page forwards the `growth`, `publication`, and `ad` tokens.
 - `ruff check app tests` is clean. Eight older API tests still fail in a clean environment. See `TECHNICAL_DEBT.md`.
-- Staging and the live checklist are `docs/62-social-growth-staging.md` and `docs/63-social-growth-live-acceptance.md`.
+- Staging and the live checklist are `docs/62-social-growth-staging.md` and `docs/63-social-growth-live-acceptance.md`. Milestone `048` adds the in-product checklist and the release report in `docs/64-social-growth-release-readiness.md`.
 
 ## Architecture
 

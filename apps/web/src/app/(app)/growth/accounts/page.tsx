@@ -145,7 +145,13 @@ export default function GrowthAccountsPage() {
               {account.platform === "instagram" ? <Line label="Linked Page" value={account.page_id || "—"} /> : null}
               <Line label="Token expires" value={account.token_expires_at ? when(account.token_expires_at) : "Unknown until verified"} />
               <Line label="Data access expires" value={account.data_access_expires_at ? when(account.data_access_expires_at) : "Unknown until verified"} />
+              <Line label="Granted permissions" value={account.granted_scopes.length ? account.granted_scopes.join(", ") : account.capabilities.checked ? "None returned" : "Not checked"} />
               <Line label="Missing permissions" value={account.missing_scopes.length ? account.missing_scopes.join(", ") : account.capabilities.checked ? "None" : "Not checked"} />
+              <Line label="Publishing eligibility" value={account.publish_eligible ? "Eligible from the last stored check" : "Not eligible"} />
+              <Line label="Insight eligibility" value={account.insights_eligible ? "Eligible from the last stored check" : "Not eligible"} />
+              <Line label="Posting limit" value={account.posting_limit} />
+              <Line label="Reconnect" value={account.reconnect_required ? "Reconnect this account before any provider call." : "No reconnection is required from the stored token state."} />
+              {account.last_error ? <Line label="Connection error" value={account.last_error} /> : null}
               <Line label="Followers" value={account.followers_count === null ? "Unavailable" : `${account.followers_count.toLocaleString()} (read ${when(account.followers_observed_at)})`} />
               <Line label="Graph version" value={account.api_version || "—"} />
               <Line label="Window" value={account.posting_windows.map((window) => `${window.days.map((day) => WEEKDAYS[day]).join(" ")} ${window.start}-${window.end}`).join("; ")} />

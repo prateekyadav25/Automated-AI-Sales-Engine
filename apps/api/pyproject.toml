@@ -14,7 +14,9 @@ dependencies = [
   "argon2-cffi>=23.1.0",
   "httpx>=0.28.1",
   "redis>=5.2.1",
-  "celery>=5.4.0",
+  # Celery 5.7's Redis transport imports packaging, which that release does not declare.
+  "celery>=5.4.0,<5.7",
+  "packaging>=24",
   "python-multipart>=0.0.20",
   "psycopg[binary]>=3.2.3",
   "prometheus-client>=0.21.1",

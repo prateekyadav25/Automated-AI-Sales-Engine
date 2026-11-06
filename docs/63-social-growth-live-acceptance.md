@@ -1,6 +1,8 @@
 # Social Growth live acceptance
 
-Run these in order on the isolated staging stack from `docs/62-social-growth-staging.md`. Each step that would call Meta, Google, or publish a post stops at the approval line. Do not continue past that line without a separate yes for that step. Fixture accounts and `SOCIAL_GROWTH_PUBLISH_MODE=disabled` are the default. A DEMO workspace with a prepared scope publishes nothing.
+Run these in order on the isolated staging stack from `docs/62-social-growth-staging.md`. The same steps are on `/growth/acceptance`. Each one is `not_started`, `blocked`, `awaiting_authorization`, `verified_live`, `failed`, or `not_supported`. `verified_live` is computed from a provider result recorded by a client this process opened. A fixture, a scripted client, or a row marked live without that provider mark does not count. Authorizing a step records the person and the note. It does not call Meta or Google.
+
+Each step that would call Meta, Google, or publish a post stops at the approval line. Do not continue past that line without a separate yes for that step. Fixture accounts and `SOCIAL_GROWTH_PUBLISH_MODE=disabled` are the default. A DEMO workspace with a prepared scope publishes nothing.
 
 Record the workspace, the account name, the operator, and the time for every step. Keep the other tenant unused except in step 10.
 

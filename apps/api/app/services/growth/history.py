@@ -18,6 +18,7 @@ from sqlalchemy.orm import Session
 from app.models.growth import CompetitorBenchmark, GrowthAccount, GrowthMedia
 from app.providers.meta_growth import MetaGrowthClient
 from app.services.audit import write_audit
+from app.services.growth.acceptance import require_authorized
 from app.services.growth.accounts import live_client, live_read_block, mark_auth_failure, owned_account, token_problem
 from app.services.growth.brand import ensure_profile, record_source, remember_fact
 from app.services.growth.brand_extract import Finding, hashtags, voice_profile
@@ -44,6 +45,9 @@ def _open(db: Session, tenant_id: UUID, account: GrowthAccount, client: MetaGrow
     blocked = live_read_block(db, tenant_id)
     if blocked:
         return None, False, blocked
+    denied = require_authorized(db, tenant_id, "history_import")
+    if denied:
+        return None, False, denied
     problem = token_problem(account)
     if problem:
         return None, False, problem
@@ -67,6 +71,7 @@ def import_history(
     graph, owned, blocked = _open(db, tenant_id, account, client)
     if graph is None:
         return {"status": "blocked", "imported": 0, "detail": blocked}
+    recorded = "provider" if owned else provenance
     try:
         imported = 0
         after = ""
@@ -86,7 +91,7 @@ def import_history(
                     continue
                 caption = str(item.get("caption") or item.get("message") or "")
                 captions.append(caption)
-                _remember_media(db, tenant_id=tenant_id, actor_id=actor_id, account=account, item=item, caption=caption, provenance=provenance)
+                _remember_media(db, tenant_id=tenant_id, actor_id=actor_id, account=account, item=item, caption=caption, provenance=recorded)
                 imported += 1
             paging = result.data.get("paging") if isinstance(result.data.get("paging"), dict) else {}
             after = str(((paging.get("cursors") or {}) if isinstance(paging.get("cursors"), dict) else {}).get("after") or "")

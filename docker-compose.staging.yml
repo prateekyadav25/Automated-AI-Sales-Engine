@@ -1,0 +1,186 @@
+# Isolated Social Growth staging. This file does not use the running demo project,
+# its volumes, its .env, or its published ports.
+#
+#   docker compose -p agrayian-staging -f docker-compose.staging.yml up -d --build
+#
+# Publishing, insights, ads, email, and GA4 stay disabled. There is no public
+# HTTPS endpoint in this file. Do not point it at the demo database.
+
+name: agrayian-staging
+
+services:
+  postgres:
+    image: pgvector/pgvector:pg16
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: agrayian
+      POSTGRES_PASSWORD: staging-local-048
+      POSTGRES_DB: agrayian
+    ports:
+      - "5436:5432"
+    volumes:
+      - staging_postgres:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U agrayian -d agrayian"]
+      interval: 5s
+      timeout: 5s
+      retries: 20
+
+  redis:
+    image: redis:7-alpine
+    restart: unless-stopped
+    ports:
+      - "6381:6379"
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 20
+
+  minio:
+    # Official minio/minio and quay.io/minio/minio no longer pull anonymously.
+    # Silo is an S3-compatible MinIO fork used only for this isolated bucket.
+    image: pgsty/silo:RELEASE.2026-10-26T00-00-00Z
+    restart: unless-stopped
+    command: server /data --console-address ":9001"
+    environment:
+      MINIO_ROOT_USER: stagingminio
+      MINIO_ROOT_PASSWORD: stagingminiosecret
+    ports:
+      - "9002:9000"
+      - "9003:9001"
+    volumes:
+      - staging_minio:/data
+
+  api:
+    build:
+      context: ./apps/api
+    restart: unless-stopped
+    environment:
+      ENVIRONMENT: staging
+      SECRET_KEY: staging-local-not-for-a-public-host-048
+      SEED_DEMO: "false"
+      DATABASE_URL: postgresql+psycopg://agrayian_app:agrayian@postgres:5432/agrayian
+      DATABASE_ADMIN_URL: postgresql+psycopg://agrayian:staging-local-048@postgres:5432/agrayian
+      APP_DB_PASSWORD: agrayian
+      REDIS_URL: redis://redis:6379/0
+      S3_ENDPOINT: http://minio:9000
+      OBJECT_STORAGE_PROVIDER: minio
+      S3_ACCESS_KEY: stagingminio
+      S3_SECRET_KEY: stagingminiosecret
+      S3_BUCKET: agrayian-staging
+      META_GRAPH_API_VERSION: v26.0
+      SOCIAL_GROWTH_PUBLISH_MODE: disabled
+      SOCIAL_GROWTH_INSIGHTS_MODE: disabled
+      GA4_MODE: disabled
+      META_ADS_MODE: disabled
+      PUBLIC_API_BASE_URL: http://localhost:8012
+      CORS_ORIGINS: http://localhost:3010,http://127.0.0.1:3010
+      WEB_APP_ORIGIN: http://localhost:3010
+    ports:
+      - "8012:8000"
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    command: >
+      sh -c "alembic upgrade head &&
+             uvicorn app.main:app --host 0.0.0.0 --port 8000"
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8000/health')"]
+      interval: 10s
+      timeout: 5s
+      retries: 20
+      start_period: 40s
+
+  worker:
+    build:
+      context: ./apps/api
+    restart: unless-stopped
+    environment:
+      ENVIRONMENT: staging
+      SECRET_KEY: staging-local-not-for-a-public-host-048
+      SEED_DEMO: "false"
+      DATABASE_URL: postgresql+psycopg://agrayian_app:agrayian@postgres:5432/agrayian
+      DATABASE_ADMIN_URL: postgresql+psycopg://agrayian:staging-local-048@postgres:5432/agrayian
+      APP_DB_PASSWORD: agrayian
+      REDIS_URL: redis://redis:6379/0
+      S3_ENDPOINT: http://minio:9000
+      OBJECT_STORAGE_PROVIDER: minio
+      S3_ACCESS_KEY: stagingminio
+      S3_SECRET_KEY: stagingminiosecret
+      S3_BUCKET: agrayian-staging
+      META_GRAPH_API_VERSION: v26.0
+      SOCIAL_GROWTH_PUBLISH_MODE: disabled
+      SOCIAL_GROWTH_INSIGHTS_MODE: disabled
+      GA4_MODE: disabled
+      META_ADS_MODE: disabled
+      SERVICE_ROLE: worker
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    command: celery -A app.workers.celery_app worker --loglevel=info --concurrency=2 -Q celery,automation,providers,ai,maintenance
+    healthcheck:
+      test: ["CMD", "python", "-m", "app.workers.health", "worker"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+
+  beat:
+    build:
+      context: ./apps/api
+    restart: unless-stopped
+    environment:
+      ENVIRONMENT: staging
+      SECRET_KEY: staging-local-not-for-a-public-host-048
+      SEED_DEMO: "false"
+      DATABASE_URL: postgresql+psycopg://agrayian_app:agrayian@postgres:5432/agrayian
+      DATABASE_ADMIN_URL: postgresql+psycopg://agrayian:staging-local-048@postgres:5432/agrayian
+      APP_DB_PASSWORD: agrayian
+      REDIS_URL: redis://redis:6379/0
+      META_GRAPH_API_VERSION: v26.0
+      SOCIAL_GROWTH_PUBLISH_MODE: disabled
+      SOCIAL_GROWTH_INSIGHTS_MODE: disabled
+      GA4_MODE: disabled
+      META_ADS_MODE: disabled
+      SERVICE_ROLE: beat
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    command: celery -A app.workers.celery_app beat --loglevel=info
+    healthcheck:
+      test: ["CMD", "python", "-m", "app.workers.health", "beat"]
+      interval: 30s
+      timeout: 15s
+      retries: 3
+      start_period: 90s
+
+  web:
+    build:
+      context: .
+      dockerfile: apps/web/Dockerfile
+      args:
+        NEXT_PUBLIC_API_URL: http://localhost:8012
+    restart: unless-stopped
+    environment:
+      NEXT_PUBLIC_API_URL: http://localhost:8012
+    ports:
+      - "3010:3000"
+    depends_on:
+      api:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "node", "-e", "fetch('http://127.0.0.1:3000').then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+
+volumes:
+  staging_postgres:
+  staging_minio:

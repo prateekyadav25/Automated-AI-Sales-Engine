@@ -36,6 +36,7 @@ from app.models.growth import (
 from app.models.lifecycle import DealPurchase
 from app.providers.ga4 import SCOPE, run_traffic_report
 from app.services.audit import write_audit
+from app.services.growth.acceptance import require_authorized
 from app.services.growth.common import iso, now, operating_mode
 from app.services.provider_accounts import connected_google_account, ensure_fresh_token, parse_scopes
 from app.services.public_forms import form_key_url, hash_form_token
@@ -297,6 +298,9 @@ def collect_ga4(db: Session, *, tenant_id: UUID, actor_id: UUID | None, client=N
             return {"status": "blocked", "stored": 0, "detail": "GA4 reads are disabled in this deployment (GA4_MODE). Nothing was requested."}
         if operating_mode(db, tenant_id) == "DEMO":
             return {"status": "blocked", "stored": 0, "detail": "A DEMO workspace does not read GA4. Nothing was requested."}
+        denied = require_authorized(db, tenant_id, "ga4")
+        if denied:
+            return {"status": "blocked", "stored": 0, "detail": denied}
         account = connected_google_account(db, tenant_id)
         if account is None or SCOPE not in parse_scopes(account.scopes):
             return {"status": "blocked", "stored": 0, "detail": "The Google connection lacks analytics.readonly. Reconnect Google with that scope."}
@@ -342,7 +346,7 @@ def collect_ga4(db: Session, *, tenant_id: UUID, actor_id: UUID | None, client=N
         existing.key_events = row["key_events"]
         existing.status = "recorded"
         existing.retrieved_at = now()
-        existing.provenance = provenance
+        existing.provenance = "provider" if owned else provenance
         stored += 1
     db.flush()
     write_audit(db, tenant_id=tenant_id, actor_id=actor_id, action="growth.ga4_collect", entity_type="brand_profile", entity_id=str(profile.id), after={"stored": stored, "provenance": provenance}, actor_type="human" if actor_id else "ai")

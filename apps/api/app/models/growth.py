@@ -382,6 +382,21 @@ class GrowthTrafficObservation(Base, TenantOwnedMixin):
     error: Mapped[str] = mapped_column(Text, default="", nullable=False)
 
 
+class GrowthAcceptanceGate(Base, TenantOwnedMixin):
+    """A person's authorization for one live acceptance step.
+
+    The row records who approved the step and when. It does not store a
+    verified result. Verified status is computed from provider evidence.
+    """
+
+    __tablename__ = "growth_acceptance_gates"
+    __table_args__ = (UniqueConstraint("tenant_id", "step_key", name="uq_growth_acceptance_step"),)
+
+    step_key: Mapped[str] = mapped_column(String(40), nullable=False)
+    authorized_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    note: Mapped[str] = mapped_column(Text, default="", nullable=False)
+
+
 class GrowthRecommendation(Base, TenantOwnedMixin):
     """A reviewable suggestion. It never changes the strategy, the copy, or spend by itself."""
 

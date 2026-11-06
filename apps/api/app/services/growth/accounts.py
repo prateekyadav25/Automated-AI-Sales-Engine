@@ -24,6 +24,7 @@ from app.models.integrations import ProviderAccount
 from app.providers.meta_growth import MetaGrowthClient, graph_version
 from app.services.audit import write_audit
 from app.services.demo_guard import organic_metrics_block
+from app.services.growth.acceptance import require_authorized
 from app.services.growth.common import (
     PUBLISHABLE_PLATFORMS,
     aware,
@@ -250,6 +251,9 @@ def verify_account(db: Session, *, tenant_id: UUID, actor_id: UUID | None, accou
         blocked = live_read_block(db, tenant_id)
         if blocked:
             return {"status": account.status, "detail": blocked, "account": account_out(account)}
+        denied = require_authorized(db, tenant_id, "token_verification")
+        if denied:
+            return {"status": account.status, "detail": denied, "account": account_out(account)}
         client = live_client(db, account)
         owned = True
         if client is None:
@@ -322,7 +326,11 @@ def verify_account(db: Session, *, tenant_id: UUID, actor_id: UUID | None, accou
         )
         return {"status": account.status, "detail": account.last_error or "Account verified.", "account": account_out(account)}
     finally:
-        if owned:
+        if owned and client is not None:
+            current = loads(account.capabilities, {})
+            current["evidence"] = "provider" if account.status == "connected" else "provider_failed"
+            account.capabilities = dumps(current)
+            db.flush()
             client.close()
 
 
@@ -390,6 +398,15 @@ def disconnect_account(db: Session, *, tenant_id: UUID, actor_id: UUID, account_
 
 
 def account_out(row: GrowthAccount) -> dict:
+    problem = token_problem(row)
+    capabilities = loads(row.capabilities, {})
+    live_and_connected = row.provenance != "fixture" and row.status == "connected" and not problem
+    posting_limit = f"This account allows {row.daily_cap} posts a day."
+    if row.platform == "instagram":
+        posting_limit += (
+            f" Instagram's deployment pre-check is {get_settings().social_growth_instagram_daily_limit} publications in 24 hours."
+            " The live quota is read only after publishing is authorized."
+        )
     return {
         "id": str(row.id),
         "platform": row.platform,
@@ -412,7 +429,11 @@ def account_out(row: GrowthAccount) -> dict:
         "api_version": row.api_version,
         "followers_count": row.followers_count,
         "followers_observed_at": iso(row.followers_observed_at),
-        "problem": token_problem(row),
+        "problem": problem,
+        "publish_eligible": live_and_connected and capabilities.get("publish") is True,
+        "insights_eligible": live_and_connected and capabilities.get("insights") is True,
+        "reconnect_required": bool(problem) or row.status in {"needs_reconnect", "expired", "revoked", "disconnected"},
+        "posting_limit": posting_limit,
     }
 
 
