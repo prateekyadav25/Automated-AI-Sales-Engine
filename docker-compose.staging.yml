@@ -17,7 +17,7 @@ services:
       POSTGRES_PASSWORD: staging-local-048
       POSTGRES_DB: agrayian
     ports:
-      - "5436:5432"
+      - "127.0.0.1:5436:5432"
     volumes:
       - staging_postgres:/var/lib/postgresql/data
     healthcheck:
@@ -30,7 +30,7 @@ services:
     image: redis:7-alpine
     restart: unless-stopped
     ports:
-      - "6381:6379"
+      - "127.0.0.1:6381:6379"
     healthcheck:
       test: ["CMD", "redis-cli", "ping"]
       interval: 5s
@@ -47,8 +47,8 @@ services:
       MINIO_ROOT_USER: stagingminio
       MINIO_ROOT_PASSWORD: stagingminiosecret
     ports:
-      - "9002:9000"
-      - "9003:9001"
+      - "127.0.0.1:9002:9000"
+      - "127.0.0.1:9003:9001"
     volumes:
       - staging_minio:/data
 
@@ -78,7 +78,7 @@ services:
       CORS_ORIGINS: http://localhost:3010,http://127.0.0.1:3010
       WEB_APP_ORIGIN: http://localhost:3010
     ports:
-      - "8012:8000"
+      - "127.0.0.1:8012:8000"
     depends_on:
       postgres:
         condition: service_healthy
@@ -171,7 +171,7 @@ services:
     environment:
       NEXT_PUBLIC_API_URL: http://localhost:8012
     ports:
-      - "3010:3000"
+      - "127.0.0.1:3010:3000"
     depends_on:
       api:
         condition: service_healthy

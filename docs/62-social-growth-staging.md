@@ -53,7 +53,7 @@ Do not subscribe a Page, do not call Graph with a real token, and do not turn pu
 
 ## Local isolated Compose
 
-`docker-compose.staging.yml` is a second project, `agrayian-staging`. It does not read `.env`, does not attach to the demonstration volumes, and publishes different ports: Postgres `5436`, Redis `6381`, object storage `9002`, API `8012`, web `3010`.
+`docker-compose.staging.yml` is a second project, `agrayian-staging`. It does not read `.env`, does not attach to the demonstration volumes, and publishes only on `127.0.0.1`: Postgres `5436`, Redis `6381`, object storage `9002` and console `9003`, API `8012`, web `3010`.
 
 ```
 docker compose -p agrayian-staging -f docker-compose.staging.yml up -d --build
@@ -63,4 +63,4 @@ docker compose -p agrayian-staging -f docker-compose.staging.yml up -d --build
 
 There is no public HTTPS name in this file. `PUBLIC_API_BASE_URL` stays `http://localhost:8012`, so Instagram publishing stays blocked. Logs are the Compose project logs. Health is `GET /health` on the API, plus the Compose health checks.
 
-The in-product checklist is `/growth/acceptance`. A step is live-verified only after a stored authorization and a provider result. See `docs/64-social-growth-release-readiness.md`.
+The in-product checklist is `/growth/acceptance`. A step is live-verified only after a stored authorization and a provider result. `GET /api/v1/social-growth/acceptance/preflight` reports deployment blockers and does not call a provider. See `docs/64-social-growth-release-readiness.md` and `docs/65-social-growth-live-acceptance-049.md`.

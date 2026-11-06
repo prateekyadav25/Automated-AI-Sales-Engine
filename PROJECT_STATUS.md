@@ -2,7 +2,9 @@
 
 ## CURRENT PHASE
 
-2026-11-06: Milestone 048 is on branch `social-growth-047-hardening`. Isolated staging is running Alembic `048`. The demonstration is still Alembic `046` and was not migrated or restarted. Live publishing, insights, and GA4 stay off. `/growth/acceptance` is the authorization workflow. Doc 64 is the release report. A public HTTPS host, Meta app credentials, and a Page token are still required before any live check. Paid activation and reporting, and SEO, remain open. The sales engine is not finished.
+2026-11-07: Milestone 049 is partially complete and **BLOCKED BY CONFIGURATION**. No Meta account was verified, no post was published, and no live attribution was recorded. Doc 65 states the blockers and the exact HTTPS setup that was not performed. Doc 66 plans Meta Ads and does not start it. Isolated staging remains the only place those checks may run. The demonstration is still Alembic `046`. Paid activation and reporting, and SEO, remain open. The sales engine is not finished.
+
+2026-11-06: Milestone 048 is on branch `social-growth-047-hardening`. Isolated staging is running Alembic `048`. The demonstration is still Alembic `046` and was not migrated or restarted. Live publishing, insights, and GA4 stay off. `/growth/acceptance` is the authorization workflow. Doc 64 is the release report. A public HTTPS host, Meta app credentials, and a Page token are still required before any live check.
 
 Earlier on 2026-10-28: purchase onboarding, evidence-backed health, and reviewable retention follow-through reached the local application at Alembic `045`. The paragraph below is the older phase inventory.
 
@@ -34,15 +36,15 @@ Phases 0–22 plus Autopilot batches 1–8 and the full-funnel completion slice 
 
 ## IN PROGRESS
 
-None.
+- Social Growth live verification (milestone 049), partially complete. Staging preflight, secret redaction, and scripted one-post cases are in the working tree. Live provider steps have not started.
 
 ## BLOCKED
 
-- Social Growth live verification: needs a Meta app with Advanced Access to the Page and Instagram permissions, client Page and Instagram tokens, a public HTTPS `PUBLIC_API_BASE_URL` with shared object storage, and an authorized workspace.
+- Social Growth live verification: BLOCKED BY CONFIGURATION. Needs a public HTTPS origin, `META_APP_ID` and `META_APP_SECRET`, a Page token, `TOKEN_ENCRYPTION_KEY`, and a separate yes for each external request. See `docs/65-social-growth-live-acceptance-049.md`.
 
 ## NEXT
 
-Follow `docs/63-social-growth-live-acceptance.md` on an isolated staging stack. Do not run those external steps without a separate approval for each one.
+Follow `docs/63-social-growth-live-acceptance.md` and `docs/65-social-growth-live-acceptance-049.md` on the isolated staging stack. Do not run those external steps without a separate approval for each one. Meta Ads stays a plan in `docs/66-meta-ads-autopilot-050.md`.
 
 After one verified token and one approved post, the next build is a Meta Ads Autopilot with closed-loop organic optimization: paused campaign assembly is already fixture-tested; a later loop may change pillar weights only from stored live readings, still behind the same grant and scope gates. Live WhatsApp when credentials exist, Gmail Pub/Sub after measured ingest lag, live Zendesk/Stripe HTTP, HNSW after measured chunk latency, and trained ML only after a task is READY_FOR_EXPERIMENT remain on the roadmap. A public HTTPS host is required before provider callbacks can reach a non-local API.
 

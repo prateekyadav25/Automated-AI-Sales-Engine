@@ -33,6 +33,19 @@ export type GrowthAccount = {
   posting_limit: string;
 };
 
+export type DeploymentPreflight = {
+  status: "blocked" | "awaiting_authorization";
+  publish_mode: string;
+  insights_mode: string;
+  ga4_mode: string;
+  ads_mode: string;
+  public_api_base_url: string;
+  https_media: boolean;
+  meta_app_configured: boolean;
+  dedicated_token_key: boolean;
+  blockers: string[];
+};
+
 export type AcceptanceStep = {
   step_key: string;
   title: string;

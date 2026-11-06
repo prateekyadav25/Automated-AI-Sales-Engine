@@ -25,6 +25,7 @@ from typing import Any
 import httpx
 
 from app.core.config import get_settings
+from app.core.logging import redact_text
 
 GRAPH_HOST = "https://graph.facebook.com"
 UPLOAD_HOST = "https://rupload.facebook.com"
@@ -153,7 +154,7 @@ def _result(response: Any) -> GraphResult:
             subcode = int(error.get("error_subcode")) if error.get("error_subcode") is not None else None
         except (TypeError, ValueError):
             subcode = None
-        message = str(error.get("error_user_msg") or error.get("message") or "").replace("\n", " ").strip()[:300]
+        message = redact_text(str(error.get("error_user_msg") or error.get("message") or "").replace("\n", " ").strip())[:300]
     return GraphResult(
         ok=False,
         status_code=status_code,

@@ -1,5 +1,15 @@
 # Implementation Log
 
+## 2026-11-07 (Real Meta integration, milestone 049, partially complete)
+
+- Continued on `social-growth-047-hardening` from `519aff4`. The demonstration containers were not restarted. Database `agrayian` was not migrated. No Meta, GA4, email, message, or ads call was made. The branch was not pushed.
+- `GET /api/v1/social-growth/acceptance/preflight` reports HTTPS, Meta app, token-encryption key, and the four mode flags. It returns no secrets and does not call a provider. `/growth/acceptance` shows that panel. The existing `GET /acceptance` list is unchanged.
+- Log redaction and Graph error text strip `access_token`, `input_token`, `appsecret_proof`, `client_secret`, `refresh_token`, and `app_secret` query values. Public media responses send `X-Content-Type-Options: nosniff` with the stored content type.
+- Staging published ports in `docker-compose.staging.yml` bind to `127.0.0.1` only. There is still no public hostname or certificate. Instagram media fetch stays BLOCKED BY CONFIGURATION. Doc 65 records the exact DNS, TLS, and reverse-proxy steps that were not performed.
+- Scripted tests cover one Facebook image, one Instagram image, and one Instagram Reel. Each stores the fake provider id, stays off `verified_live`, leaves `SOCIAL_GROWTH_PUBLISH_MODE` unchanged, and leaves `publish_due` at 0. A connect-account test checks that the raw token is absent from the audit JSON and the account payload.
+- With no env file, the eight legacy API failures were reproduced again on 2026-11-07. They fail on wording or a DEMO guard and do not release an external action. They do not block a future live Meta test. Aikido still needs a sign-in.
+- Doc 66 is the Meta Ads Autopilot plan. It was not implemented. `META_ADS_MODE` stays disabled.
+
 ## 2026-11-06 (Isolated staging and live acceptance, Alembic 048)
 
 - Continued on `social-growth-047-hardening`. The demonstration containers were not restarted. Database `agrayian` stayed at Alembic `046`.

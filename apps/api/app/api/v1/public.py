@@ -121,7 +121,11 @@ document.getElementById("agrayian-form").addEventListener("submit", async (event
 def public_media(token: str, request: Request, db: Annotated[Session, Depends(get_db)]) -> Response:
     enforce_rate_limit(key=f"public-media:{request.client.host if request.client else 'unknown'}", limit=120, window_seconds=60)
     data, content_type = read_social_image(db, token)
-    return Response(content=data, media_type=content_type, headers={"Cache-Control": "public, max-age=86400"})
+    return Response(
+        content=data,
+        media_type=content_type,
+        headers={"Cache-Control": "public, max-age=86400", "X-Content-Type-Options": "nosniff"},
+    )
 
 
 @router.get("/r/{token}")

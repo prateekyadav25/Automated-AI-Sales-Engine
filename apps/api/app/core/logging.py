@@ -25,12 +25,17 @@ _SECRET_RE = re.compile(
     r"(bearer\s+[a-z0-9._\-]+|sk-[a-z0-9]+|eyj[a-z0-9_\-]+\.[a-z0-9_\-]+)",
     re.IGNORECASE,
 )
+_QUERY_SECRET_RE = re.compile(
+    r"((?:access_token|input_token|appsecret_proof|client_secret|refresh_token|app_secret)=)[^&\s\"']+",
+    re.IGNORECASE,
+)
 _EMAIL_RE = re.compile(r"\b[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}\b", re.IGNORECASE)
 _PHONE_RE = re.compile(r"\b\+?\d[\d\-\s()]{8,}\d\b")
 
 
 def redact_text(value: str) -> str:
-    redacted = _SECRET_RE.sub("[REDACTED]", value)
+    redacted = _QUERY_SECRET_RE.sub(r"\1[REDACTED]", value)
+    redacted = _SECRET_RE.sub("[REDACTED]", redacted)
     redacted = _EMAIL_RE.sub("[EMAIL]", redacted)
     return _PHONE_RE.sub("[PHONE]", redacted)
 

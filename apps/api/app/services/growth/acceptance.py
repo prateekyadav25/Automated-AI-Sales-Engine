@@ -89,6 +89,46 @@ def authorize(db: Session, *, tenant_id: UUID, actor_id: UUID, step_key: str, no
     return _view(db, tenant_id, step_key, _title(step_key), row)
 
 
+def deployment_preflight() -> dict:
+    """Report deployment blockers. This reads settings only and does not call a provider."""
+    settings = get_settings()
+    publish_mode = (settings.social_growth_publish_mode or "disabled").strip().lower()
+    insights_mode = (settings.social_growth_insights_mode or "disabled").strip().lower()
+    ga4_mode = (settings.ga4_mode or "disabled").strip().lower()
+    ads_mode = (settings.meta_ads_mode or "disabled").strip().lower()
+    base = (settings.public_api_base_url or "").strip()
+    https_media = base.lower().startswith("https://")
+    meta_app_configured = bool((settings.meta_app_id or "").strip() and (settings.meta_app_secret or "").strip())
+    dedicated_token_key = bool((settings.token_encryption_key or "").strip())
+    blockers: list[str] = []
+    if not https_media:
+        blockers.append("PUBLIC_API_BASE_URL is not an https address. Instagram cannot fetch media. BLOCKED BY CONFIGURATION.")
+    if not meta_app_configured:
+        blockers.append("META_APP_ID and META_APP_SECRET are not set. BLOCKED BY CONFIGURATION.")
+    if not dedicated_token_key:
+        blockers.append("TOKEN_ENCRYPTION_KEY is not set. A stored Page token would be encrypted with the application secret.")
+    if publish_mode != "live":
+        blockers.append("SOCIAL_GROWTH_PUBLISH_MODE is disabled. No post will be sent.")
+    if insights_mode != "live":
+        blockers.append("SOCIAL_GROWTH_INSIGHTS_MODE is disabled. No Meta read will run.")
+    if ga4_mode != "live":
+        blockers.append("GA4_MODE is disabled. No Google Analytics read will run.")
+    if ads_mode not in {"disabled", "mock"}:
+        blockers.append("META_ADS_MODE is not held off. Advertising must stay disabled for this milestone.")
+    return {
+        "status": "blocked" if blockers else "awaiting_authorization",
+        "publish_mode": publish_mode,
+        "insights_mode": insights_mode,
+        "ga4_mode": ga4_mode,
+        "ads_mode": ads_mode,
+        "public_api_base_url": base,
+        "https_media": https_media,
+        "meta_app_configured": meta_app_configured,
+        "dedicated_token_key": dedicated_token_key,
+        "blockers": blockers,
+    }
+
+
 def overview(db: Session, tenant_id: UUID) -> list[dict]:
     gates = {row.step_key: row for row in db.scalars(select(GrowthAcceptanceGate).where(GrowthAcceptanceGate.tenant_id == tenant_id, GrowthAcceptanceGate.deleted_at.is_(None))).all()}
     return [_view(db, tenant_id, key, title, gates.get(key)) for key, title in STEPS]

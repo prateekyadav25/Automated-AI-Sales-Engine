@@ -430,6 +430,11 @@ def acceptance_overview(db: Annotated[Session, Depends(get_db)], ctx: Annotated[
     return Envelope(data=acceptance_service.overview(db, ctx.tenant_id))
 
 
+@router.get("/acceptance/preflight")
+def acceptance_preflight(_: Annotated[AuthContext, Depends(require_permission(READ))]) -> Envelope[dict]:
+    return Envelope(data=acceptance_service.deployment_preflight())
+
+
 @router.post("/acceptance/{step_key}/authorize")
 def authorize_acceptance(step_key: str, body: AcceptanceIn, db: Annotated[Session, Depends(get_db)], ctx: Annotated[AuthContext, Depends(require_permission(APPROVE))]) -> Envelope[dict]:
     data = acceptance_service.authorize(db, tenant_id=ctx.tenant_id, actor_id=ctx.user.id, step_key=step_key, note=body.note)

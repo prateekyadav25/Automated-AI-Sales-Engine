@@ -322,6 +322,7 @@ def test_uploaded_image_is_readable_without_a_login(client: TestClient, monkeypa
         assert public.status_code == 200, public.text
         assert public.content == png
         assert public.headers["content-type"].startswith("image/png")
+        assert public.headers["x-content-type-options"] == "nosniff"
         rejected = client.post(
             "/api/v1/social/images",
             headers=headers,

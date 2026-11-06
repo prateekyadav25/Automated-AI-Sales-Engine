@@ -7,7 +7,7 @@ import { DeniedState, ErrorState, LoadingState } from "@/components/states";
 import { Button, Field, Input } from "@/components/ui";
 import { useAuth } from "@/lib/auth";
 import { when } from "@/lib/format";
-import { growth, send, type AcceptanceStep } from "@/lib/growth";
+import { growth, send, type AcceptanceStep, type DeploymentPreflight } from "@/lib/growth";
 import { ApiError } from "@agrayian/sdk";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useState } from "react";
@@ -47,6 +47,11 @@ export default function GrowthAcceptancePage() {
     queryFn: () => growth<AcceptanceStep[]>("/acceptance"),
     enabled: can("social_growth.read"),
   });
+  const preflight = useQuery({
+    queryKey: ["growth-acceptance-preflight"],
+    queryFn: () => growth<DeploymentPreflight>("/acceptance/preflight"),
+    enabled: can("social_growth.read"),
+  });
   const authorize = useMutation({
     mutationFn: ({ step, note }: { step: string; note: string }) => growth<AcceptanceStep>(`/acceptance/${step}/authorize`, send({ note })),
     onSuccess: (step) => {
@@ -67,6 +72,19 @@ export default function GrowthAcceptancePage() {
         subtitle="Each step stays unverified until a person authorizes it and a real provider result is stored. Authorizing a step does not call Meta or Google, and a fixture result is never marked live-verified."
       />
       <GrowthNav />
+      {preflight.data ? (
+        <Panel title="Deployment preflight" extra={<span className="text-xs font-semibold text-[var(--meta)]">{preflight.data.status === "blocked" ? "Blocked by configuration" : "Awaiting authorization"}</span>}>
+          <Line label="Public media origin" value={preflight.data.https_media ? preflight.data.public_api_base_url : `${preflight.data.public_api_base_url || "Unset"} — not https`} />
+          <Line label="Meta app" value={preflight.data.meta_app_configured ? "App id and secret are set" : "Not configured"} />
+          <Line label="Publishing" value={preflight.data.publish_mode} />
+          <Line label="Insights" value={preflight.data.insights_mode} />
+          <Line label="GA4" value={preflight.data.ga4_mode} />
+          <Line label="Ads" value={preflight.data.ads_mode} />
+          {preflight.data.blockers.map((blocker) => (
+            <p key={blocker} className="mt-2 text-sm text-[var(--muted)]">{blocker}</p>
+          ))}
+        </Panel>
+      ) : null}
       <Notice
         kind="warn"
         title="External actions stay off"
