@@ -216,8 +216,12 @@ A post goes out only when the workspace flag is on, the deployment mode is live,
 
 ## ADR-044 — Graph API version is a setting
 
-`META_GRAPH_API_VERSION` (default `v26.0`) drives the growth client and the resumable upload host path. Each publication and reading stores the version used. Older ads, lead-form, and page-posting clients stay on `v21.0` until they are migrated. Meta lists its expiry as 2027-01-21.
+`META_GRAPH_API_VERSION` (default `v26.0`) drives the growth client, the resumable upload host path, and the older ads, lead-form, and page-posting clients. Each publication and reading stores the version used. Live ad-account permission is still unverified. A page-posting token is not an ads token.
 
 ## ADR-045 — Social metrics are readings, not totals
 
 Each insight is stored per account or post, metric, period, and retrieval with its endpoint, version, provenance, and status. Missing is null and shown as unavailable, never zero. Additive daily metrics are summed. Unique-person metrics are averaged per day and labeled. Follower counts use the latest reading. Fixture readings never enter live totals. Tracked clicks, GA4 sessions, enquiries, qualified leads, and won purchases are separate measures. Currencies are not combined.
+
+## ADR-046 — Late tenant tables use the same row-level policy
+
+Alembic `047` forces row-level security on the ten tenant tables added in `039`–`045` that were created without it. The policy is `tenant_id` equals `app.current_tenant_id`. Lead-form receipts may arrive before a workspace owns the form. The webhook and `retrieve_native_lead_forms` set `app.lead_intake` for that lookup only. A normal request does not, so it cannot read another workspace's receipts or unbound notifications. Binding inserts still require the tenant context. `collect_organic_metrics` runs through `run_per_tenant` and passes that tenant into the collector. Growth tables keep the forced policies from `046`, including the public tracking-link exception. Downgrade does not remove the policies. Recovery is restoring the pre-upgrade backup.

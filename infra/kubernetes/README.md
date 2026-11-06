@@ -2,7 +2,7 @@
 
 Kustomize base lives in `infra/kubernetes/base`. Overlays:
 
-- `overlays/staging` — all outreach providers forced to mock; no demo seed
+- `overlays/staging` — outreach providers forced to mock; no demo seed; Social Growth publishing, insights, and GA4 stay disabled
 - `overlays/production` — `ENVIRONMENT=production`, `SEED_DEMO=false`
 
 Workloads: `web`, `api`, `worker`, `beat` (replicas=1). Schema changes go through the `agrayian-migrate` Job using `DATABASE_ADMIN_URL`. API and worker pods assume the schema is current.

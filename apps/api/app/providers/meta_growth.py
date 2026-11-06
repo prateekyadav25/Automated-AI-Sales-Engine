@@ -61,6 +61,11 @@ def graph_version() -> str:
     return raw if raw.startswith("v") else f"v{raw}"
 
 
+def graph_base() -> str:
+    """Host and version for every Meta Graph client in this process."""
+    return f"{GRAPH_HOST}/{graph_version()}"
+
+
 def appsecret_proof(access_token: str, app_secret: str) -> str:
     return hmac.new(app_secret.encode(), access_token.encode(), hashlib.sha256).hexdigest()
 

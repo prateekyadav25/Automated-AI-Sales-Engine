@@ -198,12 +198,17 @@ def retrieve_native_lead_forms() -> int:
 @celery_app.task(name="collect_organic_metrics")
 def collect_organic_metrics() -> int:
     from app.db.session import get_engine, get_session
+    from app.db.tenant_context import supports_rls
+    from app.db.tenant_jobs import run_per_tenant
     from app.services.organic_metrics import collect_due_organic_metrics
 
     get_engine()
     db = get_session()
     try:
-        count = collect_due_organic_metrics(db)
+        if supports_rls(db):
+            count = run_per_tenant(db, lambda tenant_id: collect_due_organic_metrics(db, tenant_id=tenant_id))
+        else:
+            count = collect_due_organic_metrics(db)
         db.commit()
         return count
     finally:

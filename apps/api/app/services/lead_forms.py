@@ -15,6 +15,7 @@ from sqlalchemy import or_, select
 from sqlalchemy.orm import Session
 
 from app.core.config import get_settings
+from app.db.tenant_context import clear_tenant_context, set_lead_intake, set_tenant_context
 from app.models.ai import AIApproval
 from app.models.crm import Lead, Task
 from app.models.identity import User
@@ -109,6 +110,14 @@ def bind_lead_form(
 
 def accept_leadgen_notification(db: Session, payload: dict) -> dict:
     """Persist each new leadgen id. A repeat of the same id is not a second row."""
+    set_lead_intake(db, True)
+    try:
+        return _accept_leadgen_notification(db, payload)
+    finally:
+        set_lead_intake(db, False)
+
+
+def _accept_leadgen_notification(db: Session, payload: dict) -> dict:
     created = 0
     duplicate = 0
     for change in leadgen_changes(payload):
@@ -140,7 +149,14 @@ def accept_leadgen_notification(db: Session, payload: dict) -> dict:
 
 
 def process_due_lead_receipts(db: Session, client: LeadHttp | None = None) -> int:
-    """Retrieve and capture due receipts. A missing client is not a live call."""
+    """Retrieve and capture due receipts. A missing client is not a live call.
+
+    Unbound receipts have no tenant yet. The intake flag lets this worker see them
+    and every form mapping, so two workspaces claiming one form stay ambiguous.
+    Tenant-owned writes happen only after the mapping selects one tenant.
+    """
+    set_lead_intake(db, True)
+    clear_tenant_context(db)
     rows = db.scalars(
         select(LeadFormReceipt)
         .where(LeadFormReceipt.status.in_(tuple(RETRY_STATUSES)))
@@ -151,11 +167,15 @@ def process_due_lead_receipts(db: Session, client: LeadHttp | None = None) -> in
     handled = 0
     try:
         for row in rows:
+            clear_tenant_context(db)
+            set_lead_intake(db, True)
             live = process_lead_receipt(db, row, client=live, allow_live=client is None)
             db.flush()
             handled += 1
         return handled
     finally:
+        set_lead_intake(db, False)
+        clear_tenant_context(db)
         if client is None and live is not None:
             close = getattr(live, "close", None)
             if close is not None:
@@ -178,6 +198,7 @@ def process_lead_receipt(db: Session, receipt: LeadFormReceipt, *, client: LeadH
         _review(receipt, AMBIGUOUS_FORM)
         return client
     binding = bindings[0]
+    set_tenant_context(db, binding.tenant_id)
     receipt.tenant_id = binding.tenant_id
     receipt.binding_id = binding.id
     receipt.operating_plan_id = binding.operating_plan_id

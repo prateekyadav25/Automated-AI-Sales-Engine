@@ -1,5 +1,15 @@
 # Implementation Log
 
+## 2026-11-06 (Social Growth staging readiness, Alembic 047)
+
+- The 046 implementation was already committed and pushed on `main` (`61daf35`). This work is on branch `social-growth-047-hardening` and was not pushed. The running Compose stack was not restarted. The demonstration database stayed at Alembic `046`.
+- Backups under `.local-backups/` were left in place. `047` downgrade is a no-op. Recovery is restoring the pre-upgrade dump. A restore of `agrayian-before-sample-retirement-2026-10-29.dump` into `agrayian_047_proof` upgraded `046` to `047` with forced row-level security on `content_proposals`, `paid_ads`, `lead_form_receipts`, and `growth_accounts`. That database was dropped. The live version was still `046`.
+- `047` forces tenant policies on `content_proposals`, `content_recommendations`, `deal_purchases`, `onboarding_completions`, `organic_metric_observations`, `paid_ads`, `purchase_health_signals`, `quote_acceptances`, and `lead_form_bindings`. `lead_form_receipts` allow the webhook and worker to see rows only while `app.lead_intake` is set. A normal session with a tenant sees only that tenant. A session with neither sees nothing. The app role can insert an unbound receipt during intake. A cross-tenant insert is rejected.
+- `collect_organic_metrics` uses `run_per_tenant` and passes the tenant id. `process_due_lead_receipts` sets the mapped tenant before it writes the enquiry.
+- Ads, page posting, and lead retrieval build Graph URLs from `META_GRAPH_API_VERSION`. Live modes stay `disabled`. No Meta client was opened.
+- Tests: migration `047` on a disposable database, graph contract, credential expiry, revocation, a second scheduler tick, an unknown effect that is not posted again, and the mapped-tenant spy. `ruff check app tests` passes. Five frontend growth tests pass. In `salesengine-api:latest`, with no network, a portrait card, a 9:16 cover, and a two-frame Reel passed their checks. `bandit` reports no high findings. The one medium is the existing `0.0.0.0` entry in the host denylist in `social.py`, which is a blocked address, not a bind. Aikido still needs a sign-in.
+- Eight clean-environment API failures are classified in `TECHNICAL_DEBT.md`. They are older assertion mismatches. The suite was not rerun with the developer env file, because that file holds live provider settings.
+
 ## 2026-10-29 (Retiring the fictional sample data)
 
 - Cause on the hosted site: its database is separate, the 2026-10-10 cleanup ran only locally, and its API starts with `SEED_DEMO=true` and `ENVIRONMENT=development`, so every deploy seeds. The older `_retire_fiction` also left most linked rows. A clone of the local database still showed sample companies on 8 pages (approvals, deals, expansion, ABM, advocacy, market signals and triggers, command) because 1,669 linked rows had not been retired.

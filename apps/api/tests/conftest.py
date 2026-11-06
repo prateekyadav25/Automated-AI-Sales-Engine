@@ -12,14 +12,14 @@ os.environ.setdefault("LLM_PROVIDER", "mock")
 os.environ.setdefault("SEED_DEMO", "true")
 os.environ.setdefault("CORS_ORIGINS", "http://localhost:3000")
 
-import pytest
-from fastapi.testclient import TestClient
+import pytest  # noqa: E402
+from fastapi.testclient import TestClient  # noqa: E402
 
-from app.core.config import get_settings
-from app.db.base import Base
-from app.db.session import get_engine, reset_engine
-from app.main import app
-from app.seed import seed
+from app.core.config import get_settings  # noqa: E402
+from app.db.base import Base  # noqa: E402
+from app.db.session import get_engine, reset_engine  # noqa: E402
+from app.main import app  # noqa: E402
+from app.seed import seed  # noqa: E402
 
 
 @pytest.fixture(scope="session")

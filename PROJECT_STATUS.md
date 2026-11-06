@@ -2,7 +2,7 @@
 
 ## CURRENT PHASE
 
-2026-10-28: The Social Growth Autopilot for Facebook and Instagram is complete in fixtures, and the local application is on Alembic `046` since 2026-10-29. Live publishing, live insights, and GA4 are off and unverified. Live verification needs a Meta app with App Review permissions, client tokens, a public HTTPS media host, and an authorized workspace. Paid activation and reporting, and SEO, remain open. The sales engine is not finished.
+2026-11-06: Social Growth staging readiness is on branch `social-growth-047-hardening` (Alembic `047` in code). The running demonstration is still Alembic `046` and was not migrated or restarted. Live publishing, insights, and GA4 stay off. Docs 62 and 63 describe the isolated staging stack and the approval-gated live checks. Paid activation and reporting, and SEO, remain open. The sales engine is not finished.
 
 Earlier on 2026-10-28: purchase onboarding, evidence-backed health, and reviewable retention follow-through reached the local application at Alembic `045`. The paragraph below is the older phase inventory.
 
@@ -42,7 +42,9 @@ None.
 
 ## NEXT
 
-Social Growth live verification in this order: token verification, history import, insight and GA4 reads, then one separately authorized test post. Live WhatsApp adapter when credentials exist, Gmail Pub/Sub after measured ingest lag, live Zendesk/Stripe HTTP, HNSW after measured chunk latency, trained ML only after a task is READY_FOR_EXPERIMENT and a human starts one SHADOW experiment. A public HTTPS host is required before Exotel/Twilio/Vapi/Recall/Gmail callbacks can reach a non-local API.
+Follow `docs/63-social-growth-live-acceptance.md` on an isolated staging stack. Do not run those external steps without a separate approval for each one.
+
+After one verified token and one approved post, the next build is a Meta Ads Autopilot with closed-loop organic optimization: paused campaign assembly is already fixture-tested; a later loop may change pillar weights only from stored live readings, still behind the same grant and scope gates. Live WhatsApp when credentials exist, Gmail Pub/Sub after measured ingest lag, live Zendesk/Stripe HTTP, HNSW after measured chunk latency, and trained ML only after a task is READY_FOR_EXPERIMENT remain on the roadmap. A public HTTPS host is required before provider callbacks can reach a non-local API.
 
 ## TECHNICAL DEBT
 

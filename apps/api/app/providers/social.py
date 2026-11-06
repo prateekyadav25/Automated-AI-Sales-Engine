@@ -5,10 +5,10 @@ from urllib.parse import quote, urlsplit
 import httpx
 
 from app.core.config import Settings, get_settings
+from app.providers.meta_growth import graph_base
 
 LINKEDIN_POSTS_URL = "https://api.linkedin.com/rest/posts"
 LINKEDIN_VERSION = "202609"
-META_GRAPH = "https://graph.facebook.com/v21.0"
 _FACEBOOK_ID = re.compile(r"^[0-9]+(?:_[0-9]+)?$")
 _LINKEDIN_URN = re.compile(r"^urn:li:(?:share|ugcPost|activity):[0-9]+$")
 _LINKEDIN_NUMERIC = re.compile(r"^[0-9]+$")
@@ -137,7 +137,7 @@ def fetch_instagram_permalink(token: str, media_id: str) -> str:
     try:
         with httpx.Client(timeout=10.0) as client:
             response = client.get(
-                f"{META_GRAPH}/{media_id.strip()}",
+                f"{graph_base()}/{media_id.strip()}",
                 params={"fields": "permalink", "access_token": token},
             )
         if response.status_code >= 400:
@@ -156,7 +156,7 @@ def fetch_facebook_permalink(token: str, external_id: str) -> str:
         try:
             with httpx.Client(timeout=10.0) as client:
                 response = client.get(
-                    f"{META_GRAPH}/{external_id.strip()}",
+                    f"{graph_base()}/{external_id.strip()}",
                     params={"fields": "permalink_url", "access_token": token},
                 )
             if response.status_code < 400:
@@ -337,7 +337,7 @@ class MetaSocialPublisher:
         link = link_url.strip()
         if link and provider_can_fetch(link):
             data["link"] = link
-        return self._post(f"{META_GRAPH}/{self._page_id}/feed", data, provider="facebook")
+        return self._post(f"{graph_base()}/{self._page_id}/feed", data, provider="facebook")
 
     def _publish_page_photo(self, *, body: str, image_bytes: bytes) -> SocialPublishResult:
         return self._upload_photo(image_bytes, published=True, message=body)
@@ -380,14 +380,14 @@ class MetaSocialPublisher:
                 reason="Instagram cannot fetch an image hosted on this machine. Paste a public image URL, or publish from a public https address.",
             )
         created = self._post(
-            f"{META_GRAPH}/{self._instagram_id}/media",
+            f"{graph_base()}/{self._instagram_id}/media",
             {"image_url": usable, "caption": instagram_caption(body, link_url), "access_token": self._token},
             provider="instagram",
         )
         if not created.ok:
             return created
         return self._post(
-            f"{META_GRAPH}/{self._instagram_id}/media_publish",
+            f"{graph_base()}/{self._instagram_id}/media_publish",
             {"creation_id": created.external_id, "access_token": self._token},
             provider="instagram",
         )
@@ -402,7 +402,7 @@ class MetaSocialPublisher:
         client = self._client or httpx.Client(timeout=60.0)
         try:
             response = client.post(
-                f"{META_GRAPH}/{self._page_id}/photos",
+                f"{graph_base()}/{self._page_id}/photos",
                 data=form,
                 files={"source": ("banner.png", data, "image/png")},
             )
@@ -436,7 +436,7 @@ class MetaSocialPublisher:
         client = self._client or httpx.Client(timeout=60.0)
         try:
             response = client.post(
-                f"{META_GRAPH}/{self._page_id}/photos",
+                f"{graph_base()}/{self._page_id}/photos",
                 data={"published": "false", "temporary": "true", "access_token": self._token},
                 files={"source": ("banner.png", data, "image/png")},
             )
@@ -446,7 +446,7 @@ class MetaSocialPublisher:
             if not photo_id:
                 return "", "Meta returned no image id."
             fetched = client.get(
-                f"{META_GRAPH}/{photo_id}",
+                f"{graph_base()}/{photo_id}",
                 params={"fields": "images", "access_token": self._token},
             )
             if fetched.status_code >= 400:
@@ -468,7 +468,7 @@ class MetaSocialPublisher:
         client = self._client or httpx.Client(timeout=30.0)
         try:
             response = client.post(
-                f"{META_GRAPH}/{external_id.strip()}",
+                f"{graph_base()}/{external_id.strip()}",
                 data={"message": body, "access_token": self._token},
             )
             if response.status_code >= 400:
@@ -520,7 +520,7 @@ class MetaSocialPublisher:
             getter = client.get
         try:
             response = getter(
-                f"{META_GRAPH}/{external_id}",
+                f"{graph_base()}/{external_id}",
                 params={"fields": field, "access_token": self._token},
             )
             if getattr(response, "status_code", 400) >= 400:

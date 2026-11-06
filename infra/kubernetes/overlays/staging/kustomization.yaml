@@ -29,3 +29,15 @@ patches:
       - op: replace
         path: /data/SEED_DEMO
         value: "false"
+      - op: replace
+        path: /data/META_GRAPH_API_VERSION
+        value: v26.0
+      - op: replace
+        path: /data/SOCIAL_GROWTH_PUBLISH_MODE
+        value: disabled
+      - op: replace
+        path: /data/SOCIAL_GROWTH_INSIGHTS_MODE
+        value: disabled
+      - op: replace
+        path: /data/GA4_MODE
+        value: disabled

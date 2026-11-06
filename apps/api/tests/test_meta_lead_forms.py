@@ -16,6 +16,7 @@ from sqlalchemy import func, select
 
 from app.core.config import get_settings
 from app.db.session import get_session
+from app.db.tenant_context import set_tenant_context
 from app.models.acquisition import InboundCapture
 from app.models.ai import AIApproval
 from app.models.crm import Lead, Task
@@ -463,6 +464,30 @@ def test_prepared_scope_and_posting_token_make_no_live_request(client: TestClien
         assert posting.status == "needs_review"
         assert posting.error == POSTING_TOKEN_UNUSED
         assert calls == []
+    finally:
+        db.rollback()
+        db.close()
+
+
+def test_receipt_processing_sets_the_mapped_tenant_before_writing(client: TestClient, monkeypatch) -> None:
+    _ = client
+    seen: list = []
+
+    def spy(db, tenant_id):
+        seen.append(tenant_id)
+        return set_tenant_context(db, tenant_id)
+
+    monkeypatch.setattr("app.services.lead_forms.set_tenant_context", spy)
+    db = get_session()
+    try:
+        user, plan = _workspace(db)
+        _bind(db, user, plan)
+        accept_leadgen_notification(db, _notice("leadgen-tenant-context", ad=AD))
+        graph = _Client([_Response(200, _detail("leadgen-tenant-context", {"email": EMAIL, "full_name": "Fixture Person", "may_we_reply": "yes"}, ad=AD))])
+        assert process_due_lead_receipts(db, client=graph) == 1
+        assert user.tenant_id in seen
+        receipt = db.scalar(select(LeadFormReceipt).where(LeadFormReceipt.provider_lead_id == "leadgen-tenant-context"))
+        assert receipt is not None and receipt.tenant_id == user.tenant_id
     finally:
         db.rollback()
         db.close()

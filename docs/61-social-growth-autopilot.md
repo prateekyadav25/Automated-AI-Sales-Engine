@@ -32,14 +32,14 @@ What was missing and is now built:
 - First-party tracking links, a GA4 Data API boundary, and separate traffic, enquiry, qualified-lead, and sales measures.
 - The Social Growth Command Center and five working pages.
 
-Gaps found in existing code, recorded and not changed here:
+Gaps found in existing code, and where they stand after Alembic `047`:
 
-- Ten tables from Alembic `039`–`045` have no row-level security: `content_proposals`, `content_recommendations`, `deal_purchases`, `lead_form_bindings`, `lead_form_receipts`, `onboarding_completions`, `organic_metric_observations`, `paid_ads`, `purchase_health_signals`, `quote_acceptances`.
-- The `collect_organic_metrics` and `retrieve_native_lead_forms` workers run without a tenant context.
-- The older Graph clients (ads, lead forms, page posting) are pinned to `v21.0`. Meta lists its expiry as 2027-01-21.
-- The capture page did not forward the `publication` and `ad` tokens. That is fixed in this work, together with the new `growth` token.
-- The committed OpenAPI artifacts were stale before this work. They were regenerated.
-- `ruff check app tests` fails at HEAD on four files this work did not touch.
+- The ten `039`–`045` tables now have forced row-level security (`047`). Growth tables keep theirs, including the public tracking-link exception.
+- `collect_organic_metrics` runs per tenant. `retrieve_native_lead_forms` sets `app.lead_intake` and then the tenant from the local form mapping before it writes a lead.
+- Ads, lead-form, and page posting use `META_GRAPH_API_VERSION`, the same setting as the growth client. Default `v26.0`.
+- The capture page forwards the `growth`, `publication`, and `ad` tokens.
+- `ruff check app tests` is clean. Eight older API tests still fail in a clean environment. See `TECHNICAL_DEBT.md`.
+- Staging and the live checklist are `docs/62-social-growth-staging.md` and `docs/63-social-growth-live-acceptance.md`.
 
 ## Architecture
 

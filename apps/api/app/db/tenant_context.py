@@ -13,12 +13,14 @@ SETTING_LOGIN_EMAIL = "app.login_email"
 SETTING_REFRESH_HASH = "app.refresh_token_hash"
 SETTING_WEBHOOK_HASH = "app.webhook_token_hash"
 SETTING_FORM_HASH = "app.form_token_hash"
+SETTING_LEAD_INTAKE = "app.lead_intake"
 
 INFO_TENANT = "rls_tenant_id"
 INFO_LOGIN_EMAIL = "rls_login_email"
 INFO_REFRESH_HASH = "rls_refresh_hash"
 INFO_WEBHOOK_HASH = "rls_webhook_hash"
 INFO_FORM_HASH = "rls_form_hash"
+INFO_LEAD_INTAKE = "rls_lead_intake"
 
 
 def supports_rls(db: Session) -> bool:
@@ -66,6 +68,17 @@ def set_form_token_hash(db: Session, token_hash: str) -> None:
     _set_config(db, SETTING_FORM_HASH, token_hash)
 
 
+def set_lead_intake(db: Session, enabled: bool) -> None:
+    """Let the lead webhook and its worker see unbound receipts and every form mapping.
+
+    A normal request never sets this. It does not by itself authorize a write into
+    another tenant: binding inserts still require that tenant's context.
+    """
+    value = "1" if enabled else ""
+    db.info[INFO_LEAD_INTAKE] = value
+    _set_config(db, SETTING_LEAD_INTAKE, value)
+
+
 def clear_lookup_context(db: Session) -> None:
     db.info[INFO_LOGIN_EMAIL] = ""
     db.info[INFO_REFRESH_HASH] = ""
@@ -91,6 +104,7 @@ def _restore_rls_after_begin(session: Session, _transaction: object, connection:
         (INFO_REFRESH_HASH, SETTING_REFRESH_HASH),
         (INFO_WEBHOOK_HASH, SETTING_WEBHOOK_HASH),
         (INFO_FORM_HASH, SETTING_FORM_HASH),
+        (INFO_LEAD_INTAKE, SETTING_LEAD_INTAKE),
     )
     for info_key, setting_key in pairs:
         if info_key not in session.info:

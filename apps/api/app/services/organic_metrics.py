@@ -120,16 +120,18 @@ def collect_linkedin_metrics(
     return {"stored": stored, "http_calls": http_calls, "blocked": "", "detail": "Metric observations were stored without adding cumulative totals."}
 
 
-def collect_due_organic_metrics(db: Session) -> int:
-    """Worker entry. A prepared or missing DEMO scope never opens the LinkedIn client."""
-    tenant_ids = set(
-        db.scalars(
-            select(CreativeVersion.tenant_id).where(
-                CreativeVersion.status == "published",
-                CreativeVersion.deleted_at.is_(None),
-            )
-        ).all()
+def collect_due_organic_metrics(db: Session, tenant_id: UUID | None = None) -> int:
+    """Worker entry. A prepared or missing DEMO scope never opens the LinkedIn client.
+
+    Postgres calls pass one tenant after that tenant's row-level context is set.
+    """
+    published = select(CreativeVersion.tenant_id).where(
+        CreativeVersion.status == "published",
+        CreativeVersion.deleted_at.is_(None),
     )
+    if tenant_id is not None:
+        published = published.where(CreativeVersion.tenant_id == tenant_id)
+    tenant_ids = set(db.scalars(published).all())
     total = 0
     for tenant_id in tenant_ids:
         if organic_metrics_block(db, tenant_id):

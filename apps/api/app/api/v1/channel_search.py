@@ -23,8 +23,8 @@ from app.services.channel_search import (
     present_search,
     run_channel_search,
 )
-from app.workers.celery_app import finish_channel_search_task
 from app.services.snippet_expand import SnippetNotFound, SnippetUnavailable, expand_snippet
+from app.workers.celery_app import finish_channel_search_task
 
 router = APIRouter(prefix="/channel-search", tags=["channel-search"])
 

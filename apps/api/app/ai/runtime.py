@@ -3,7 +3,6 @@ import re
 from uuid import UUID
 
 import httpx
-
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 

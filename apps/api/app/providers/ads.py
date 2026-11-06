@@ -11,13 +11,14 @@ import httpx
 from sqlalchemy.orm import Session
 
 from app.core.config import get_settings
+from app.providers.meta_growth import graph_base
 from app.services.provider_ops import classify_http
 from app.services.provider_resolve import resolve_channel
 
-# Marketing API version this ads client already posts. A page-posting token
-# or a lead-retrieval token does not prove this path. Live ad-account
-# permission, image upload, and delivery have not been verified.
-META_ADS_GRAPH = "https://graph.facebook.com/v21.0"
+# A page-posting token or a lead-retrieval token does not prove this path.
+# Live ad-account permission, image upload, and delivery have not been verified.
+# The host version is META_GRAPH_API_VERSION. Live campaign creation stays off
+# unless a caller passes an explicit client and the deployment mode allows it.
 
 LINKEDIN_OBJECTIVES = {
     "pipeline": "LEAD_GENERATION",
@@ -645,7 +646,7 @@ class MetaAdsProvider:
         requested = int(budget * 100)
         minimum = 100
         response = client.get(
-            f"{META_ADS_GRAPH}/act_{self._account}",
+            f"{graph_base()}/act_{self._account}",
             params={"access_token": self._token, "fields": "min_daily_budget"},
         )
         if response.status_code < 400:
@@ -668,7 +669,7 @@ class MetaAdsProvider:
             payload["daily_budget"] = self._daily_budget_amount(client, budget)
         try:
             response = client.post(
-                f"{META_ADS_GRAPH}/act_{self._account}/campaigns",
+                f"{graph_base()}/act_{self._account}/campaigns",
                 params={"access_token": self._token},
                 data=payload,
             )
@@ -698,7 +699,7 @@ class MetaAdsProvider:
         client = self._client or httpx.Client(timeout=30.0)
         try:
             response = client.post(
-                f"{META_ADS_GRAPH}/{external_id}",
+                f"{graph_base()}/{external_id}",
                 params={"access_token": self._token},
                 data={"status": "PAUSED"},
             )
@@ -741,7 +742,7 @@ class MetaAdsProvider:
         client = self._client or httpx.Client(timeout=30.0)
         try:
             campaign = client.get(
-                f"{META_ADS_GRAPH}/{external_id}",
+                f"{graph_base()}/{external_id}",
                 params={"access_token": self._token, "fields": "status,effective_status"},
             )
             status = ""
@@ -749,7 +750,7 @@ class MetaAdsProvider:
                 body = campaign.json() or {}
                 status = normalize_ad_status(str(body.get("effective_status") or body.get("status") or ""))
             insights = client.get(
-                f"{META_ADS_GRAPH}/{external_id}/insights",
+                f"{graph_base()}/{external_id}/insights",
                 params={"access_token": self._token, "fields": "spend,impressions,clicks,actions"},
             )
             if insights.status_code >= 400:
@@ -812,7 +813,7 @@ class MetaAdsProvider:
             payload["daily_budget"] = self._daily_budget_amount(client, budget)
         try:
             response = client.post(
-                f"{META_ADS_GRAPH}/act_{self._account}/adsets",
+                f"{graph_base()}/act_{self._account}/adsets",
                 params={"access_token": self._token},
                 data=payload,
             )
@@ -851,7 +852,7 @@ class MetaAdsProvider:
             spec = "{}"
         try:
             response = client.post(
-                f"{META_ADS_GRAPH}/act_{self._account}/adcreatives",
+                f"{graph_base()}/act_{self._account}/adcreatives",
                 params={"access_token": self._token},
                 data={"name": name, "title": headline, "body": body, "object_story_spec": spec},
             )
@@ -867,7 +868,7 @@ class MetaAdsProvider:
         client = self._client or httpx.Client(timeout=30.0)
         try:
             response = client.post(
-                f"{META_ADS_GRAPH}/act_{self._account}/ads",
+                f"{graph_base()}/act_{self._account}/ads",
                 params={"access_token": self._token},
                 data={
                     "name": name,
@@ -898,7 +899,7 @@ class MetaAdsProvider:
         client = self._client or httpx.Client(timeout=30.0)
         try:
             response = client.post(
-                f"{META_ADS_GRAPH}/{external_id}",
+                f"{graph_base()}/{external_id}",
                 params={"access_token": self._token},
                 data={"status": "ACTIVE"},
             )
@@ -928,7 +929,7 @@ class MetaAdsProvider:
                 "customer_file_source": "USER_PROVIDED_ONLY",
             }
             response = client.post(
-                f"{META_ADS_GRAPH}/act_{self._account}/customaudiences",
+                f"{graph_base()}/act_{self._account}/customaudiences",
                 params={"access_token": self._token},
                 data=payload,
             )
@@ -944,7 +945,7 @@ class MetaAdsProvider:
             external_id = str((response.json() or {}).get("id") or "")
             if external_id and identifiers:
                 client.post(
-                    f"{META_ADS_GRAPH}/{external_id}/users",
+                    f"{graph_base()}/{external_id}/users",
                     params={"access_token": self._token},
                     json={"payload": {"schema": ["EMAIL"], "data": [[item] for item in identifiers[:10000]]}},
                 )

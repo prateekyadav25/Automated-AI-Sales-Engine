@@ -18,10 +18,10 @@ from app.schemas.ai import (
     CopilotResponse,
     EmailDraftRequest,
     EmailDraftResponse,
-    WhatsAppDraftRequest,
     KnowledgeHit,
     KnowledgeSourceDetail,
     KnowledgeUploadResponse,
+    WhatsAppDraftRequest,
 )
 from app.schemas.common import Envelope, Meta
 from app.services.approval_view import approval_out

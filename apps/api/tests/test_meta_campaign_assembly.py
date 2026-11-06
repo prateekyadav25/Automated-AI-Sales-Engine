@@ -20,7 +20,8 @@ from app.models.identity import Tenant, User
 from app.models.integrations import EmailMessage, ProviderAction
 from app.models.lifecycle import Campaign, Product, SequenceEnrollment
 from app.models.operating_plan import CreativeVersion, DemoScope, OperatingPlan
-from app.providers.ads import META_ADS_GRAPH, MetaAdsProvider, PreparedAdsProvider
+from app.providers.ads import MetaAdsProvider, PreparedAdsProvider
+from app.providers.meta_growth import graph_base
 from app.services.acquisition import capture_inbound
 from app.services.ads import EXHAUSTED_DAILY, NO_SPEND, budget_block_reason, queue_campaign_launch
 from app.services.ads_assembly import assemble_paused_meta, assembly_view
@@ -191,10 +192,10 @@ def test_paused_meta_assembly_and_attributed_enquiry(client) -> None:
         assert paid is not None and paid.external_id == "ad-1" and paid.status == "paused" and paid.ad_set_id == ad_set.id
         posts = _posts(scripted)
         assert [call["url"] for call in posts] == [
-            f"{META_ADS_GRAPH}/act_fixture-account/campaigns",
-            f"{META_ADS_GRAPH}/act_fixture-account/adsets",
-            f"{META_ADS_GRAPH}/act_fixture-account/adcreatives",
-            f"{META_ADS_GRAPH}/act_fixture-account/ads",
+            f"{graph_base()}/act_fixture-account/campaigns",
+            f"{graph_base()}/act_fixture-account/adsets",
+            f"{graph_base()}/act_fixture-account/adcreatives",
+            f"{graph_base()}/act_fixture-account/ads",
         ]
         assert posts[0]["data"]["status"] == "PAUSED"
         assert posts[0]["data"]["objective"] == "OUTCOME_TRAFFIC"

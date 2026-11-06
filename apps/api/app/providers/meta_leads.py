@@ -1,10 +1,10 @@
 """Meta native lead-form notifications and lead-detail retrieval.
 
-Supported Graph version: v21.0, the same version already used for Meta
-page publishing in this application (`META_GRAPH`). Official lead-ads
-examples published through May 2026 also show v25.0 and v26.0. This
-adapter does not call those newer versions and does not call
-`has_lead_access`.
+The Graph version is META_GRAPH_API_VERSION, the same setting used for
+page publishing and the Social Growth client. This adapter does not call
+`has_lead_access`. A live retrieval still requires an explicit client
+from the worker, and the worker does not open one while retrieval is
+blocked.
 
 Notification contract, from Meta's Webhooks for Leads and Webhooks
 Getting Started guides:
@@ -45,10 +45,9 @@ from typing import Protocol
 
 import httpx
 
-from app.providers.social import META_GRAPH
+from app.providers.meta_growth import graph_base
 
 LEAD_FIELDS = "created_time,id,ad_id,form_id,field_data,campaign_id,adset_id,custom_disclaimer_responses"
-GRAPH_VERSION = "v21.0"
 PERMISSION_CODES = {10, 190, 200, 294}
 RATE_LIMIT_CODES = {4, 17, 32, 613}
 
@@ -131,7 +130,7 @@ POSTING_TOKEN_MESSAGE = "A Meta lead retrieval token is not configured. The post
 def read_lead(client: LeadHttp, lead_id: str, token: str) -> LeadRead:
     """GET one lead. The token is the lead-retrieval token, not a posting token."""
     response = client.get(
-        f"{META_GRAPH}/{lead_id}",
+        f"{graph_base()}/{lead_id}",
         params={"access_token": token, "fields": LEAD_FIELDS},
     )
     status = int(getattr(response, "status_code", 0) or 0)

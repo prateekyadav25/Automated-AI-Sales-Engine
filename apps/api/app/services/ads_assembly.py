@@ -25,7 +25,8 @@ from app.models.funnel import AdCreative, AdSet, PaidAd, PublicFormKey
 from app.models.integrations import ProviderAction
 from app.models.lifecycle import Campaign
 from app.models.operating_plan import CreativeVersion, OperatingPlan
-from app.providers.ads import META_ADS_GRAPH, MetaAdsProvider, PreparedAdsProvider
+from app.providers.ads import MetaAdsProvider, PreparedAdsProvider
+from app.providers.meta_growth import graph_base
 from app.services.demo_guard import ads_assembly_block
 from app.services.product_context import build_product_context
 from app.services.provider_ops import begin_action, confirm_action
@@ -133,7 +134,7 @@ def _result(campaign: Campaign) -> dict:
         "activated": False,
         "external_campaign_id": campaign.external_campaign_id,
         "provider_status": campaign.provider_status,
-        "graph": META_ADS_GRAPH,
+        "graph": graph_base(),
         "contract": ASSEMBLY_VERSION,
     }
 
